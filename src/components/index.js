@@ -5,3 +5,4 @@ export { default as VendorList } from './VendorList';
 export { default as TimelineView } from './TimelineView';
 export { default as Toast } from './Toast';
 export { default as CreateEventModal } from './CreateEventModal';
+export { default as EventCreationProgress } from './EventCreationProgress';
