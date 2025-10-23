@@ -7,6 +7,8 @@ import VendorList from "./components/VendorList";
 import TimelineView from "./components/TimelineView";
 import Toast from "./components/Toast";
 import CreateEventModal from "./components/CreateEventModal";
+import { Sidebar, SearchBox, EventList, VendorList, TimelineView, Toast, CreateEventModal } from './components';
+
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
