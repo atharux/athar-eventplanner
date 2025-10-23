@@ -8,6 +8,17 @@ import TimelineView from "./components/TimelineView";
 import Toast from "./components/Toast";
 import CreateEventModal from "./components/CreateEventModal";
 import { Sidebar, SearchBox, EventList, VendorList, TimelineView, Toast, CreateEventModal } from './components';
+import { EventCreationProgress } from './components';
+
+// ...
+
+const [completedSteps, setCompletedSteps] = React.useState(['vendors', 'venue']);
+
+// In JSX:
+<EventCreationProgress completedSteps={completedSteps} />
+
+// Update completedSteps as user progresses in your app logic
+
 
 
 export default function App() {
