@@ -115,9 +115,9 @@ const guests = [
 ];
 
 // -----------------------------------------------------------------------------
-// Event Detail View Component
+// Event Detail View
 // -----------------------------------------------------------------------------
-function EventDetailView({ event }) {
+function EventDetailView({ event, onClose }) {
   const [activeEventTab, setActiveEventTab] = useState("overview");
 
   return (
@@ -125,7 +125,7 @@ function EventDetailView({ event }) {
       <div className="bg-slate-900 border border-slate-700 w-full max-w-6xl h-[90vh] overflow-y-auto relative">
         <div className="sticky top-0 bg-slate-900 border-b border-slate-700 flex justify-between items-center p-6">
           <h2 className="text-2xl font-bold">{event.name}</h2>
-          <button onClick={() => window.location.reload()}>
+          <button onClick={onClose}>
             <X size={24} />
           </button>
         </div>
@@ -165,6 +165,59 @@ function EventDetailView({ event }) {
               <div className="bg-slate-800 p-4">
                 <p className="text-slate-400 text-sm">Status</p>
                 <p className="text-lg font-semibold capitalize">{event.status}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tasks */}
+        {activeEventTab === "tasks" && (
+          <div className="p-6">
+            <h3 className="text-xl font-bold mb-4">Tasks</h3>
+            <ul className="space-y-2">
+              {tasks
+                .filter((t) => t.event === event.name)
+                .map((t) => (
+                  <li
+                    key={t.id}
+                    className="bg-slate-800 border border-slate-700 p-4 flex justify-between items-center"
+                  >
+                    <div>
+                      <p className="font-medium">{t.title}</p>
+                      <p className="text-xs text-slate-400">
+                        Due: {new Date(t.dueDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <span
+                      className={`px-2 py-1 text-xs ${
+                        t.status === "completed"
+                          ? "bg-green-900 text-green-400"
+                          : "bg-yellow-900 text-yellow-400"
+                      }`}
+                    >
+                      {t.status}
+                    </span>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Budget */}
+        {activeEventTab === "budget" && (
+          <div className="p-6 space-y-6">
+            <h3 className="text-xl font-bold">Budget Summary</h3>
+            <div className="bg-slate-800 p-6">
+              <p>Total Budget: €{event.budget.toLocaleString()}</p>
+              <p>Spent: €{event.spent.toLocaleString()}</p>
+              <p>Remaining: €{(event.budget - event.spent).toLocaleString()}</p>
+              <div className="w-full bg-slate-900 h-3 mt-3">
+                <div
+                  className="bg-blue-600 h-full"
+                  style={{
+                    width: `${(event.spent / event.budget) * 100}%`,
+                  }}
+                ></div>
               </div>
             </div>
           </div>
@@ -216,36 +269,126 @@ function EventDetailView({ event }) {
 }
 
 // -----------------------------------------------------------------------------
-// Main Component
+// Main App
 // -----------------------------------------------------------------------------
 export default function EventPlannerApp() {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterCategory, setFilterCategory] = useState("All");
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [showEventDetail, setShowEventDetail] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedVendor, setSelectedVendor] = useState(null);
-  const [selectedConversation, setSelectedConversation] = useState(0);
-  const [messageInput, setMessageInput] = useState("");
 
-  const filteredVendors = vendors.filter(
-    (v) =>
-      v.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      (filterCategory === "All" || v.category === filterCategory)
-  );
+  const filteredVendors = vendors;
 
-  // ---------------------------------------------------------------------------
-  // Layout: Sidebar + Main Tabs (Dashboard, Events, Vendors, Messages, Settings)
-  // ---------------------------------------------------------------------------
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row">
       {/* Sidebar */}
-      {/* ... same sidebar and main tab content from earlier completion ... */}
-      {/* Modals and EventDetailView */}
-      {/* ... same modals and event detail view from earlier completion ... */}
+      <nav className="w-full md:w-64 bg-slate-900 border-r border-slate-700">
+        <div className="p-6 border-b border-slate-700">
+          <h1 className="text-xl font-bold">EventFlow</h1>
+        </div>
+        <div className="p-4 space-y-2">
+          {[
+            { id: "dashboard", label: "Dashboard", icon: Home },
+            { id: "events", label: "Events", icon: Calendar },
+            { id: "vendors", label: "Vendors", icon: Users },
+            { id: "messages", label: "Messages", icon: MessageSquare },
+            { id: "settings", label: "Settings", icon: Settings },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`w-full flex items-center gap-3 px-4 py-3 ${
+                  activeTab === item.id
+                    ? "bg-blue-600 text-white"
+                    : "text-slate-400 hover:bg-slate-800"
+                }`}
+              >
+                <Icon size={20} />
+                <span className="font-medium">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="flex-1 p-6 overflow-y-auto">
+        {activeTab === "dashboard" && <h1 className="text-3xl font-bold">Dashboard</h1>}
+        {activeTab === "events" && (
+          <div>
+            <h1 className="text-3xl font-bold mb-4">Events</h1>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {events.map((event) => (
+                <div
+                  key={event.id}
+                  onClick={() => {
+                    setSelectedEvent(event);
+                    setShowEventDetail(true);
+                  }}
+                  className="bg-slate-900 border border-slate-700 p-4 hover:border-blue-500 cursor-pointer"
+                >
+                  <h3 className="text-xl font-semibold mb-2">{event.name}</h3>
+                  <p className="text-slate-400 text-sm">{event.date}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {activeTab === "vendors" && (
+          <div>
+            <h1 className="text-3xl font-bold mb-4">Vendors</h1>
+            {filteredVendors.map((v) => (
+              <div
+                key={v.id}
+                onClick={() => {
+                  setSelectedVendor(v);
+                  setShowVendorModal(true);
+                }}
+                className="bg-slate-900 border border-slate-700 p-4 mb-3 hover:border-blue-500 cursor-pointer"
+              >
+                <h3 className="text-lg font-semibold">{v.name}</h3>
+                <p className="text-slate-400 text-sm">{v.category}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        {activeTab === "messages" && (
+          <div>
+            <h1 className="text-3xl font-bold mb-4">Messages</h1>
+            <p className="text-slate-400">Messaging area coming soon...</p>
+          </div>
+        )}
+        {activeTab === "settings" && (
+          <div>
+            <h1 className="text-3xl font-bold mb-4">Settings</h1>
+            <p className="text-slate-400">Settings coming soon...</p>
+          </div>
+        )}
+      </main>
+
+      {/* Modals */}
+      {showCreateEvent && <div>Create Event Modal</div>}
+      {showVendorModal && selectedVendor && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-700 p-6 w-full max-w-lg">
+            <h2 className="text-2xl font-bold mb-4">{selectedVendor.name}</h2>
+            <p>{selectedVendor.category}</p>
+            <button
+              onClick={() => setShowVendorModal(false)}
+              className="mt-4 bg-blue-600 px-4 py-2"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+      {showEventDetail && selectedEvent && (
+        <EventDetailView event={selectedEvent} onClose={() => setShowEventDetail(false)} />
+      )}
     </div>
   );
 }
