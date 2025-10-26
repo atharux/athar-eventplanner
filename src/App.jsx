@@ -32,13 +32,11 @@ export default function EventPlannerApp() {
   const [messageInput, setMessageInput] = useState("");
   const [selectedConversation, setSelectedConversation] = useState(0);
   const [activeEventTab, setActiveEventTab] = useState("overview");
-  // --- Task Detail State ---
   const [showTaskDetail, setShowTaskDetail] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
 
   // --- Mock Data ---
   const events = [
-    // [exact as above]
     {
       id: 1,
       name: "Summer Gala 2025",
@@ -59,7 +57,6 @@ export default function EventPlannerApp() {
         { id: 2, name: "James Cooper", role: "Vendor Coordinator", email: "james@eventflow.com", avatar: "JC" }
       ]
     },
-    // ... [rest of events as above]
     {
       id: 2,
       name: "Thompson Wedding",
@@ -97,7 +94,6 @@ export default function EventPlannerApp() {
   ];
 
   const vendors = [
-    // [exact as above]
     { id: 1, name: "Elegant Catering Co.", category: "Catering", rating: 4.9, price: "$$$$", location: "Downtown", reviews: 127, booked: true },
     { id: 2, name: "Harmony DJ Services", category: "Entertainment", rating: 4.8, price: "$$$", location: "Citywide", reviews: 89, booked: true },
     { id: 3, name: "Bloom & Petal", category: "Florals", rating: 5.0, price: "$$$", location: "Westside", reviews: 156, booked: false },
@@ -109,7 +105,6 @@ export default function EventPlannerApp() {
   ];
 
   const conversations = [
-    // [as above]
     { id: 1, vendor: "Elegant Catering Co.", lastMessage: "Menu proposal attached", time: "10:30 AM", unread: true,
       messages: [
         { sender: "vendor", text: "Hi! Thanks for reaching out about catering.", time: "9:15 AM" },
@@ -141,7 +136,6 @@ export default function EventPlannerApp() {
     { id: 3, name: "Michael Chen", email: "michael@email.com", rsvp: "pending", plusOne: true, event: "Summer Gala 2025", table: "B2" }
   ];
 
-  // --- Helpers ---
   const pct = (num, denom) => (denom ? Math.round((num / denom) * 100) : 0);
   const filteredVendors = vendors.filter(v => {
     const matchesSearch = v.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -149,12 +143,11 @@ export default function EventPlannerApp() {
     return matchesSearch && matchesCategory;
   });
 
-  // --- Components ---
   // ---- Task Detail Modal ----
   const TaskDetailView = ({ task }) => {
     const relatedEvent = events.find(e => e.name === task.event);
     return (
-      <div className="fixed inset-0 bg-black/60 z-50 flex items-start md:items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/60 z-50 overflow-y-auto flex items-start md:items-center justify-center p-4">
         <div className="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-md overflow-hidden">
           <div className="bg-slate-900 border-b border-slate-700 p-4 flex justify-between items-center">
             <div>
@@ -222,7 +215,7 @@ export default function EventPlannerApp() {
   const EventDetailView = ({ event }) => {
     const [tab, setTab] = useState(activeEventTab);
     return (
-      <div className="fixed inset-0 bg-black/60 z-50 flex items-start md:items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/60 z-50 overflow-y-auto flex items-start md:items-center justify-center p-4">
         <div className="bg-slate-900 border border-slate-700 w-full max-w-6xl rounded-md overflow-hidden">
           <div className="bg-slate-900 border-b border-slate-700 p-4 flex justify-between items-center">
             <div>
@@ -255,11 +248,17 @@ export default function EventPlannerApp() {
             ))}
           </div>
           <div className="p-6 max-h-[70vh] overflow-y-auto">
+            {tab === "overview" && (
+              <div>
+                <h3 className="text-xl font-bold mb-2">Description</h3>
+                <p className="text-slate-300">{event.description}</p>
+              </div>
+            )}
             {tab === "tasks" && (
               <div>
                 <h3 className="text-xl font-bold mb-4">Tasks</h3>
                 <div className="space-y-3">
-                  {tasks.filter(t => t.event === event.name).map(task => (
+                  {tasks.filter((t) => t.event === event.name).map((task) => (
                     <div
                       key={task.id}
                       className="bg-slate-900 border border-slate-700 p-4 flex justify-between items-start hover:border-blue-500 cursor-pointer"
@@ -290,7 +289,7 @@ export default function EventPlannerApp() {
                 </div>
               </div>
             )}
-            {/* ...other tabs as before (overview/team/vendors/budget/guests) */}
+            {/* You can expand other tabs like team/vendors/budget/guests as needed */}
           </div>
         </div>
       </div>
@@ -311,7 +310,15 @@ export default function EventPlannerApp() {
 
       {/* Sidebar */}
       <aside className={`${mobileMenuOpen ? 'block' : 'hidden'} md:block w-full md:w-64 bg-slate-900 border-r border-slate-700 md:sticky md:top-0 md:h-screen overflow-y-auto`}>
-        {/* ...sidebar code unchanged... */}
+        <div className="p-6 border-b border-slate-700 hidden md:block">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-blue-600 flex items-center justify-center rounded font-bold text-2xl">E</div>
+            <div>
+              <h1 className="text-xl font-bold">EventFlow</h1>
+              <p className="text-xs text-slate-400">Event Planning</p>
+            </div>
+          </div>
+        </div>
         <div className="p-4 space-y-2">
           {[
             {id:'dashboard', label:'Dashboard', icon:Home},
@@ -335,7 +342,15 @@ export default function EventPlannerApp() {
       <main className="flex-1 p-6 overflow-y-auto">
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
-            {/* ... */}
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-3xl font-bold">Dashboard</h1>
+                <p className="text-slate-400">Welcome back — overview of your events.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button onClick={()=>setShowCreateEvent(true)} className="bg-blue-600 px-4 py-2 rounded flex items-center gap-2"><Plus size={16}/> New Event</button>
+              </div>
+            </div>
             <div className="grid lg:grid-cols-2 gap-6">
               <div className="bg-slate-900 border border-slate-700 p-4">
                 <h2 className="font-bold text-lg mb-3">Upcoming Events</h2>
@@ -351,7 +366,6 @@ export default function EventPlannerApp() {
                   ))}
                 </div>
               </div>
-
               <div className="bg-slate-900 border border-slate-700 p-4">
                 <h2 className="font-bold text-lg mb-3">Pending Tasks</h2>
                 <div className="space-y-2">
@@ -370,14 +384,47 @@ export default function EventPlannerApp() {
             </div>
           </div>
         )}
-
-        {/* ...Rest of app, unmodified... */}
+        {activeTab === 'events' && (
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h1 className="text-3xl font-bold">Events</h1>
+              <button onClick={()=>setShowCreateEvent(true)} className="bg-blue-600 px-4 py-2 rounded flex items-center gap-2"><Plus size={16}/> Create Event</button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {events.map(ev=>(
+                <div key={ev.id} onClick={()=>{ setSelectedEvent(ev); setShowEventDetail(true); }} className="bg-slate-900 border border-slate-700 p-4 rounded hover:border-blue-500 cursor-pointer">
+                  <div className="flex justify-between items-center mb-2"><div><div className="font-semibold text-lg">{ev.name}</div><div className="text-sm text-slate-400">{ev.type}</div></div><div className={`text-xs px-2 py-1 ${ev.status==='active' ? 'bg-green-900 text-green-400' : 'bg-yellow-900 text-yellow-400'}`}>{ev.status}</div></div>
+                  <div className="text-sm text-slate-300 mb-2">{new Date(ev.date).toLocaleDateString()} • {ev.guests} guests</div>
+                  <div className="w-full bg-slate-900 h-2 rounded"><div className="bg-blue-600 h-full" style={{width:`${pct(ev.completed,ev.tasks)}%`}} /></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* Continue with other tabs and modals as shown previously */}
       </main>
-
       {/* Modals */}
       {showCreateEvent && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           {/* ...Create Event Modal code... */}
+          <div className="bg-slate-900 border border-slate-700 w-full max-w-xl p-4 rounded">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-xl font-bold">Create Event</h3>
+              <button onClick={()=>setShowCreateEvent(false)}><X size={18} /></button>
+            </div>
+            <div className="space-y-3">
+              <input placeholder="Name" className="w-full bg-slate-800 px-3 py-2 rounded" />
+              <select className="w-full bg-slate-800 px-3 py-2 rounded">
+                <option>Wedding</option><option>Corporate</option><option>Birthday</option><option>Conference</option>
+              </select>
+              <input type="date" className="w-full bg-slate-800 px-3 py-2 rounded" />
+              <input type="number" placeholder="Budget" className="w-full bg-slate-800 px-3 py-2 rounded" />
+              <div className="flex gap-2">
+                <button onClick={()=>setShowCreateEvent(false)} className="bg-blue-600 px-4 py-2 rounded">Create</button>
+                <button onClick={()=>setShowCreateEvent(false)} className="bg-slate-800 px-4 py-2 rounded">Cancel</button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
       {showVendorModal && selectedVendor && (
