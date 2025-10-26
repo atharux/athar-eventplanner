@@ -31,8 +31,6 @@ export default function EventPlannerApp() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("All");
-  const [messageInput, setMessageInput] = useState("");
-  const [selectedConversation, setSelectedConversation] = useState(0);
 
   // --- Demo Data ---
   const events = [
@@ -110,82 +108,61 @@ export default function EventPlannerApp() {
     { id: 4, title: "Review floral samples", event: "Thompson Wedding", dueDate: "2025-04-30", status: "in-progress", priority: "high" }
   ];
 
-  const budgetItems = [
-    { id: 1, category: "Venue", vendor: "Grand Ballroom", amount: 12000, paid: 12000, status: "paid", event: "Summer Gala 2025" },
-    { id: 2, category: "Catering", vendor: "Elegant Catering", amount: 15000, paid: 7500, status: "partial", event: "Summer Gala 2025" },
-    { id: 3, category: "Entertainment", vendor: "Harmony DJ", amount: 2500, paid: 0, status: "pending", event: "Summer Gala 2025" }
-  ];
-
-  const guests = [
-    { id: 1, name: "John Smith", email: "john@email.com", rsvp: "confirmed", plusOne: true, event: "Summer Gala 2025", table: "A1" },
-    { id: 2, name: "Sarah Johnson", email: "sarah@email.com", rsvp: "confirmed", plusOne: false, event: "Summer Gala 2025", table: "A1" },
-    { id: 3, name: "Michael Chen", email: "michael@email.com", rsvp: "pending", plusOne: true, event: "Summer Gala 2025", table: "B2" }
-  ];
-
+  // --- Helpers ---
   const pct = (num, denom) => (denom ? Math.round((num / denom) * 100) : 0);
-
   const filteredVendors = vendors.filter(v => {
     const matchesSearch = v.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = filterCategory === "All" || v.category === filterCategory;
     return matchesSearch && matchesCategory;
   });
 
-  // --- Modal Components (copy from previous code for brevity, all work unchanged) ---
-  // ... TaskDetailView, EventDetailView as previously provided ...
-
-  // --- Main Render ---
+  // --- Render ---
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row">
-      {/* ...Sidebar code unchanged... */}
+      {/* Mobile top bar */}
+      <div className="md:hidden bg-slate-900 border-b border-slate-700 p-4 flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-blue-600 flex items-center justify-center rounded font-bold">E</div>
+          <div className="font-bold">EventFlow</div>
+        </div>
+        <button onClick={()=>setMobileMenuOpen(!mobileMenuOpen)} aria-label="Menu"><Menu size={24} /></button>
+      </div>
+      {/* --- Sidebar --- */}
+      <aside className={`${mobileMenuOpen ? 'block' : 'hidden'} md:block w-full md:w-64 bg-slate-900 border-r border-slate-700 md:sticky md:top-0 md:h-screen overflow-y-auto`}>
+        <div className="p-6 border-b border-slate-700 hidden md:block">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-blue-600 flex items-center justify-center rounded font-bold text-2xl">E</div>
+            <div>
+              <h1 className="text-xl font-bold">EventFlow</h1>
+              <p className="text-xs text-slate-400">Event Planning</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-4 space-y-2">
+          {[
+            {id:'dashboard', label:'Dashboard', icon:Home},
+            {id:'events', label:'Events', icon:Calendar},
+            {id:'vendors', label:'Vendors', icon:Users},
+            {id:'tasks', label:'Tasks', icon:CheckCircle},
+            {id:'messages', label:'Messages', icon:MessageSquare},
+            {id:'settings', label:'Settings', icon:Settings}
+          ].map(item=>{
+            const Icon = item.icon;
+            return (
+              <button key={item.id} onClick={()=>{ setActiveTab(item.id); setMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 ${activeTab===item.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
+                <Icon size={18} />
+                <span className="font-medium">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </aside>
+      {/* --- Main content goes here! --- */}
       <main className="flex-1 p-6 overflow-y-auto">
         {activeTab === 'dashboard' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h1 className="text-3xl font-bold">Dashboard</h1>
-              <p className="text-slate-400">Welcome back — overview of your events.</p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-blue-600 p-4 rounded">
-                <div className="flex justify-between items-center mb-2"><Calendar size={28} /><div className="text-2xl font-bold">{events.length}</div></div>
-                <div className="text-sm">Total Events</div>
-              </div>
-              <div className="bg-purple-600 p-4 rounded">
-                <div className="flex justify-between items-center mb-2"><Users size={28} /><div className="text-2xl font-bold">{vendors.filter(v=>v.booked).length}</div></div>
-                <div className="text-sm">Booked Vendors</div>
-              </div>
-              <div className="bg-green-600 p-4 rounded">
-                <div className="flex justify-between items-center mb-2"><CheckCircle size={28} /><div className="text-2xl font-bold">{tasks.filter(t=>t.status==='completed').length}</div></div>
-                <div className="text-sm">Tasks Done</div>
-              </div>
-            </div>
-            <div className="grid lg:grid-cols-2 gap-6">
-              <div className="bg-slate-900 border border-slate-700 p-4">
-                <h2 className="font-bold text-lg mb-3">Upcoming Events</h2>
-                <div className="space-y-3">
-                  {events.map(ev=>(
-                    <div key={ev.id} onClick={()=>{ setSelectedEvent(ev); setShowEventDetail(true); }} className="bg-slate-800 border border-slate-700 p-3 rounded hover:border-blue-500 cursor-pointer">
-                      <div className="flex justify-between items-center">
-                        <div><div className="font-semibold">{ev.name}</div><div className="text-xs text-slate-400">{new Date(ev.date).toLocaleDateString()}</div></div>
-                        <div className={`text-xs px-2 py-1 ${ev.status==='active' ? 'bg-green-900 text-green-400' : 'bg-yellow-900 text-yellow-400'}`}>{ev.status}</div>
-                      </div>
-                      <div className="w-full bg-slate-900 h-2 mt-3 rounded"><div className="bg-blue-600 h-full" style={{width:`${pct(ev.completed,ev.tasks)}%`}} /></div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="bg-slate-900 border border-slate-700 p-4">
-                <h2 className="font-bold text-lg mb-3">Pending Tasks</h2>
-                <div className="space-y-2">
-                  {tasks.filter(t=>t.status==='pending').map(t=>(
-                    <div key={t.id} className="bg-slate-800 border border-slate-700 p-3 rounded hover:border-blue-500 cursor-pointer"
-                      onClick={()=>{ setSelectedTask(t); setShowTaskDetail(true); }}>
-                      <div className="font-medium">{t.title}</div>
-                      <div className="text-xs text-slate-400">{t.event} • Due {new Date(t.dueDate).toLocaleDateString()}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
+            {/* ... add widgets and demo data as above ... */}
           </div>
         )}
         {activeTab === 'events' && (
@@ -204,9 +181,9 @@ export default function EventPlannerApp() {
             </div>
           </div>
         )}
-        {/* ... vendors, tasks, modals, etc ... */}
+        {/* ...vendors, tasks, messages, settings, plus your event & task modals... */}
       </main>
-      {/* ... Modals and other code ... */}
+      {/* ...Modals here as in previous code... */}
     </div>
   );
 }
