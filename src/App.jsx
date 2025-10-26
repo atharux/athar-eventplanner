@@ -1,5 +1,4 @@
-# Writing a complete React component file to /mnt/data/event_planner_app.jsx
-content = r''' "use client";
+"use client";
 import React, { useState } from "react";
 import {
   Calendar,
@@ -22,7 +21,7 @@ import {
 } from "lucide-react";
 
 /**
- * Complete Event Planner App component
+ * Complete Event Planner App component with Event & Task Detail modals
  * Save as: /src/components/event_planner_app.jsx
  * This is a self-contained React component (client-side). It uses Tailwind CSS classes.
  */
@@ -41,6 +40,10 @@ export default function EventPlannerApp() {
   const [messageInput, setMessageInput] = useState("");
   const [selectedConversation, setSelectedConversation] = useState(0);
   const [activeEventTab, setActiveEventTab] = useState("overview");
+
+  // ----- NEW STATE FOR TASK DETAILS -----
+  const [showTaskDetail, setShowTaskDetail] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
 
   // ----- Mock data -----
   const events = [
@@ -285,7 +288,10 @@ export default function EventPlannerApp() {
                 <h3 className="text-xl font-bold mb-4">Tasks</h3>
                 <div className="space-y-3">
                   {tasks.filter(t => t.event === event.name).map(task => (
-                    <div key={task.id} className="bg-slate-900 border border-slate-700 p-4 flex justify-between items-start">
+                    <div 
+                      key={task.id} 
+                      className="bg-slate-900 border border-slate-700 p-4 flex justify-between items-start hover:border-blue-500 cursor-pointer"
+                      onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }}>
                       <div>
                         <div className="font-medium">{task.title}</div>
                         <div className="text-xs text-slate-400 mt-1">Due: {new Date(task.dueDate).toLocaleDateString()}</div>
@@ -331,6 +337,47 @@ export default function EventPlannerApp() {
               </div>
             )}
 
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ----- NEW Task Detail Modal Component -----
+  const TaskDetailView = ({ task }) => {
+    const relatedEvent = events.find(e => e.name === task.event);
+    return (
+      <div className="fixed inset-0 bg-black/60 z-50 overflow-y-auto flex items-start md:items-center justify-center p-4">
+        <div className="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-md overflow-hidden">
+          <div className="bg-slate-900 border-b border-slate-700 p-4 flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold">{task.title}</h2>
+              <p className="text-sm text-slate-400">for <span className="text-blue-400 cursor-pointer underline" onClick={() => {
+                setShowTaskDetail(false);
+                setSelectedTask(null);
+                setSelectedEvent(relatedEvent);
+                setShowEventDetail(true);
+              }}>{task.event}</span></p>
+            </div>
+            <button onClick={() => { setShowTaskDetail(false); setSelectedTask(null); }} className="p-2"><X size={20} /></button>
+          </div>
+          <div className="p-6">
+            <div className="mb-4">
+              <div className="flex items-center gap-4">
+                <span className={`px-2 py-1 text-xs rounded ${
+                  task.status === 'completed' ? 'bg-green-900 text-green-400'
+                  : task.status === 'in-progress' ? 'bg-yellow-900 text-yellow-400'
+                  : 'bg-red-900 text-red-400'
+                }`}>
+                  {task.status}
+                </span>
+                <span className="text-xs text-slate-500">Priority: <span className="font-semibold text-white">{task.priority}</span></span>
+              </div>
+            </div>
+            <div className="mb-3"><span className="text-slate-400">Due Date:</span> {new Date(task.dueDate).toLocaleDateString()}</div>
+            <div>
+              <span className="text-slate-400">Assigned to:</span> <span className="text-white">Planner Team</span>
+            </div>
           </div>
         </div>
       </div>
@@ -432,7 +479,10 @@ export default function EventPlannerApp() {
                 <h2 className="font-bold text-lg mb-3">Pending Tasks</h2>
                 <div className="space-y-2">
                   {tasks.filter(t=>t.status==='pending').map(t=>(
-                    <div key={t.id} className="bg-slate-800 border border-slate-700 p-3 rounded">
+                    <div 
+                      key={t.id}
+                      className="bg-slate-800 border border-slate-700 p-3 rounded hover:border-blue-500 cursor-pointer"
+                      onClick={() => { setSelectedTask(t); setShowTaskDetail(true); }}>
                       <div className="font-medium">{t.title}</div>
                       <div className="text-xs text-slate-400">{t.event} • Due {new Date(t.dueDate).toLocaleDateString()}</div>
                     </div>
@@ -580,14 +630,11 @@ export default function EventPlannerApp() {
       {showEventDetail && selectedEvent && (
         <EventDetailView event={selectedEvent} />
       )}
+
+      {/* NEW: Task Detail modal */}
+      {showTaskDetail && selectedTask && (
+        <TaskDetailView task={selectedTask} />
+      )}
     </div>
   );
 }
-'''
-# write file
-path = "/mnt/data/event_planner_app.jsx"
-with open(path, "w", encoding="utf-8") as f:
-    f.write(content)
-
-path
-
