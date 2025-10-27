@@ -56,44 +56,44 @@
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-2xl font-bold text-slate-900 mb-1">Dashboard</h1>
-                <p className="text-sm text-slate-600">Overview of all your events and activities</p>
+                <h1 className="text-2xl font-bold text-gray-900 mb-1">Dashboard</h1>
+                <p className="text-sm text-gray-600">Overview of all your events and activities</p>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white border border-slate-200 p-5">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-semibold text-slate-900">Upcoming Events</h2>
-                    <button onClick={() => setShowCreateEvent(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-sm flex items-center gap-2"><Plus size={14} />New</button>
+                <div className="bg-white border border-gray-300 p-6 shadow-sm">
+                  <div className="flex justify-between items-center mb-5">
+                    <h2 className="text-lg font-semibold text-gray-900">Upcoming Events</h2>
+                    <button onClick={() => setShowCreateEvent(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-medium flex items-center gap-2 shadow-sm"><Plus size={14} />New</button>
                   </div>
                   <div className="space-y-3">
                     {events.map(event => (
                       <div key={event.id} onClick={() => { setSelectedEvent(event); setShowEventDetail(true); }}
-                        className="border border-slate-200 p-4 hover:border-blue-300 hover:shadow-sm cursor-pointer">
+                        className="border border-gray-300 p-4 hover:border-blue-400 hover:shadow-md cursor-pointer transition-all bg-white">
                         <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-semibold text-sm text-slate-900">{event.name}</h3>
-                          <span className={`text-xs px-2 py-0.5 font-medium ${event.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{event.status}</span>
+                          <h3 className="font-semibold text-sm text-gray-900">{event.name}</h3>
+                          <span className={`text-xs px-2 py-1 font-semibold ${event.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{event.status}</span>
                         </div>
-                        <div className="text-xs text-slate-600 mb-3">{new Date(event.date).toLocaleDateString()} • {event.guests} guests</div>
-                        <div className="w-full bg-slate-200 h-1.5"><div className="bg-blue-600 h-full" style={{width: `${(event.completed/event.tasks)*100}%`}}></div></div>
-                        <div className="text-xs text-slate-500 mt-2">{event.completed}/{event.tasks} tasks completed</div>
+                        <div className="text-xs text-gray-600 mb-3 font-medium">{new Date(event.date).toLocaleDateString()} • {event.guests} guests</div>
+                        <div className="w-full bg-gray-200 h-2"><div className="bg-blue-600 h-full" style={{width: `${(event.completed/event.tasks)*100}%`}}></div></div>
+                        <div className="text-xs text-gray-600 mt-2 font-medium">{event.completed}/{event.tasks} tasks completed</div>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 <div className="space-y-6">
-                  <div className="bg-white border border-slate-200 p-5">
-                    <h2 className="text-lg font-semibold text-slate-900 mb-4">High Priority Tasks</h2>
+                  <div className="bg-white border border-gray-300 p-6 shadow-sm">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-5">High Priority Tasks</h2>
                     <div className="space-y-2">
                       {tasks.filter(t => t.priority === 'high' && t.status !== 'completed').map(task => (
-                        <div key={task.id} onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }} className="border border-slate-200 p-3 hover:border-blue-300 cursor-pointer">
-                          <div className="flex items-start gap-2">
-                            <div className="w-2 h-2 bg-red-500 mt-1.5"></div>
+                        <div key={task.id} onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }} className="border border-gray-300 p-4 hover:border-blue-400 hover:shadow-md cursor-pointer transition-all bg-white">
+                          <div className="flex items-start gap-3">
+                            <div className="w-2 h-2 bg-red-600 mt-2 flex-shrink-0"></div>
                             <div className="flex-1">
-                              <h3 className="font-medium text-sm text-slate-900">{task.title}</h3>
-                              <p className="text-xs text-slate-600 mt-1">{task.event}</p>
-                              <span className="text-xs text-slate-500">Due {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                              <h3 className="font-semibold text-sm text-gray-900">{task.title}</h3>
+                              <p className="text-xs text-gray-600 mt-1 font-medium">{task.event}</p>
+                              <span className="text-xs text-gray-600 font-medium">Due {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                             </div>
                           </div>
                         </div>
@@ -101,28 +101,28 @@
                     </div>
                   </div>
 
-                  <div className="bg-white border border-slate-200 p-5">
-                    <h2 className="text-lg font-semibold text-slate-900 mb-4">Recent Activity</h2>
-                    <div className="space-y-3">
+                  <div className="bg-white border border-gray-300 p-6 shadow-sm">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-5">Recent Activity</h2>
+                    <div className="space-y-4">
                       <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 bg-blue-600 flex items-center justify-center text-xs font-bold text-white">EC</div>
+                        <div className="w-10 h-10 bg-blue-600 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">EC</div>
                         <div className="flex-1">
-                          <p className="text-sm text-slate-900">Elegant Catering sent menu proposal</p>
-                          <p className="text-xs text-slate-500">10:30 AM</p>
+                          <p className="text-sm text-gray-900 font-medium">Elegant Catering sent menu proposal</p>
+                          <p className="text-xs text-gray-600 mt-1">10:30 AM</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 bg-emerald-500 flex items-center justify-center text-xs font-bold text-white">✓</div>
+                        <div className="w-10 h-10 bg-emerald-600 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">✓</div>
                         <div className="flex-1">
-                          <p className="text-sm text-slate-900">Venue contract completed</p>
-                          <p className="text-xs text-slate-500">Yesterday</p>
+                          <p className="text-sm text-gray-900 font-medium">Venue contract completed</p>
+                          <p className="text-xs text-gray-600 mt-1">Yesterday</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 bg-blue-600 flex items-center justify-center text-xs font-bold text-white">SM</div>
+                        <div className="w-10 h-10 bg-blue-600 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">SM</div>
                         <div className="flex-1">
-                          <p className="text-sm text-slate-900">Sarah Mitchell joined team</p>
-                          <p className="text-xs text-slate-500">2 days ago</p>
+                          <p className="text-sm text-gray-900 font-medium">Sarah Mitchell joined team</p>
+                          <p className="text-xs text-gray-600 mt-1">2 days ago</p>
                         </div>
                       </div>
                     </div>
