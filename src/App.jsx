@@ -44,7 +44,7 @@ const themes = {
     bg: 'linear-gradient(180deg,#F0F4F8 0%, #E0E7EF 100%)',
     panel: 'rgba(14,20,26,0.03)',
     border: 'rgba(14,20,26,0.06)',
-    text: '#0b1220',
+    text: '#474747',
     neon: NEON,
     accentBg: 'rgba(30,144,255,0.08)'
   },
