@@ -313,23 +313,23 @@
       </main>
 
       {showCreateEvent && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white border border-slate-200 w-full max-w-2xl">
-            <div className="p-5 border-b border-slate-200 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-900">Create New Event</h2>
-              <button onClick={() => setShowCreateEvent(false)} className="text-slate-400 hover:text-slate-900"><X size={20} /></button>
+        <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white border border-gray-300 w-full max-w-2xl shadow-2xl">
+            <div className="p-5 border-b border-gray-300 flex justify-between items-center bg-white">
+              <h2 className="text-xl font-bold text-gray-900">Create New Event</h2>
+              <button onClick={() => setShowCreateEvent(false)} className="text-gray-500 hover:text-gray-900"><X size={20} /></button>
             </div>
-            <div className="p-6 space-y-4">
-              <input type="text" placeholder="Event Name" className="w-full bg-slate-50 border border-slate-200 px-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              <select className="w-full bg-slate-50 border border-slate-200 px-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div className="p-6 space-y-4 bg-white">
+              <input type="text" placeholder="Event Name" className="w-full bg-gray-50 border border-gray-300 px-4 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              <select className="w-full bg-gray-50 border border-gray-300 px-4 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 <option>Wedding</option>
                 <option>Corporate</option>
                 <option>Birthday</option>
                 <option>Conference</option>
               </select>
-              <input type="date" className="w-full bg-slate-50 border border-slate-200 px-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              <input type="number" placeholder="Budget ($)" className="w-full bg-slate-50 border border-slate-200 px-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              <button onClick={() => setShowCreateEvent(false)} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 font-semibold">
+              <input type="date" className="w-full bg-gray-50 border border-gray-300 px-4 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              <input type="number" placeholder="Budget ($)" className="w-full bg-gray-50 border border-gray-300 px-4 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              <button onClick={() => setShowCreateEvent(false)} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 font-semibold shadow-md">
                 Create Event
               </button>
             </div>
@@ -338,39 +338,39 @@
       )}
 
       {showVendorModal && selectedVendor && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white border border-slate-200 w-full max-w-2xl">
-            <div className="p-5 border-b border-slate-200 flex justify-between items-center">
+        <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white border border-gray-300 w-full max-w-2xl shadow-2xl">
+            <div className="p-5 border-b border-gray-300 flex justify-between items-center bg-white">
               <div>
-                <h2 className="text-xl font-bold text-slate-900">{selectedVendor.name}</h2>
-                <p className="text-sm text-blue-600 mt-1">{selectedVendor.category}</p>
+                <h2 className="text-xl font-bold text-gray-900">{selectedVendor.name}</h2>
+                <p className="text-sm text-blue-600 mt-1 font-medium">{selectedVendor.category}</p>
               </div>
-              <button onClick={() => setShowVendorModal(false)} className="text-slate-400 hover:text-slate-900"><X size={20} /></button>
+              <button onClick={() => setShowVendorModal(false)} className="text-gray-500 hover:text-gray-900"><X size={20} /></button>
             </div>
-            <div className="p-6 space-y-5">
+            <div className="p-6 space-y-5 bg-white">
               <div className="flex items-center gap-6 text-sm">
                 <div className="flex items-center gap-2">
                   <Star className="text-amber-500 fill-amber-500" size={16} />
-                  <span className="font-bold text-slate-900">{selectedVendor.rating}</span>
-                  <span className="text-slate-600">({selectedVendor.reviews} reviews)</span>
+                  <span className="font-bold text-gray-900">{selectedVendor.rating}</span>
+                  <span className="text-gray-700">({selectedVendor.reviews} reviews)</span>
                 </div>
-                <div className="text-emerald-600 font-bold">{selectedVendor.price}</div>
-                <div className="flex items-center gap-2 text-slate-600">
+                <div className="text-emerald-600 font-bold text-base">{selectedVendor.price}</div>
+                <div className="flex items-center gap-2 text-gray-700">
                   <MapPin size={14} />
                   <span>{selectedVendor.location}</span>
                 </div>
               </div>
               <div>
-                <h3 className="text-base font-semibold text-slate-900 mb-2">About</h3>
-                <p className="text-sm text-slate-600">Professional {selectedVendor.category.toLowerCase()} services with over 10 years of experience. We specialize in creating unforgettable moments for your special day.</p>
+                <h3 className="text-base font-semibold text-gray-900 mb-2">About</h3>
+                <p className="text-sm text-gray-700 leading-relaxed">Professional {selectedVendor.category.toLowerCase()} services with over 10 years of experience. We specialize in creating unforgettable moments for your special day.</p>
               </div>
               <div>
-                <h3 className="text-base font-semibold text-slate-900 mb-2">Last Contact</h3>
-                <p className="text-sm text-slate-600">{selectedVendor.lastContact}</p>
+                <h3 className="text-base font-semibold text-gray-900 mb-2">Last Contact</h3>
+                <p className="text-sm text-gray-700">{selectedVendor.lastContact}</p>
               </div>
               <div className="space-y-3">
-                <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5">Send Inquiry</button>
-                <button className="w-full border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold py-2.5">Save to Favorites</button>
+                <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 shadow-md">Send Inquiry</button>
+                <button className="w-full border-2 border-gray-300 hover:bg-gray-50 text-gray-900 font-semibold py-3">Save to Favorites</button>
               </div>
             </div>
           </div>
@@ -665,17 +665,17 @@ export default function EventPlannerApp() {
   });
 
   const TaskDetailModal = ({ task }) => (
-    <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50">
-      <div className="bg-white w-full md:max-w-4xl md:max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-slate-200 p-4 flex justify-between items-start">
+    <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-end md:items-center justify-center z-50">
+      <div className="bg-white w-full md:max-w-4xl md:max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="sticky top-0 bg-white border-b border-gray-300 p-4 flex justify-between items-start shadow-sm">
           <div className="flex-1">
-            <input type="text" defaultValue={task.title} className="text-xl font-semibold text-slate-900 border-none focus:outline-none focus:ring-2 focus:ring-blue-500 w-full" />
+            <input type="text" defaultValue={task.title} className="text-xl font-semibold text-gray-900 border-none focus:outline-none focus:ring-2 focus:ring-blue-500 w-full" />
             <div className="flex items-center gap-3 mt-2">
-              <span className={`text-xs px-2 py-1 ${task.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : task.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>{task.status}</span>
-              <span className={`text-xs px-2 py-1 ${task.priority === 'high' ? 'bg-red-100 text-red-700' : task.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{task.priority}</span>
+              <span className={`text-xs px-2 py-1 font-semibold ${task.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : task.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 'bg-gray-200 text-gray-700'}`}>{task.status}</span>
+              <span className={`text-xs px-2 py-1 font-semibold ${task.priority === 'high' ? 'bg-red-100 text-red-800' : task.priority === 'medium' ? 'bg-amber-100 text-amber-800' : 'bg-gray-200 text-gray-700'}`}>{task.priority}</span>
             </div>
           </div>
-          <button onClick={() => setShowTaskDetail(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+          <button onClick={() => setShowTaskDetail(false)} className="text-gray-500 hover:text-gray-900"><X size={20} /></button>
         </div>
 
         <div className="p-6 space-y-6">
@@ -781,8 +781,9 @@ export default function EventPlannerApp() {
   );
 
   const EventDetailView = ({ event }) => (
-    <div className="fixed inset-0 bg-slate-100 z-50 overflow-y-auto">
-      <div className="bg-white border-b border-slate-200 sticky top-0">
+    <div className="fixed inset-0 bg-gray-900/90 backdrop-blur-sm z-50 overflow-y-auto">
+      <div className="min-h-screen bg-gray-50">
+      <div className="bg-white border-b border-gray-300 sticky top-0 shadow-md z-10">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center mb-4">
             <button onClick={() => setShowEventDetail(false)} className="text-slate-600 hover:text-slate-900 flex items-center gap-2 text-sm font-medium">
