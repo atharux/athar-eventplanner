@@ -757,47 +757,15 @@ export default function EventPlannerApp() {
                         </div>
                       ))}
                     </div>
+<div className="p-5 border-t-2" style={{ borderColor: '#e5e7eb' }}>
+  <div className="flex gap-3">
+    <button className="p-2 border-2 rounded-md"><Upload size={18} /></button>
+    <input type="text" value={messageInput} onChange={(e) => setMessageInput(e.target.value)} placeholder="Type message..."
+      className="flex-1 bg-slate-50 border-2 border-slate-200 px-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+    <button className="px-5 bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2 rounded-md"><Send size={16} />Send</button>
+  </div>
+</div>
 
-                    <div className="p-5 border-t-2" style={{ borderColor: '#e5e7eb' }}>
-                      <div className="flex gap-3">
-                        <button className="p-2 border-2 rounded-md"><Upload size={18} /></button>
-                        <input type="text" value={messageInput} onChange={(e) => setMessageInput(e.target.value)} placeholder="Type message..."
-                          className="flex-1 bg-slate-50 border-2 border-slate-200 px-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                        <button className="px-5 bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2 rounded-md"><Send size={16} />Send</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {(activeTab === 'clients' || activeTab === 'settings') && (
-              <div className="space-y-4">
-                <h1 className="text-2xl font-bold text-slate-900 capitalize">{activeTab}</h1>
-                <div className="bg-white border-2 border-slate-200 p-8 text-center rounded-md">
-                  <p className="text-slate-600">This section is coming soon...</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </main>
-
-        {showCreateEvent && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white border-2 border-gray-300 w-full max-w-2xl shadow-2xl rounded-2xl" style={{ boxShadow: neonBoxShadow }}>
-              <div className="p-5 border-b-2 border-gray-300 flex justify-between items-center bg-white">
-                <h2 className="text-xl font-bold text-gray-900">Create New Event</h2>
-                <button onClick={() => setShowCreateEvent(false)} className="text-gray-500 hover:text-gray-900"><X size={20} /></button>
-              </div>
-              <div className="p-6 space-y-4 bg-white">
-                <input type="text" placeholder="Event Name" className="w-full bg-gray-50 border-2 border-gray-300 px-4 py-2 text-sm text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                <select className="w-full bg-gray-50 border-2 border-gray-300 px-4 py-2 text-sm text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                  <option>Wedding</option>
-                  <option>Corporate</option>
-                  <option>Birthday</option>
-                  <option>Conference</option>
-                </select>
-                <input type="date" className="w-full bg-gray-50 border-2 border-gray-300 px-4 py-2 text-sm text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                 <input type="number" placeholder="Budget ($)" className="w-full bg-gray-50 border-2 border-gray-300 px-4 py-2 text-sm text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                 <button onClick={() => setShowCreateEvent(false)} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 font-semibold shadow-md rounded-md">
                   Create Event
