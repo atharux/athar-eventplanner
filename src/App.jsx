@@ -1365,9 +1365,9 @@ const ClientsListPanel = () => {
       )}
 
       {/* Small footer spacing */}
-      <div className="h-8" />
-    </div>        {/* ✅ closes the big wrapping div that began near the top */}
-  </main>         {/* ✅ closes the <main> that wraps your app layout */}
+           <div className="h-8" />
+    </div>       {/* closes the large flex or content container */}
+  </main>        {/* closes the main wrapper */}
 );
 }
 
