@@ -231,7 +231,40 @@ export default function App() {
   React.useEffect(() => {
     saveToStorage(STORAGE_KEYS.GUESTS, guests);
   }, [guests]);
-  
+
+/* -------------------- Clients state + helpers (INSERT HERE) -------------------- */
+// Clients state persisted in localStorage
+const [clients, setClients] = useState(() => loadFromStorage(STORAGE_KEYS.CLIENTS, [
+  { id: 1, name: 'Aisha Khan', company: 'Rising Tide', email: 'aisha@risingtide.com', phone: '+49 30 1234 5678', notes: 'Prefers email contact. VIP', address: 'Berlin', tags: ['VIP','repeat'], createdAt: '2025-04-01' },
+  { id: 2, name: 'Luca Bauer', company: 'Nova Events', email: 'luca@nova.com', phone: '+49 40 9876 5432', notes: '', address: 'Hamburg', tags: ['prospect'], createdAt: '2025-05-12' }
+]));
+
+// Client UI state
+const [showClientModal, setShowClientModal] = useState(false);
+const [clientFormMode, setClientFormMode] = useState('add'); // 'add' | 'edit' | 'view'
+const [selectedClient, setSelectedClient] = useState(null);
+
+// Auto-save clients
+React.useEffect(() => {
+  saveToStorage(STORAGE_KEYS.CLIENTS, clients);
+}, [clients]);
+
+// CRUD helpers
+function addClient(client) {
+  const id = Math.max(...clients.map(c => c.id), 0) + 1;
+  const newClient = { ...client, id, createdAt: new Date().toISOString() };
+  setClients(prev => [...prev, newClient]);
+  return newClient;
+}
+
+function updateClient(id, patch) {
+  setClients(prev => prev.map(c => (c.id === id ? { ...c, ...patch } : c)));
+}
+
+function deleteClient(id) {
+  setClients(prev => prev.filter(c => c.id !== id));
+}
+
 
   /* Filtering helpers */
   const filteredVendors = vendors.filter(v => {
@@ -378,6 +411,144 @@ export default function App() {
       </div>
     );
   };
+
+  /* -------------------- Clients UI components (INSERT HERE) -------------------- */
+
+/* Client Detail Modal (view & edit) */
+const ClientDetailModal = ({ client, mode = 'view', onClose }) => {
+  const [form, setForm] = React.useState(client || {});
+  React.useEffect(() => setForm(client || {}), [client]);
+
+  if (!client && mode === 'view') return null;
+
+  const applySave = () => {
+    if (mode === 'add') {
+      const created = addClient({
+        name: form.name || 'Unnamed',
+        company: form.company || '',
+        email: form.email || '',
+        phone: form.phone || '',
+        notes: form.notes || '',
+        address: form.address || '',
+        tags: form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : []
+      });
+      setSelectedClient(created);
+      setClientFormMode('view');
+      setShowClientModal(false);
+      return;
+    }
+    if (mode === 'edit') {
+      updateClient(client.id, {
+        name: form.name,
+        company: form.company,
+        email: form.email,
+        phone: form.phone,
+        notes: form.notes,
+        address: form.address,
+        tags: form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : []
+      });
+      setShowClientModal(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
+      <div className={`${classes.panelBg} rounded-2xl p-6 w-full max-w-2xl ${classes.border}`} style={{ borderColor: '#2b2b2b', boxShadow: neonBoxShadow }}>
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-white">{mode === 'add' ? 'Add Client' : mode === 'edit' ? 'Edit Client' : client.name}</h2>
+            {mode !== 'add' && <p className="text-sm text-slate-300 mt-1">{client.company}</p>}
+          </div>
+          <div className="flex gap-2">
+            {mode === 'view' && <button onClick={() => setClientFormMode('edit')} className="py-2 px-3 rounded-md border-2">Edit</button>}
+            <button onClick={() => { onClose(); setClientFormMode('view'); }} className="text-slate-300 hover:text-white p-2"><X size={20} /></button>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input value={form.name || ''} onChange={(e) => setForm({...form, name: e.target.value})} placeholder="Full name" className="p-3 rounded-md" readOnly={mode === 'view'} />
+            <input value={form.company || ''} onChange={(e) => setForm({...form, company: e.target.value})} placeholder="Company" className="p-3 rounded-md" readOnly={mode === 'view'} />
+            <input value={form.email || ''} onChange={(e) => setForm({...form, email: e.target.value})} placeholder="Email" className="p-3 rounded-md" readOnly={mode === 'view'} />
+            <input value={form.phone || ''} onChange={(e) => setForm({...form, phone: e.target.value})} placeholder="Phone" className="p-3 rounded-md" readOnly={mode === 'view'} />
+            <input value={form.address || ''} onChange={(e) => setForm({...form, address: e.target.value})} placeholder="Address" className="p-3 rounded-md md:col-span-2" readOnly={mode === 'view'} />
+            <input value={form.tags || (client && client.tags ? client.tags.join(', ') : '')} onChange={(e) => setForm({...form, tags: e.target.value})} placeholder="Tags (comma separated)" className="p-3 rounded-md md:col-span-2" readOnly={mode === 'view'} />
+          </div>
+
+          <div>
+            <label className="text-sm text-slate-300">Notes</label>
+            <textarea value={form.notes || ''} onChange={(e) => setForm({...form, notes: e.target.value})} rows="4" className="w-full p-3 rounded-md" readOnly={mode === 'view'} />
+          </div>
+
+          <div className="flex gap-3">
+            {mode !== 'view' && <button onClick={applySave} className="py-2 px-4 rounded-md font-semibold" style={{ background: NEON, color: '#fff' }}>{mode === 'add' ? 'Create' : 'Save'}</button>}
+            {mode === 'view' && <button onClick={() => { deleteClient(client.id); onClose(); }} className="py-2 px-4 rounded-md border-2">Delete</button>}
+            <button onClick={() => { onClose(); setClientFormMode('view'); }} className="py-2 px-4 rounded-md">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* Clients list subpanel (used inside Clients tab) */
+const ClientsListPanel = () => {
+  const [localQuery, setLocalQuery] = useState(searchQuery || '');
+  const [localTagFilter, setLocalTagFilter] = useState('All');
+
+  const visible = clients.filter(c => {
+    const q = localQuery.toLowerCase();
+    const matchesQuery = !q || (c.name && c.name.toLowerCase().includes(q)) || (c.company && c.company.toLowerCase().includes(q)) || (c.email && c.email.toLowerCase().includes(q));
+    const matchesTag = localTagFilter === 'All' || (c.tags && c.tags.includes(localTagFilter));
+    return matchesQuery && matchesTag;
+  });
+
+  // available tags for quick filter
+  const tags = Array.from(new Set(clients.flatMap(c => c.tags || [])));
+
+  return (
+    <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-3">
+          <input value={localQuery} onChange={(e) => { setLocalQuery(e.target.value); setSearchQuery(e.target.value); }} placeholder="Search clients..." className="p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff' }} />
+          <select value={localTagFilter} onChange={(e) => setLocalTagFilter(e.target.value)} className="p-3 rounded-md">
+            <option>All</option>
+            {tags.map(t => <option key={t}>{t}</option>)}
+          </select>
+        </div>
+
+        <div className="flex gap-2">
+          <button onClick={() => { setClientFormMode('add'); setSelectedClient(null); setShowClientModal(true); }} className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2">
+            <UserPlus size={14} /> Add Client
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {visible.map(c => (
+          <div key={c.id} className={`${classes.panelBg} ${classes.border} p-4 rounded-md cursor-pointer`} style={{ borderColor: '#2b2b2b' }}>
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <h3 className="text-base font-semibold text-white mb-1">{c.name}</h3>
+                <p className="text-xs text-slate-300">{c.company}</p>
+              </div>
+              <div className="text-xs text-slate-300">{c.tags && c.tags.slice(0,2).join(', ')}</div>
+            </div>
+            <div className="text-xs text-slate-300 mb-3">
+              <div>{c.email}</div>
+              <div>{c.phone}</div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => { setSelectedClient(c); setClientFormMode('view'); setShowClientModal(true); }} className="py-2 px-3 rounded-md border-2">View</button>
+              <button onClick={() => { setSelectedClient(c); setClientFormMode('edit'); setShowClientModal(true); }} className="py-2 px-3 rounded-md">Edit</button>
+            </div>
+          </div>
+        ))}
+        {visible.length === 0 && <div className="text-slate-300 p-4">No clients found.</div>}
+      </div>
+    </div>
+  );
+};
 
   /* Event Detail Overlay (inline) */
   const EventDetailView = ({ event, onClose }) => {
@@ -846,32 +1017,54 @@ export default function App() {
               </div>
             )}
 
-            {/* Clients & Settings placeholders */}
-            {(activeTab === 'clients' || activeTab === 'settings') && (
-              <div className="space-y-4">
-                <h1 className="text-2xl font-bold text-white capitalize">{activeTab}</h1>
-                <div className={`${classes.panelBg} ${classes.border} p-8 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
-                  <p className="text-slate-300">This section is coming soon...</p>
-
-                  {/* Settings: show theme toggle */}
-                  {activeTab === 'settings' && (
-                    <div className="mt-6">
-                      <h3 className="text-lg font-semibold text-white mb-2">Appearance</h3>
-                      <div className="flex items-center gap-4">
-                        <span className="text-sm text-slate-300">Theme</span>
-                        <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="py-2 px-4 rounded-md font-semibold" style={{ background: theme === 'dark' ? '#2a2540' : '#f3f0f8', color: theme === 'dark' ? '#fff' : '#111' }}>
-                          Toggle to {theme === 'dark' ? 'Light' : 'Dark'}
-                        </button>
-                        <div className="text-sm text-slate-300">Accent: <span style={{ color: NEON, fontWeight: 700 }}>Neon Purple</span></div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            {/* Clients & Settings */}
+{(activeTab === 'clients' || activeTab === 'settings') && (
+  <div className="space-y-4">
+    {/* Clients tab */}
+    {activeTab === 'clients' && (
+      <>
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-white">Clients</h1>
+          <div className="flex items-center gap-3 text-sm text-slate-300">
+            <span>{clients.length} clients</span>
+            <button onClick={() => { setClientFormMode('add'); setSelectedClient(null); setShowClientModal(true); }} className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2">
+              <UserPlus size={14} /> New Client
+            </button>
           </div>
-        </main>
+        </div>
+
+        <ClientsListPanel />
+
+        {/* client modal (add/edit/view) */}
+        {showClientModal && (clientFormMode === 'add'
+          ? <ClientDetailModal client={null} mode="add" onClose={() => setShowClientModal(false)} />
+          : <ClientDetailModal client={selectedClient} mode={clientFormMode} onClose={() => setShowClientModal(false)} />
+        )}
+      </>
+    )}
+
+    {/* Settings: show theme toggle (unchanged) */}
+    {activeTab === 'settings' && (
+      <div>
+        <h1 className="text-2xl font-bold text-white capitalize">settings</h1>
+        <div className={`${classes.panelBg} ${classes.border} p-8 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+          <p className="text-slate-300">General settings and preferences</p>
+
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold text-white mb-2">Appearance</h3>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-slate-300">Theme</span>
+              <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="py-2 px-4 rounded-md font-semibold" style={{ background: theme === 'dark' ? '#2a2540' : '#f3f0f8', color: theme === 'dark' ? '#fff' : '#111' }}>
+                Toggle to {theme === 'dark' ? 'Light' : 'Dark'}
+              </button>
+              <div className="text-sm text-slate-300">Accent: <span style={{ color: NEON, fontWeight: 700 }}>Neon Purple</span></div>
+            </div>
+          </div>
+        </div>
       </div>
+    )}
+  </div>
+)}
 
       {/* Create Event Modal */}
       {showCreateEvent && (
