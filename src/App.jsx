@@ -1372,7 +1372,8 @@ const ClientsListPanel = () => {
 </div> {/* closes inner content wrapper */}
 </div> {/* closes outer flex wrapper */}
 </main> {/* closes main layout */}
-); 
-} 
+);
+}  {/* closes App component function */}
 
 export default App;
+
