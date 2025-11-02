@@ -1365,13 +1365,12 @@ const ClientsListPanel = () => {
   />
 )}
 
-{/* Small footer spacing */}
-<div className="h-8" />
+      {/* Small footer spacing */}
+      <div className="h-8" />
 
-</main> {/* ✅ closes main layout */}
-</div>  {/* ✅ closes outer flex wrapper */}
-</div>  {/* ✅ closes inner content wrapper */}
-
+    </div>  {/* closes inner content wrapper */}
+  </div>    {/* closes outer flex wrapper */}
+</main>     {/* closes main layout */}
 );
 }
 
