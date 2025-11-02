@@ -1356,22 +1356,23 @@ const ClientsListPanel = () => {
   <EventDetailView
     event={selectedEvent}
     onClose={() => setShowEventDetail(false)}
-    className="z-50" // or directly on the component's outermost div
+    className="fixed inset-0 z-50 flex items-center justify-center"
   />
 )}
 {showTaskDetail && selectedTask && (
   <TaskDetailModal
     task={selectedTask}
     onClose={() => setShowTaskDetail(false)}
-    className="z-50"
+    className="fixed inset-0 z-50 flex items-center justify-center"
   />
 )}
 
-                  {/* Small footer spacing */}
-      <div className="h-8" />
-    </div>  {/* closes inner content wrapper */}
-  </div>    {/* closes outer flex wrapper */}
-</main>     {/* closes main layout */}
+
+{/* Small footer spacing */}
+<div className="h-8" />
+</div> {/* closes inner content wrapper */}
+</div> {/* closes outer flex wrapper */}
+</main> {/* closes main layout */}
 );
 }
 
