@@ -1350,14 +1350,25 @@ const ClientsListPanel = () => {
           </div>
         </div>
       )}
-      {/* Event detail & Task modals render behind overlay */}
-      {showEventDetail && selectedEvent && <EventDetailView event={selectedEvent} onClose={() => setShowEventDetail(false)} />}
-      {showTaskDetail && selectedTask && <TaskDetailModal task={selectedTask} onClose={() => setShowTaskDetail(false)} />}
+           {/* Event detail & Task modals render behind overlay */}
+      {showEventDetail && selectedEvent && (
+        <EventDetailView
+          event={selectedEvent}
+          onClose={() => setShowEventDetail(false)}
+        />
+      )}
+      {showTaskDetail && selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
+          onClose={() => setShowTaskDetail(false)}
+        />
+      )}
 
-         {/* Small footer spacing */}
+      {/* Small footer spacing */}
       <div className="h-8" />
-    </main>  
-  );
+    </div>        {/* ✅ closes the big wrapping div that began near the top */}
+  </main>         {/* ✅ closes the <main> that wraps your app layout */}
+);
 }
 
-export default App;  {/* ✅ this exports the component */}
+export default App;
