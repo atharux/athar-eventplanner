@@ -1356,12 +1356,14 @@ const ClientsListPanel = () => {
   <EventDetailView
     event={selectedEvent}
     onClose={() => setShowEventDetail(false)}
+    className="z-50" // or directly on the component's outermost div
   />
 )}
 {showTaskDetail && selectedTask && (
   <TaskDetailModal
     task={selectedTask}
     onClose={() => setShowTaskDetail(false)}
+    className="z-50"
   />
 )}
 
