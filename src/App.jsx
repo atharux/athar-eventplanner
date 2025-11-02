@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import {
   Calendar, Users, MessageSquare, Search, Plus, X, Send, DollarSign, MapPin, Star,
@@ -1355,8 +1354,10 @@ const ClientsListPanel = () => {
       {showEventDetail && selectedEvent && <EventDetailView event={selectedEvent} onClose={() => setShowEventDetail(false)} />}
       {showTaskDetail && selectedTask && <TaskDetailModal task={selectedTask} onClose={() => setShowTaskDetail(false)} />}
 
-      {/* Small footer spacing */}
+         {/* Small footer spacing */}
       <div className="h-8" />
-    </div>
+    </main>  
   );
 }
+
+export default App;  {/* ✅ this exports the component */}
