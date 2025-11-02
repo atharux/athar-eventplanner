@@ -19,6 +19,34 @@ import {
 const NEON = '#A020F0';
 const neonBoxShadow = `0 6px 30px -6px ${NEON}, 0 0 20px 2px ${NEON}55`;
 
+/* -------------------- localStorage utilities -------------------- */
+const STORAGE_KEYS = {
+  EVENTS: 'athar_events',
+  TASKS: 'athar_tasks',
+  VENDORS: 'athar_vendors',
+  CLIENTS: 'athar_clients',
+  GUESTS: 'athar_guests',
+  CONVERSATIONS: 'athar_conversations'
+};
+
+function loadFromStorage(key, defaultValue) {
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : defaultValue;
+  } catch (error) {
+    console.error('Error loading from storage:', error);
+    return defaultValue;
+  }
+}
+
+function saveToStorage(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.error('Error saving to storage:', error);
+  }
+}
+
 /* Small helper to apply dark / light tokenized classes */
 function useThemeClasses(theme) {
   const isDark = theme === 'dark';
@@ -53,8 +81,8 @@ export default function App() {
   const [activeEventTab, setActiveEventTab] = useState('overview');
   const [taskView, setTaskView] = useState('list'); // list, board, calendar
 
-  /* -------------------- Sample Data (kept from your original file) -------------------- */
-  const events = useMemo(() => ([
+ /* -------------------- State with localStorage persistence -------------------- */
+  const [events, setEvents] = useState(() => loadFromStorage(STORAGE_KEYS.EVENTS, [
     {
       id: 1, name: 'Summer Gala 2025', date: '2025-06-15', budget: 50000, spent: 32000,
       guests: 250, confirmed: 180, status: 'active', vendors: 8, tasks: 24, completed: 18,
@@ -80,24 +108,24 @@ export default function App() {
       description: 'Three-day technology conference.',
       team: [{ id: 1, name: 'Sarah Mitchell', role: 'Lead Planner', email: 'sarah@eventflow.com', avatar: 'SM' }]
     }
-  ]), []);
+  ]));
 
-  const vendors = useMemo(() => ([
+  const [vendors, setVendors] = useState(() => loadFromStorage(STORAGE_KEYS.VENDORS, [
     { id: 1, name: 'Elegant Catering Co.', category: 'Catering', rating: 4.9, price: '$$$$', location: 'Downtown', reviews: 127, booked: true, lastContact: '2 days ago' },
     { id: 2, name: 'Harmony DJ Services', category: 'Entertainment', rating: 4.8, price: '$$$', location: 'Citywide', reviews: 89, booked: true, lastContact: '1 week ago' },
     { id: 3, name: 'Bloom & Petal', category: 'Florals', rating: 5.0, price: '$$$', location: 'Westside', reviews: 156, booked: false, lastContact: 'Never' },
     { id: 4, name: 'Gourmet Delights', category: 'Catering', rating: 4.8, price: '$$$', location: 'Midtown', reviews: 112, booked: false, lastContact: '1 month ago' },
     { id: 5, name: 'Live Band Collective', category: 'Entertainment', rating: 4.7, price: '$$$$', location: 'Downtown', reviews: 78, booked: false, lastContact: 'Never' }
-  ]), []);
+  ]));
 
-  const venues = useMemo(() => ([
+  const [venues, setVenues] = useState(() => loadFromStorage(STORAGE_KEYS.VENUES, [
     { id: 1, name: 'Grand Ballroom', location: 'Downtown', capacity: 300, price: '$$$$$', rating: 4.7, reviews: 203, booked: true, amenities: ['Kitchen', 'Parking', 'AV Equipment'] },
     { id: 2, name: 'Crystal Palace', location: 'Waterfront', capacity: 250, price: '$$$$', rating: 4.8, reviews: 189, booked: false, amenities: ['Waterfront', 'Indoor/Outdoor', 'Catering'] },
     { id: 3, name: 'Convention Center', location: 'Tech District', capacity: 1000, price: '$$$$$', rating: 4.6, reviews: 267, booked: false, amenities: ['Multiple Rooms', 'Tech Setup', 'Catering'] },
     { id: 4, name: 'Garden Estate', location: 'Suburbs', capacity: 150, price: '$$$', rating: 4.9, reviews: 145, booked: false, amenities: ['Outdoor', 'Gardens', 'Tents Available'] }
-  ]), []);
+  ]));
 
-  const conversations = useMemo(() => ([
+  const [conversations, setConversations] = useState(() => loadFromStorage(STORAGE_KEYS.CONVERSATIONS, [
     {
       id: 1, vendor: 'Elegant Catering Co.', lastMessage: 'Menu proposal attached', time: '10:30 AM', unread: true,
       messages: [
@@ -109,9 +137,9 @@ export default function App() {
     { id: 2, vendor: 'Harmony DJ Services', lastMessage: 'Confirming booking', time: '9:15 AM', unread: false,
       messages: [{ sender: 'vendor', text: 'Confirming booking for June 15th.', time: '9:15 AM', attachments: [] }]
     }
-  ]), []);
+  ]));
 
-  const tasks = useMemo(() => ([
+  const [tasks, setTasks] = useState(() => loadFromStorage(STORAGE_KEYS.TASKS, [
     {
       id: 1, title: 'Finalize menu with caterer', event: 'Summer Gala 2025', dueDate: '2025-05-01',
       status: 'in-progress', priority: 'high', assignedTo: 'James Cooper', createdBy: 'Sarah Mitchell',
@@ -169,7 +197,7 @@ export default function App() {
       ],
       attachments: ['floral-inspiration.jpg']
     }
-  ]), []);
+  ]));
 
   const budgetItems = useMemo(() => ([
     { id: 1, category: 'Venue', vendor: 'Grand Ballroom', amount: 12000, paid: 12000, status: 'paid', event: 'Summer Gala 2025', dueDate: '2025-03-01' },
@@ -177,11 +205,33 @@ export default function App() {
     { id: 3, category: 'Entertainment', vendor: 'Harmony DJ', amount: 2500, paid: 0, status: 'pending', event: 'Summer Gala 2025', dueDate: '2025-06-10' }
   ]), []);
 
-  const guests = useMemo(() => ([
+  const [guests, setGuests] = useState(() => loadFromStorage(STORAGE_KEYS.GUESTS, [
     { id: 1, name: 'John Smith', email: 'john@email.com', rsvp: 'confirmed', plusOne: true, event: 'Summer Gala 2025', table: 'A1', dietaryRestrictions: 'Vegetarian' },
     { id: 2, name: 'Sarah Johnson', email: 'sarah@email.com', rsvp: 'confirmed', plusOne: false, event: 'Summer Gala 2025', table: 'A1', dietaryRestrictions: 'None' },
     { id: 3, name: 'Michael Chen', email: 'michael@email.com', rsvp: 'pending', plusOne: true, event: 'Summer Gala 2025', table: 'B2', dietaryRestrictions: 'Gluten-free' }
-  ]), []);
+  ]));
+
+   // Auto-save to localStorage whenever data changes
+  React.useEffect(() => {
+    saveToStorage(STORAGE_KEYS.EVENTS, events);
+  }, [events]);
+
+  React.useEffect(() => {
+    saveToStorage(STORAGE_KEYS.TASKS, tasks);
+  }, [tasks]);
+
+  React.useEffect(() => {
+    saveToStorage(STORAGE_KEYS.VENDORS, vendors);
+  }, [vendors]);
+
+  React.useEffect(() => {
+    saveToStorage(STORAGE_KEYS.CONVERSATIONS, conversations);
+  }, [conversations]);
+
+  React.useEffect(() => {
+    saveToStorage(STORAGE_KEYS.GUESTS, guests);
+  }, [guests]);
+  
 
   /* Filtering helpers */
   const filteredVendors = vendors.filter(v => {
@@ -831,18 +881,43 @@ export default function App() {
               <h2 className="text-xl font-bold text-white">Create New Event</h2>
               <button onClick={() => setShowCreateEvent(false)} className="text-slate-300 hover:text-white"><X size={20} /></button>
             </div>
-            <div className="space-y-4">
-              <input type="text" placeholder="Event Name" className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
-              <select className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }}>
+           
+            <form id="create-event-form" className="space-y-4" onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target);
+              const newEvent = {
+                id: Math.max(...events.map(e => e.id), 0) + 1,
+                name: formData.get('name'),
+                type: formData.get('type'),
+                date: formData.get('date'),
+                budget: parseInt(formData.get('budget')) || 0,
+                spent: 0,
+                guests: 0,
+                confirmed: 0,
+                status: 'planning',
+                vendors: 0,
+                tasks: 0,
+                completed: 0,
+                location: 'TBD',
+                description: '',
+                team: []
+              };
+              setEvents([...events, newEvent]);
+              setShowCreateEvent(false);
+              e.target.reset();
+            }}>
+              <input name="name" type="text" placeholder="Event Name" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+              <select name="type" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }}>
+                <option value="">Select event type...</option>
                 <option>Wedding</option>
                 <option>Corporate</option>
                 <option>Birthday</option>
                 <option>Conference</option>
               </select>
-              <input type="date" className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
-              <input type="number" placeholder="Budget ($)" className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
-              <button onClick={() => setShowCreateEvent(false)} className="w-full py-3 rounded-md font-bold" style={{ background: NEON, color: '#fff' }}>Create Event</button>
-            </div>
+              <input name="date" type="date" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+              <input name="budget" type="number" placeholder="Budget ($)" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+              <button type="submit" className="w-full py-3 rounded-md font-bold" style={{ background: NEON, color: '#fff' }}>Create Event</button>
+            </form>
           </div>
         </div>
       )}
