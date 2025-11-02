@@ -1356,14 +1356,14 @@ const ClientsListPanel = () => {
   <EventDetailView
     event={selectedEvent}
     onClose={() => setShowEventDetail(false)}
-    className="z-50" // or directly on the component's outermost div
+    className="fixed inset-0 z-50 flex items-center justify-center"
   />
 )}
 {showTaskDetail && selectedTask && (
   <TaskDetailModal
     task={selectedTask}
     onClose={() => setShowTaskDetail(false)}
-    className="z-50"
+    className="fixed inset-0 z-50 flex items-center justify-center"
   />
 )}
 
@@ -1372,7 +1372,7 @@ const ClientsListPanel = () => {
 </div> {/* closes inner content wrapper */}
 </div> {/* closes outer flex wrapper */}
 </main> {/* closes main layout */}
-);
-}
+); 
+} 
 
 export default App;
