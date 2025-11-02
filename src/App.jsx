@@ -1365,7 +1365,7 @@ const ClientsListPanel = () => {
         />
       )}
 
-     {/* Small footer spacing */}
+    {/* Small footer spacing */}
             <div className="h-8" />
           </div>
         </main>
