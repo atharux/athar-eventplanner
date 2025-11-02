@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import {
   Calendar, Users, MessageSquare, Search, Plus, X, Send, DollarSign, MapPin, Star,
@@ -654,7 +655,16 @@ const ClientsListPanel = () => {
                     <h2 className="text-xl font-semibold text-white">Tasks</h2>
                     <div className="flex gap-1 bg-slate-800 p-1 rounded">
                  <button onClick={() => setTaskView('list')} className={`px-3 py-1 text-xs font-semibold rounded ${taskView === 'list' ? 'bg-slate-700 text-white shadow' : 'text-slate-300'}`}>List</button>
-                 <button onClick={() => setTaskView('board')} className={`px-3 py-1 text-xs font-semibold rounded ${taskView === 'board' ? 'bg-slate-700 text-white shadow' : 'text-slate-300'}`}>Board</button></div>
+                <button
+  onClick={() => {
+    setTaskView('board');
+    console.log('🟣 taskView now = board');
+  }}
+  className={`px-3 py-1 text-xs font-semibold rounded ${taskView === 'board' ? 'bg-slate-700 text-white shadow' : 'text-slate-300'}`}
+>
+  Board
+</button>
+</div>
                   </div>
                   <button onClick={() => setShowCreateTask(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2"><Plus size={16} /> Add Task</button>
                 </div>
