@@ -1350,7 +1350,8 @@ const ClientsListPanel = () => {
           </div>
         </div>
       )}
-        {/* Event detail & Task modals render behind overlay */}
+              
+       {/* Event detail & Task modals render behind overlay */}
       {showEventDetail && selectedEvent && (
         <EventDetailView
           event={selectedEvent}
@@ -1366,8 +1367,9 @@ const ClientsListPanel = () => {
 
       {/* Small footer spacing */}
       <div className="h-8" />
-    </div>       {/* ✅ closes your main flex container */}
-  </main>        {/* ✅ closes the page wrapper */}
+    </div>        {/* closes inner content wrapper */}
+    </div>        {/* closes outer flex wrapper */}
+  </main>         {/* closes main layout */}
 );
 }
 
