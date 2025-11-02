@@ -80,6 +80,7 @@ export default function App() {
   const [selectedConversation, setSelectedConversation] = useState(0);
   const [activeEventTab, setActiveEventTab] = useState('overview');
   const [taskView, setTaskView] = useState('list'); // list, board, calendar
+  const [showCreateTask, setShowCreateTask] = useState(false);
 
  /* -------------------- State with localStorage persistence -------------------- */
   const [events, setEvents] = useState(() => loadFromStorage(STORAGE_KEYS.EVENTS, [
@@ -645,17 +646,18 @@ const ClientsListPanel = () => {
               </div>
             )}
 
+
             {activeEventTab === 'tasks' && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-3">
                     <h2 className="text-xl font-semibold text-white">Tasks</h2>
                     <div className="flex gap-1 bg-slate-800 p-1 rounded">
-                      <button onClick={() => setTaskView('list')} className={`px-3 py-1 text-xs font-semibold ${taskView === 'list' ? 'bg-slate-700 text-white shadow' : 'text-slate-300'}`}>List</button>
-                      <button onClick={() => setTaskView('board')} className={`px-3 py-1 text-xs font-semibold ${taskView === 'board' ? 'bg-slate-700 text-white shadow' : 'text-slate-300'}`}>Board</button>
+                      <button onClick={() => setTaskView('list')} className={`px-3 py-1 text-xs font-semibold rounded ${taskView === 'list' ? 'bg-slate-700 text-white shadow' : 'text-slate-300'}`}>List</button>
+                      <button onClick={() => setTaskView('board')} className={`px-3 py-1 text-xs font-semibold rounded ${taskView === 'board' ? 'bg-slate-700 text-white shadow' : 'text-slate-300'}`}>Board</button>
                     </div>
                   </div>
-                  <button className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2"><Plus size={16} /> Add Task</button>
+                  <button onClick={() => setShowCreateTask(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2"><Plus size={16} /> Add Task</button>
                 </div>
 
                 {taskView === 'list' && (
@@ -672,23 +674,147 @@ const ClientsListPanel = () => {
                       </thead>
                       <tbody>
                         {tasks.filter(t => t.event === event.name).map(task => (
-                          <tr key={task.id} className="border-b" style={{ borderColor: '#1f2937' }}>
+                          <tr key={task.id} onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }} className="border-b hover:bg-slate-700 cursor-pointer" style={{ borderColor: '#1f2937' }}>
                             <td className="py-3 px-4">
                               <div className="font-semibold text-white">{task.title}</div>
                               <div className="text-xs text-slate-400 mt-0.5">{task.subtasks.filter(s => s.completed).length}/{task.subtasks.length} subtasks</div>
                             </td>
                             <td className="py-3 px-4 text-slate-300">{task.assignedTo}</td>
                             <td className="py-3 px-4 text-center">
-                              <span className={`px-2 py-0.5 text-xs font-semibold ${task.priority === 'high' ? 'bg-red-100 text-red-700' : task.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-slate-700 text-slate-200'}`}>{task.priority}</span>
+                              <span className={`px-2 py-0.5 text-xs font-semibold rounded ${task.priority === 'high' ? 'bg-red-100 text-red-700' : task.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-slate-700 text-slate-200'}`}>{task.priority}</span>
                             </td>
                             <td className="py-3 px-4 text-center">
-                              <span className={`px-2 py-0.5 text-xs font-semibold ${task.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : task.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-slate-700 text-slate-200'}`}>{task.status}</span>
+                              <span className={`px-2 py-0.5 text-xs font-semibold rounded ${task.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : task.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-slate-700 text-slate-200'}`}>{task.status}</span>
                             </td>
                             <td className="py-3 px-4 text-center text-slate-300">{new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                )}
+
+                {taskView === 'board' && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Pending Column */}
+                    <div className={`${classes.panelBg} ${classes.border} rounded-md p-4`} style={{ borderColor: '#2b2b2b' }}>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-semibold text-slate-300 uppercase">Pending</h3>
+                        <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded font-semibold">
+                          {tasks.filter(t => t.event === event.name && t.status === 'pending').length}
+                        </span>
+                      </div>
+                      <div className="space-y-3">
+                        {tasks.filter(t => t.event === event.name && t.status === 'pending').map(task => (
+                          <div 
+                            key={task.id} 
+                            onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }}
+                            className="bg-slate-800 border-2 border-slate-700 p-3 rounded-md cursor-pointer hover:border-purple-500 transition-all"
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="text-sm font-semibold text-white flex-1">{task.title}</h4>
+                              <span className={`text-xs px-2 py-0.5 font-semibold rounded ml-2 ${task.priority === 'high' ? 'bg-red-100 text-red-700' : task.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-slate-600 text-slate-200'}`}>
+                                {task.priority}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-400 mb-2 line-clamp-2">{task.description}</p>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-slate-400">{task.assignedTo}</span>
+                              <span className="text-slate-400">{new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                            </div>
+                            {task.subtasks.length > 0 && (
+                              <div className="mt-2 pt-2 border-t border-slate-700">
+                                <div className="text-xs text-slate-400">{task.subtasks.filter(s => s.completed).length}/{task.subtasks.length} subtasks</div>
+                                <div className="w-full bg-slate-700 h-1 rounded mt-1">
+                                  <div className="h-full bg-purple-500 rounded" style={{ width: `${(task.subtasks.filter(s => s.completed).length / task.subtasks.length) * 100}%` }} />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {tasks.filter(t => t.event === event.name && t.status === 'pending').length === 0 && (
+                          <div className="text-center py-8 text-slate-400 text-sm">No pending tasks</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* In Progress Column */}
+                    <div className={`${classes.panelBg} ${classes.border} rounded-md p-4`} style={{ borderColor: '#2b2b2b' }}>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-semibold text-blue-400 uppercase">In Progress</h3>
+                        <span className="text-xs bg-blue-900 text-blue-300 px-2 py-1 rounded font-semibold">
+                          {tasks.filter(t => t.event === event.name && t.status === 'in-progress').length}
+                        </span>
+                      </div>
+                      <div className="space-y-3">
+                        {tasks.filter(t => t.event === event.name && t.status === 'in-progress').map(task => (
+                          <div 
+                            key={task.id}
+                            onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }}
+                            className="bg-slate-800 border-2 border-blue-900 p-3 rounded-md cursor-pointer hover:border-blue-500 transition-all"
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="text-sm font-semibold text-white flex-1">{task.title}</h4>
+                              <span className={`text-xs px-2 py-0.5 font-semibold rounded ml-2 ${task.priority === 'high' ? 'bg-red-100 text-red-700' : task.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-slate-600 text-slate-200'}`}>
+                                {task.priority}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-400 mb-2 line-clamp-2">{task.description}</p>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-slate-400">{task.assignedTo}</span>
+                              <span className="text-slate-400">{new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                            </div>
+                            {task.subtasks.length > 0 && (
+                              <div className="mt-2 pt-2 border-t border-slate-700">
+                                <div className="text-xs text-slate-400">{task.subtasks.filter(s => s.completed).length}/{task.subtasks.length} subtasks</div>
+                                <div className="w-full bg-slate-700 h-1 rounded mt-1">
+                                  <div className="h-full bg-blue-500 rounded" style={{ width: `${(task.subtasks.filter(s => s.completed).length / task.subtasks.length) * 100}%` }} />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {tasks.filter(t => t.event === event.name && t.status === 'in-progress').length === 0 && (
+                          <div className="text-center py-8 text-slate-400 text-sm">No tasks in progress</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Completed Column */}
+                    <div className={`${classes.panelBg} ${classes.border} rounded-md p-4`} style={{ borderColor: '#2b2b2b' }}>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-semibold text-emerald-400 uppercase">Completed</h3>
+                        <span className="text-xs bg-emerald-900 text-emerald-300 px-2 py-1 rounded font-semibold">
+                          {tasks.filter(t => t.event === event.name && t.status === 'completed').length}
+                        </span>
+                      </div>
+                      <div className="space-y-3">
+                        {tasks.filter(t => t.event === event.name && t.status === 'completed').map(task => (
+                          <div 
+                            key={task.id}
+                            onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }}
+                            className="bg-slate-800 border-2 border-emerald-900 p-3 rounded-md cursor-pointer hover:border-emerald-500 transition-all opacity-75"
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="text-sm font-semibold text-white flex-1 line-through">{task.title}</h4>
+                              <span className={`text-xs px-2 py-0.5 font-semibold rounded ml-2 ${task.priority === 'high' ? 'bg-red-100 text-red-700' : task.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-slate-600 text-slate-200'}`}>
+                                {task.priority}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-400 mb-2 line-clamp-2">{task.description}</p>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-slate-400">{task.assignedTo}</span>
+                              <span className="text-emerald-400 flex items-center gap-1">
+                                <span>✓</span> Completed
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                        {tasks.filter(t => t.event === event.name && t.status === 'completed').length === 0 && (
+                          <div className="text-center py-8 text-slate-400 text-sm">No completed tasks</div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1155,7 +1281,67 @@ const ClientsListPanel = () => {
           </div>
         </div>
       )}
+            
+{/* Create Task Modal */}
+      {showCreateTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
+          <div className={`${classes.panelBg} rounded-2xl p-6 w-full max-w-2xl ${classes.border}`} style={{ borderColor: '#2b2b2b', boxShadow: neonBoxShadow }}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">Create New Task</h2>
+              <button onClick={() => setShowCreateTask(false)} className="text-slate-300 hover:text-white"><X size={20} /></button>
+            </div>
+            
+            <form id="create-task-form" className="space-y-4" onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target);
+              const newTask = {
+                id: Math.max(...tasks.map(t => t.id), 0) + 1,
+                title: formData.get('title'),
+                event: formData.get('event'),
+                dueDate: formData.get('dueDate'),
+                status: 'pending',
+                priority: formData.get('priority'),
+                assignedTo: formData.get('assignedTo'),
+                createdBy: 'You',
+                description: formData.get('description'),
+                subtasks: [],
+                tags: [],
+                comments: [],
+                attachments: []
+              };
+              setTasks([...tasks, newTask]);
+              setShowCreateTask(false);
+              e.target.reset();
+            }}>
+              <input name="title" type="text" placeholder="Task Title" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+              
+              <select name="event" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }}>
+                <option value="">Select event...</option>
+                {events.map(event => (
+                  <option key={event.id} value={event.name}>{event.name}</option>
+                ))}
+              </select>
 
+              <textarea name="description" placeholder="Task Description" rows="3" className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <select name="priority" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }}>
+                  <option value="">Priority...</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+
+                <input name="dueDate" type="date" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+              </div>
+
+              <input name="assignedTo" type="text" placeholder="Assign to (e.g., Sarah Mitchell)" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+
+              <button type="submit" className="w-full py-3 rounded-md font-bold" style={{ background: NEON, color: '#fff' }}>Create Task</button>
+            </form>
+          </div>
+        </div>
+      )}
       {/* Event detail & Task modals render behind overlay */}
       {showEventDetail && selectedEvent && <EventDetailView event={selectedEvent} onClose={() => setShowEventDetail(false)} />}
       {showTaskDetail && selectedTask && <TaskDetailModal task={selectedTask} onClose={() => setShowTaskDetail(false)} />}
