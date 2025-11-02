@@ -1351,25 +1351,27 @@ const ClientsListPanel = () => {
         </div>
       )}
               
-       {/* Event detail & Task modals render behind overlay */}
-      {showEventDetail && selectedEvent && (
-        <EventDetailView
-          event={selectedEvent}
-          onClose={() => setShowEventDetail(false)}
-        />
-      )}
-      {showTaskDetail && selectedTask && (
-        <TaskDetailModal
-          task={selectedTask}
-          onClose={() => setShowTaskDetail(false)}
-        />
-      )}
+  {/* Event detail & Task modals render behind overlay */}
+{showEventDetail && selectedEvent && (
+  <EventDetailView
+    event={selectedEvent}
+    onClose={() => setShowEventDetail(false)}
+  />
+)}
+{showTaskDetail && selectedTask && (
+  <TaskDetailModal
+    task={selectedTask}
+    onClose={() => setShowTaskDetail(false)}
+  />
+)}
 
-          {/* Small footer spacing */}
-      <div className="h-8" />
-    </div>        {/* closes inner content wrapper */}
-    </div>        {/* closes outer flex wrapper */}
-  </main>         {/* closes main layout */}
+{/* Small footer spacing */}
+<div className="h-8" />
+
+</main> {/* ✅ closes main layout */}
+</div>  {/* ✅ closes outer flex wrapper */}
+</div>  {/* ✅ closes inner content wrapper */}
+
 );
 }
 
