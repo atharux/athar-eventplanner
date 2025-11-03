@@ -1,3 +1,4 @@
+``` name=App.jsx
 import React, { useState, useMemo } from 'react';
 import {
   Calendar, Users, MessageSquare, Search, Plus, X, Send, DollarSign, MapPin, Star,
@@ -24,6 +25,7 @@ const STORAGE_KEYS = {
   EVENTS: 'athar_events',
   TASKS: 'athar_tasks',
   VENDORS: 'athar_vendors',
+  VENUES: 'athar_venues',
   CLIENTS: 'athar_clients',
   GUESTS: 'athar_guests',
   CONVERSATIONS: 'athar_conversations'
@@ -653,17 +655,17 @@ const ClientsListPanel = () => {
                   <div className="flex items-center gap-3">
                     <h2 className="text-xl font-semibold text-white">Tasks</h2>
                     <div className="flex gap-1 bg-slate-800 p-1 rounded">
-                 <button onClick={() => setTaskView('list')} className={`px-3 py-1 text-xs font-semibold rounded ${taskView === 'list' ? 'bg-slate-700 text-white shadow' : 'text-slate-300'}`}>List</button>
-                <button
-  onClick={() => {
-    setTaskView('board');
-    console.log('🟣 taskView now = board');
-  }}
-  className={`px-3 py-1 text-xs font-semibold rounded ${taskView === 'board' ? 'bg-slate-700 text-white shadow' : 'text-slate-300'}`}
->
-  Board
-</button>
-</div>
+                      <button onClick={() => setTaskView('list')} className={`px-3 py-1 text-xs font-semibold rounded ${taskView === 'list' ? 'bg-slate-700 text-white shadow' : 'text-slate-300'}`}>List</button>
+                      <button
+                        onClick={() => {
+                          setTaskView('board');
+                          console.log('🟣 taskView now = board');
+                        }}
+                        className={`px-3 py-1 text-xs font-semibold rounded ${taskView === 'board' ? 'bg-slate-700 text-white shadow' : 'text-slate-300'}`}
+                      >
+                        Board
+                      </button>
+                    </div>
                   </div>
                   <button onClick={() => setShowCreateTask(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2"><Plus size={16} /> Add Task</button>
                 </div>
@@ -1114,7 +1116,7 @@ const ClientsListPanel = () => {
                     </div>
                   </div>
 
-                  <div className="lg:col-span-2 ${classes.panelBg} p-4 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', border: '2px solid #1f2937' }}>
+                  <div className={`lg:col-span-2 ${classes.panelBg} p-4 rounded-md`} style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', border: '2px solid #1f2937' }}>
                     <div className="p-5 border-b-2" style={{ borderColor: '#1f2937' }}>
                       <h2 className="text-lg font-semibold text-white">{conversations[selectedConversation].vendor}</h2>
                     </div>
@@ -1152,230 +1154,228 @@ const ClientsListPanel = () => {
             )}
 
             {/* Clients & Settings */}
-{(activeTab === 'clients' || activeTab === 'settings') && (
-  <div className="space-y-4">
-    {/* Clients tab */}
-    {activeTab === 'clients' && (
-      <>
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-white">Clients</h1>
-          <div className="flex items-center gap-3 text-sm text-slate-300">
-            <span>{clients.length} clients</span>
-            <button onClick={() => { setClientFormMode('add'); setSelectedClient(null); setShowClientModal(true); }} className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2">
-              <UserPlus size={14} /> New Client
-            </button>
-          </div>
-        </div>
+            {(activeTab === 'clients' || activeTab === 'settings') && (
+              <div className="space-y-4">
+                {/* Clients tab */}
+                {activeTab === 'clients' && (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <h1 className="text-2xl font-bold text-white">Clients</h1>
+                      <div className="flex items-center gap-3 text-sm text-slate-300">
+                        <span>{clients.length} clients</span>
+                        <button onClick={() => { setClientFormMode('add'); setSelectedClient(null); setShowClientModal(true); }} className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2">
+                          <UserPlus size={14} /> New Client
+                        </button>
+                      </div>
+                    </div>
 
-        <ClientsListPanel />
+                    <ClientsListPanel />
 
-        {/* client modal (add/edit/view) */}
-        {showClientModal && (clientFormMode === 'add'
-          ? <ClientDetailModal client={null} mode="add" onClose={() => setShowClientModal(false)} />
-          : <ClientDetailModal client={selectedClient} mode={clientFormMode} onClose={() => setShowClientModal(false)} />
-        )}
-      </>
-    )}
+                    {/* client modal (add/edit/view) */}
+                    {showClientModal && (clientFormMode === 'add'
+                      ? <ClientDetailModal client={null} mode="add" onClose={() => setShowClientModal(false)} />
+                      : <ClientDetailModal client={selectedClient} mode={clientFormMode} onClose={() => setShowClientModal(false)} />
+                    )}
+                  </>
+                )}
 
-    {/* Settings: show theme toggle (unchanged) */}
-    {activeTab === 'settings' && (
-      <div>
-        <h1 className="text-2xl font-bold text-white capitalize">settings</h1>
-        <div className={`${classes.panelBg} ${classes.border} p-8 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
-          <p className="text-slate-300">General settings and preferences</p>
+                {/* Settings: show theme toggle (unchanged) */}
+                {activeTab === 'settings' && (
+                  <div>
+                    <h1 className="text-2xl font-bold text-white capitalize">settings</h1>
+                    <div className={`${classes.panelBg} ${classes.border} p-8 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                      <p className="text-slate-300">General settings and preferences</p>
 
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold text-white mb-2">Appearance</h3>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-slate-300">Theme</span>
-              <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="py-2 px-4 rounded-md font-semibold" style={{ background: theme === 'dark' ? '#2a2540' : '#f3f0f8', color: theme === 'dark' ? '#fff' : '#111' }}>
-                Toggle to {theme === 'dark' ? 'Light' : 'Dark'}
-              </button>
-              <div className="text-sm text-slate-300">Accent: <span style={{ color: NEON, fontWeight: 700 }}>Neon Purple</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
-)}
-
-      {/* Create Event Modal */}
-      {showCreateEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-          <div className={`${classes.panelBg} rounded-2xl p-6 w-full max-w-2xl ${classes.border}`} style={{ borderColor: '#2b2b2b', boxShadow: neonBoxShadow }}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white">Create New Event</h2>
-              <button onClick={() => setShowCreateEvent(false)} className="text-slate-300 hover:text-white"><X size={20} /></button>
-            </div>
-           
-            <form id="create-event-form" className="space-y-4" onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.target);
-              const newEvent = {
-                id: Math.max(...events.map(e => e.id), 0) + 1,
-                name: formData.get('name'),
-                type: formData.get('type'),
-                date: formData.get('date'),
-                budget: parseInt(formData.get('budget')) || 0,
-                spent: 0,
-                guests: 0,
-                confirmed: 0,
-                status: 'planning',
-                vendors: 0,
-                tasks: 0,
-                completed: 0,
-                location: 'TBD',
-                description: '',
-                team: []
-              };
-              setEvents([...events, newEvent]);
-              setShowCreateEvent(false);
-              e.target.reset();
-            }}>
-              <input name="name" type="text" placeholder="Event Name" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
-              <select name="type" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }}>
-                <option value="">Select event type...</option>
-                <option>Wedding</option>
-                <option>Corporate</option>
-                <option>Birthday</option>
-                <option>Conference</option>
-              </select>
-              <input name="date" type="date" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
-              <input name="budget" type="number" placeholder="Budget ($)" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
-              <button type="submit" className="w-full py-3 rounded-md font-bold" style={{ background: NEON, color: '#fff' }}>Create Event</button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Vendor modal */}
-      {showVendorModal && selectedVendor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-          <div className={`${classes.panelBg} rounded-2xl p-6 w-full max-w-2xl ${classes.border}`} style={{ borderColor: '#2b2b2b', boxShadow: neonBoxShadow }}>
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <h2 className="text-xl font-bold text-white">{selectedVendor.name}</h2>
-                <p className="text-sm text-purple-300 mt-1 font-semibold">{selectedVendor.category}</p>
+                      <div className="mt-6">
+                        <h3 className="text-lg font-semibold text-white mb-2">Appearance</h3>
+                        <div className="flex items-center gap-4">
+                          <span className="text-sm text-slate-300">Theme</span>
+                          <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="py-2 px-4 rounded-md font-semibold" style={{ background: theme === 'dark' ? '#2a2540' : '#f3f0f8', color: theme === 'dark' ? '#fff' : '#111' }}>
+                            Toggle to {theme === 'dark' ? 'Light' : 'Dark'}
+                          </button>
+                          <div className="text-sm text-slate-300">Accent: <span style={{ color: NEON, fontWeight: 700 }}>Neon Purple</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-              <button onClick={() => setShowVendorModal(false)} className="text-slate-300 hover:text-white"><X size={20} /></button>
-            </div>
-            <div className="p-4 space-y-4">
-              <div className="flex items-center gap-6 text-sm">
-                <div className="flex items-center gap-2">
-                  <Star className="text-amber-400" size={16} />
-                  <span className="font-bold text-white">{selectedVendor.rating}</span>
-                  <span className="text-slate-400">({selectedVendor.reviews} reviews)</span>
+            )}
+
+          </div>
+
+          {/* Create Event Modal */}
+          {showCreateEvent && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
+              <div className={`${classes.panelBg} rounded-2xl p-6 w-full max-w-2xl ${classes.border}`} style={{ borderColor: '#2b2b2b', boxShadow: neonBoxShadow }}>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold text-white">Create New Event</h2>
+                  <button onClick={() => setShowCreateEvent(false)} className="text-slate-300 hover:text-white"><X size={20} /></button>
                 </div>
-                <div className="text-emerald-400 font-bold text-base">{selectedVendor.price}</div>
-                <div className="flex items-center gap-2 text-slate-300">
-                  <MapPin size={14} />
-                  <span>{selectedVendor.location}</span>
+
+                <form id="create-event-form" className="space-y-4" onSubmit={(e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.target);
+                  const newEvent = {
+                    id: Math.max(...events.map(e => e.id), 0) + 1,
+                    name: formData.get('name'),
+                    type: formData.get('type'),
+                    date: formData.get('date'),
+                    budget: parseInt(formData.get('budget')) || 0,
+                    spent: 0,
+                    guests: 0,
+                    confirmed: 0,
+                    status: 'planning',
+                    vendors: 0,
+                    tasks: 0,
+                    completed: 0,
+                    location: 'TBD',
+                    description: '',
+                    team: []
+                  };
+                  setEvents([...events, newEvent]);
+                  setShowCreateEvent(false);
+                  e.target.reset();
+                }}>
+                  <input name="name" type="text" placeholder="Event Name" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+                  <select name="type" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }}>
+                    <option value="">Select event type...</option>
+                    <option>Wedding</option>
+                    <option>Corporate</option>
+                    <option>Birthday</option>
+                    <option>Conference</option>
+                  </select>
+                  <input name="date" type="date" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+                  <input name="budget" type="number" placeholder="Budget ($)" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+                  <button type="submit" className="w-full py-3 rounded-md font-bold" style={{ background: NEON, color: '#fff' }}>Create Event</button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Vendor modal */}
+          {showVendorModal && selectedVendor && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
+              <div className={`${classes.panelBg} rounded-2xl p-6 w-full max-w-2xl ${classes.border}`} style={{ borderColor: '#2b2b2b', boxShadow: neonBoxShadow }}>
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-white">{selectedVendor.name}</h2>
+                    <p className="text-sm text-purple-300 mt-1 font-semibold">{selectedVendor.category}</p>
+                  </div>
+                  <button onClick={() => setShowVendorModal(false)} className="text-slate-300 hover:text-white"><X size={20} /></button>
+                </div>
+                <div className="p-4 space-y-4">
+                  <div className="flex items-center gap-6 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Star className="text-amber-400" size={16} />
+                      <span className="font-bold text-white">{selectedVendor.rating}</span>
+                      <span className="text-slate-400">({selectedVendor.reviews} reviews)</span>
+                    </div>
+                    <div className="text-emerald-400 font-bold text-base">{selectedVendor.price}</div>
+                    <div className="flex items-center gap-2 text-slate-300">
+                      <MapPin size={14} />
+                      <span>{selectedVendor.location}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-white mb-2">About</h3>
+                    <p className="text-sm text-slate-300 leading-relaxed">Professional {selectedVendor.category.toLowerCase()} services with over 10 years of experience. We specialize in creating unforgettable moments for your special day.</p>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-white mb-2">Last Contact</h3>
+                    <p className="text-sm text-slate-300">{selectedVendor.lastContact}</p>
+                  </div>
+                  <div className="space-y-3">
+                    <button className="w-full py-3 rounded-md font-semibold" style={{ background: NEON, color: '#fff' }}>Send Inquiry</button>
+                    <button className="w-full py-3 rounded-md border-2" style={{ borderColor: '#2b2b2b', color: theme === 'dark' ? '#fff' : '#111' }}>Save to Favorites</button>
+                  </div>
                 </div>
               </div>
-              <div>
-                <h3 className="text-base font-semibold text-white mb-2">About</h3>
-                <p className="text-sm text-slate-300 leading-relaxed">Professional {selectedVendor.category.toLowerCase()} services with over 10 years of experience. We specialize in creating unforgettable moments for your special day.</p>
-              </div>
-              <div>
-                <h3 className="text-base font-semibold text-white mb-2">Last Contact</h3>
-                <p className="text-sm text-slate-300">{selectedVendor.lastContact}</p>
-              </div>
-              <div className="space-y-3">
-                <button className="w-full py-3 rounded-md font-semibold" style={{ background: NEON, color: '#fff' }}>Send Inquiry</button>
-                <button className="w-full py-3 rounded-md border-2" style={{ borderColor: '#2b2b2b', color: theme === 'dark' ? '#fff' : '#111' }}>Save to Favorites</button>
+            </div>
+          )}
+            
+          {/* Create Task Modal */}
+          {showCreateTask && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
+              <div className={`${classes.panelBg} rounded-2xl p-6 w-full max-w-2xl ${classes.border}`} style={{ borderColor: '#2b2b2b', boxShadow: neonBoxShadow }}>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold text-white">Create New Task</h2>
+                  <button onClick={() => setShowCreateTask(false)} className="text-slate-300 hover:text-white"><X size={20} /></button>
+                </div>
+                
+                <form id="create-task-form" className="space-y-4" onSubmit={(e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.target);
+                  const newTask = {
+                    id: Math.max(...tasks.map(t => t.id), 0) + 1,
+                    title: formData.get('title'),
+                    event: formData.get('event'),
+                    dueDate: formData.get('dueDate'),
+                    status: 'pending',
+                    priority: formData.get('priority'),
+                    assignedTo: formData.get('assignedTo'),
+                    createdBy: 'You',
+                    description: formData.get('description'),
+                    subtasks: [],
+                    tags: [],
+                    comments: [],
+                    attachments: []
+                  };
+                  setTasks([...tasks, newTask]);
+                  setShowCreateTask(false);
+                  e.target.reset();
+                }}>
+                  <input name="title" type="text" placeholder="Task Title" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+                  
+                  <select name="event" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }}>
+                    <option value="">Select event...</option>
+                    {events.map(event => (
+                      <option key={event.id} value={event.name}>{event.name}</option>
+                    ))}
+                  </select>
+
+                  <textarea name="description" placeholder="Task Description" rows="3" className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <select name="priority" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }}>
+                      <option value="">Priority...</option>
+                      <option value="high">High</option>
+                      <option value="medium">Medium</option>
+                      <option value="low">Low</option>
+                    </select>
+
+                    <input name="dueDate" type="date" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+                  </div>
+
+                  <input name="assignedTo" type="text" placeholder="Assign to (e.g., Sarah Mitchell)" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+
+                  <button type="submit" className="w-full py-3 rounded-md font-bold" style={{ background: NEON, color: '#fff' }}>Create Task</button>
+                </form>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-            
-{/* Create Task Modal */}
-      {showCreateTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-          <div className={`${classes.panelBg} rounded-2xl p-6 w-full max-w-2xl ${classes.border}`} style={{ borderColor: '#2b2b2b', boxShadow: neonBoxShadow }}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white">Create New Task</h2>
-              <button onClick={() => setShowCreateTask(false)} className="text-slate-300 hover:text-white"><X size={20} /></button>
-            </div>
-            
-            <form id="create-task-form" className="space-y-4" onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.target);
-              const newTask = {
-                id: Math.max(...tasks.map(t => t.id), 0) + 1,
-                title: formData.get('title'),
-                event: formData.get('event'),
-                dueDate: formData.get('dueDate'),
-                status: 'pending',
-                priority: formData.get('priority'),
-                assignedTo: formData.get('assignedTo'),
-                createdBy: 'You',
-                description: formData.get('description'),
-                subtasks: [],
-                tags: [],
-                comments: [],
-                attachments: []
-              };
-              setTasks([...tasks, newTask]);
-              setShowCreateTask(false);
-              e.target.reset();
-            }}>
-              <input name="title" type="text" placeholder="Task Title" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+          )}
               
-              <select name="event" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }}>
-                <option value="">Select event...</option>
-                {events.map(event => (
-                  <option key={event.id} value={event.name}>{event.name}</option>
-                ))}
-              </select>
+          {/* Event detail & Task modals render behind overlay */}
+          {showEventDetail && selectedEvent && (
+            <EventDetailView
+              event={selectedEvent}
+              onClose={() => setShowEventDetail(false)}
+            />
+          )}
+          {showTaskDetail && selectedTask && (
+            <TaskDetailModal
+              task={selectedTask}
+              onClose={() => setShowTaskDetail(false)}
+            />
+          )}
 
-              <textarea name="description" placeholder="Task Description" rows="3" className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
-              
-              <div className="grid grid-cols-2 gap-4">
-                <select name="priority" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }}>
-                  <option value="">Priority...</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                </select>
+          {/* Small footer spacing */}
+          <div className="h-8" />
 
-                <input name="dueDate" type="date" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
-              </div>
+        </main> {/* closes main layout */}
 
-              <input name="assignedTo" type="text" placeholder="Assign to (e.g., Sarah Mitchell)" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
-
-              <button type="submit" className="w-full py-3 rounded-md font-bold" style={{ background: NEON, color: '#fff' }}>Create Task</button>
-            </form>
-          </div>
-        </div>
-      )}
-              
-{/* Event detail & Task modals render behind overlay */}
-{showEventDetail && selectedEvent && (
-  <EventDetailView
-    event={selectedEvent}
-    onClose={() => setShowEventDetail(false)}
-    className="fixed inset-0 z-50 flex items-center justify-center"
-  />
-)}
-{showTaskDetail && selectedTask && (
-  <TaskDetailModal
-    task={selectedTask}
-    onClose={() => setShowTaskDetail(false)}
-    className="fixed inset-0 z-50 flex items-center justify-center"
-  />
-)}
-
-      {/* Small footer spacing */}
-      <div className="h-8" />
-
-    </div>  {/* closes inner content wrapper */}
-  </div>    {/* closes outer flex wrapper */}
-</main>     {/* closes main layout */}
-);
+      </div> {/* closes outer flex wrapper */}
+    </div>  /* closes root wrapper */
+  );
 }
-
-export default App;
-
-
+```
