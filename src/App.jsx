@@ -673,75 +673,84 @@ export default function App() {
     );
   };
 
-  /* -------------------- Create Task Modal: use createTaskEvent to prefill when present -------------------- */
-  const CreateTaskModal = () => {
-    const initialEvent = createTaskEvent || '';
-    return (
-      showCreateTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-          <div className={`${classes.panelBg} rounded-2xl p-6 w-full max-w-2xl ${classes.border}`} style={{ borderColor: '#2b2b2b', boxShadow: neonBoxShadow }}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white">Create New Task</h2>
-              <button onClick={() => { setShowCreateTask(false); setCreateTaskEvent(null); }} className="text-slate-300 hover:text-white"><X size={20} /></button>
-            </div>
+/* The change is the root overlay now uses an explicit zIndex (style: { zIndex: 9999 })
+   so it sits above the EventDetailView overlay that currently uses z-50. */
 
-            <form id="create-task-form" className="space-y-4" onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.target);
-              const newTask = {
-                id: Math.max(...tasks.map(t => t.id), 0) + 1,
-                title: formData.get('title'),
-                event: formData.get('event'),
-                dueDate: formData.get('dueDate'),
-                status: 'pending',
-                priority: formData.get('priority'),
-                assignedTo: formData.get('assignedTo'),
-                createdBy: 'You',
-                description: formData.get('description'),
-                subtasks: [],
-                tags: [],
-                comments: [],
-                attachments: []
-              };
-              setTasks(prev => [...prev, newTask]);
-              setShowCreateTask(false);
-              setCreateTaskEvent(null);
-              e.target.reset();
-            }}>
-              <input name="title" type="text" placeholder="Task Title" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+const CreateTaskModal = () => {
+  const initialEvent = createTaskEvent || '';
+  return (
+    showCreateTask && (
+      <div
+        className="fixed inset-0 flex items-center justify-center"
+        style={{
+          backgroundColor: 'rgba(0,0,0,0.8)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 9999 // ensure modal overlays EventDetailView
+        }}
+      >
+        <div className={`${classes.panelBg} rounded-2xl p-6 w-full max-w-2xl ${classes.border}`} style={{ borderColor: '#2b2b2b', boxShadow: neonBoxShadow }}>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-white">Create New Task</h2>
+            <button onClick={() => { setShowCreateTask(false); setCreateTaskEvent(null); }} className="text-slate-300 hover:text-white"><X size={20} /></button>
+          </div>
 
-              <select name="event" defaultValue={initialEvent} required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }}>
-                <option value="">Select event...</option>
-                {events.map(ev => (
-                  <option key={ev.id} value={ev.name}>{ev.name}</option>
-                ))}
+          <form id="create-task-form" className="space-y-4" onSubmit={(e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const newTask = {
+              id: Math.max(...tasks.map(t => t.id), 0) + 1,
+              title: formData.get('title'),
+              event: formData.get('event'),
+              dueDate: formData.get('dueDate'),
+              status: 'pending',
+              priority: formData.get('priority'),
+              assignedTo: formData.get('assignedTo'),
+              createdBy: 'You',
+              description: formData.get('description'),
+              subtasks: [],
+              tags: [],
+              comments: [],
+              attachments: []
+            };
+            setTasks(prev => [...prev, newTask]);
+            setShowCreateTask(false);
+            setCreateTaskEvent(null);
+            e.target.reset();
+          }}>
+            <input name="title" type="text" placeholder="Task Title" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+
+            <select name="event" defaultValue={initialEvent} required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }}>
+              <option value="">Select event...</option>
+              {events.map(ev => (
+                <option key={ev.id} value={ev.name}>{ev.name}</option>
+              ))}
+            </select>
+
+            <textarea name="description" placeholder="Task Description" rows="3" className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+
+            <div className="grid grid-cols-2 gap-4">
+              <select name="priority" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }}>
+                <option value="">Priority...</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
               </select>
 
-              <textarea name="description" placeholder="Task Description" rows="3" className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+              <input name="dueDate" type="date" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+            </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <select name="priority" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }}>
-                  <option value="">Priority...</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                </select>
+            <input name="assignedTo" type="text" placeholder="Assign to (e.g., Sarah Mitchell)" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
 
-                <input name="dueDate" type="date" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
-              </div>
-
-              <input name="assignedTo" type="text" placeholder="Assign to (e.g., Sarah Mitchell)" required className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
-
-              <div className="flex gap-3">
-                <button type="submit" className="w-full py-3 rounded-md font-bold" style={{ background: NEON, color: '#fff' }}>Create Task</button>
-                <button type="button" onClick={() => { setShowCreateTask(false); setCreateTaskEvent(null); }} className="w-full py-3 rounded-md border-2">Cancel</button>
-              </div>
-            </form>
-          </div>
+            <div className="flex gap-3">
+              <button type="submit" className="w-full py-3 rounded-md font-bold" style={{ background: NEON, color: '#fff' }}>Create Task</button>
+              <button type="button" onClick={() => { setShowCreateTask(false); setCreateTaskEvent(null); }} className="w-full py-3 rounded-md border-2">Cancel</button>
+            </div>
+          </form>
         </div>
-      )
-    );
-  };
+      </div>
+    )
+  );
+};
 
   /* -------------------- Main App JSX (trimmed where not changed) -------------------- */
 
