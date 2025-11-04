@@ -109,7 +109,7 @@ const [conversations, setConversations] = useState([
     { id: 2, vendor: 'Harmony DJ Services', lastMessage: 'Confirming booking', time: '9:15 AM', unread: false,
       messages: [{ sender: 'vendor', text: 'Confirming booking for June 15th.', time: '9:15 AM', attachments: [] }]
     }
-  ]), []);
+  ]), [];
 
   const tasks = useMemo(() => ([
     {
