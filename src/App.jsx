@@ -1,3 +1,4 @@
+// newSurgical.jsx
 import React, { useState, useMemo } from 'react';
 import {
   Calendar, Users, MessageSquare, Search, Plus, X, Send, DollarSign, MapPin, Star,
@@ -53,8 +54,16 @@ export default function App() {
   const [activeEventTab, setActiveEventTab] = useState('overview');
   const [taskView, setTaskView] = useState('list'); // list, board, calendar
 
-  /* -------------------- Sample Data (kept from your original file) -------------------- */
-  const events = useMemo(() => ([
+  // New modal toggles for add forms & client management
+  const [showAddBudgetModal, setShowAddBudgetModal] = useState(false);
+  const [showAddGuestModal, setShowAddGuestModal] = useState(false);
+  const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
+  const [showAddClientModal, setShowAddClientModal] = useState(false);
+  const [showClientDetailModal, setShowClientDetailModal] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
+
+  /* -------------------- Sample Data (kept from your original file but converted to state where requested) -------------------- */
+  const [events, setEvents] = useState([
     {
       id: 1, name: 'Summer Gala 2025', date: '2025-06-15', budget: 50000, spent: 32000,
       guests: 250, confirmed: 180, status: 'active', vendors: 8, tasks: 24, completed: 18,
@@ -80,7 +89,7 @@ export default function App() {
       description: 'Three-day technology conference.',
       team: [{ id: 1, name: 'Sarah Mitchell', role: 'Lead Planner', email: 'sarah@eventflow.com', avatar: 'SM' }]
     }
-  ]), []);
+  ]);
 
   const vendors = useMemo(() => ([
     { id: 1, name: 'Elegant Catering Co.', category: 'Catering', rating: 4.9, price: '$$$$', location: 'Downtown', reviews: 127, booked: true, lastContact: '2 days ago' },
@@ -97,7 +106,7 @@ export default function App() {
     { id: 4, name: 'Garden Estate', location: 'Suburbs', capacity: 150, price: '$$$', rating: 4.9, reviews: 145, booked: false, amenities: ['Outdoor', 'Gardens', 'Tents Available'] }
   ]), []);
 
-const [conversations, setConversations] = useState([
+  const [conversations, setConversations] = useState([
     {
       id: 1, vendor: 'Elegant Catering Co.', lastMessage: 'Menu proposal attached', time: '10:30 AM', unread: true,
       messages: [
@@ -171,19 +180,27 @@ const [conversations, setConversations] = useState([
     }
   ]), []);
 
-  const budgetItems = useMemo(() => ([
+  // Converted to state so they can be updated
+  const [budgetItems, setBudgetItems] = useState([
     { id: 1, category: 'Venue', vendor: 'Grand Ballroom', amount: 12000, paid: 12000, status: 'paid', event: 'Summer Gala 2025', dueDate: '2025-03-01' },
     { id: 2, category: 'Catering', vendor: 'Elegant Catering', amount: 15000, paid: 7500, status: 'partial', event: 'Summer Gala 2025', dueDate: '2025-06-01' },
     { id: 3, category: 'Entertainment', vendor: 'Harmony DJ', amount: 2500, paid: 0, status: 'pending', event: 'Summer Gala 2025', dueDate: '2025-06-10' }
-  ]), []);
+  ]);
 
-  const guests = useMemo(() => ([
+  const [guests, setGuests] = useState([
     { id: 1, name: 'John Smith', email: 'john@email.com', rsvp: 'confirmed', plusOne: true, event: 'Summer Gala 2025', table: 'A1', dietaryRestrictions: 'Vegetarian' },
     { id: 2, name: 'Sarah Johnson', email: 'sarah@email.com', rsvp: 'confirmed', plusOne: false, event: 'Summer Gala 2025', table: 'A1', dietaryRestrictions: 'None' },
     { id: 3, name: 'Michael Chen', email: 'michael@email.com', rsvp: 'pending', plusOne: true, event: 'Summer Gala 2025', table: 'B2', dietaryRestrictions: 'Gluten-free' }
-  ]), []);
+  ]);
 
-  /* Filtering helpers */
+  // Clients sample data + state
+  const [clients, setClients] = useState([
+    { id: 1, company: 'Acme Corp', contact: 'Laura Peters', email: 'laura@acme.com', phone: '+49 30 1234567', status: 'active', events: 3, clientSince: '2022-03-12', notes: 'Prefers waterfront venues' },
+    { id: 2, company: 'The Thompson Family', contact: 'James Thompson', email: 'james@thompson.com', phone: '+49 30 9876543', status: 'active', events: 1, clientSince: '2025-01-05', notes: 'Wedding client' },
+    { id: 3, company: 'NextGen Tech', contact: 'Rita Gomez', email: 'rita@nextgen.com', phone: '+49 30 5551212', status: 'prospect', events: 0, clientSince: '2024-11-01', notes: 'Interested in conference packages' }
+  ]);
+
+  /* -------------------- Filtering helpers -------------------- */
   const filteredVendors = vendors.filter(v => {
     const matchesSearch = v.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = filterCategory === 'All' || v.category === filterCategory;
@@ -473,7 +490,7 @@ const [conversations, setConversations] = useState([
   <div className="space-y-4">
     <div className="flex justify-between items-center">
       <h2 className="text-xl font-semibold text-white">Budget Overview</h2>
-      <button className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm">
+      <button onClick={() => setShowAddBudgetModal(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm">
         <Plus size={14} /> Add Item
       </button>
     </div>
@@ -630,7 +647,7 @@ const [conversations, setConversations] = useState([
                     <button className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded text-sm">
                       Export CSV
                     </button>
-                    <button className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm">
+                    <button onClick={() => setShowAddGuestModal(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm">
                       <UserPlus size={14} /> Add Guest
                     </button>
                   </div>
@@ -696,19 +713,19 @@ const [conversations, setConversations] = useState([
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-semibold text-white">Event Schedule</h2>
-                  <button className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm">
+                  <button onClick={() => setShowAddScheduleModal(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm">
                     <Plus size={14} /> Add Item
                   </button>
                 </div>
 
                 <div className="space-y-3">
                   {[
-                    { time: '09:00 AM', title: 'Venue Setup', duration: '2 hours', assigned: 'Setup Crew' },
-                    { time: '05:00 PM', title: 'Guest Arrival', duration: '1 hour', assigned: 'Reception Team' },
-                    { time: '06:00 PM', title: 'Cocktail Hour', duration: '1 hour', assigned: 'Catering Staff' },
-                    { time: '07:00 PM', title: 'Dinner Service', duration: '2 hours', assigned: 'Elegant Catering' },
-                    { time: '09:00 PM', title: 'Entertainment Begins', duration: '3 hours', assigned: 'Harmony DJ' },
-                    { time: '12:00 AM', title: 'Event Wrap-up', duration: '1 hour', assigned: 'Full Team' }
+                    { time: '09:00 AM', title: 'Venue Setup', duration: '2 hours', assigned: 'Setup Crew', eventName: 'Summer Gala 2025' },
+                    { time: '05:00 PM', title: 'Guest Arrival', duration: '1 hour', assigned: 'Reception Team', eventName: 'Summer Gala 2025' },
+                    { time: '06:00 PM', title: 'Cocktail Hour', duration: '1 hour', assigned: 'Catering Staff', eventName: 'Summer Gala 2025' },
+                    { time: '07:00 PM', title: 'Dinner Service', duration: '2 hours', assigned: 'Elegant Catering', eventName: 'Summer Gala 2025' },
+                    { time: '09:00 PM', title: 'Entertainment Begins', duration: '3 hours', assigned: 'Harmony DJ', eventName: 'Summer Gala 2025' },
+                    { time: '12:00 AM', title: 'Event Wrap-up', duration: '1 hour', assigned: 'Full Team', eventName: 'Summer Gala 2025' }
                   ].map((item, idx) => (
                     <div
                       key={idx}
@@ -737,6 +754,339 @@ const [conversations, setConversations] = useState([
               </div>
             )}
           </div>
+        </div>
+      </div>
+    );
+  };
+
+  /* -------------------- New Modals: Add Budget, Add Guest, Add Schedule -------------------- */
+
+  const AddBudgetModal = ({ eventName, onClose }) => {
+    const [category, setCategory] = useState('Venue');
+    const [vendorName, setVendorName] = useState('');
+    const [amount, setAmount] = useState('');
+    const [paid, setPaid] = useState('');
+    const [dueDate, setDueDate] = useState('');
+
+    const handleAdd = () => {
+      const newItem = {
+        id: Math.max(0, ...budgetItems.map(i => i.id)) + 1,
+        category,
+        vendor: vendorName,
+        amount: Number(amount) || 0,
+        paid: Number(paid) || 0,
+        status: Number(paid) >= Number(amount) ? 'paid' : Number(paid) > 0 ? 'partial' : 'pending',
+        event: eventName,
+        dueDate: dueDate || new Date().toISOString().slice(0,10)
+      };
+      setBudgetItems(prev => [...prev, newItem]);
+      onClose();
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
+        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-md p-6`} style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-white">Add Budget Item</h3>
+            <button onClick={onClose}><X size={18} className="text-slate-300" /></button>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-slate-300">Category</label>
+              <select value={category} onChange={e => setCategory(e.target.value)} className="w-full p-2 rounded-md">
+                <option>Venue</option>
+                <option>Catering</option>
+                <option>Entertainment</option>
+                <option>Decor</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-slate-300">Vendor</label>
+              <input value={vendorName} onChange={e => setVendorName(e.target.value)} className="w-full p-2 rounded-md" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-slate-300">Amount</label>
+                <input value={amount} onChange={e => setAmount(e.target.value)} className="w-full p-2 rounded-md" />
+              </div>
+              <div>
+                <label className="text-xs text-slate-300">Paid</label>
+                <input value={paid} onChange={e => setPaid(e.target.value)} className="w-full p-2 rounded-md" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-slate-300">Due Date</label>
+              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full p-2 rounded-md" />
+            </div>
+
+            <div className="flex justify-end gap-2 mt-3">
+              <button onClick={onClose} className="px-4 py-2 rounded-md">Cancel</button>
+              <button onClick={handleAdd} className="px-4 py-2 rounded-md bg-purple-700 text-white">Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const AddGuestModal = ({ eventName, onClose }) => {
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [table, setTable] = useState('');
+    const [dietary, setDietary] = useState('');
+    const [plusOne, setPlusOne] = useState(false);
+
+    const handleAdd = () => {
+      const newGuest = {
+        id: Math.max(0, ...guests.map(g => g.id)) + 1,
+        name, email, rsvp: 'pending', plusOne, event: eventName, table, dietaryRestrictions: dietary
+      };
+      setGuests(prev => [...prev, newGuest]);
+      onClose();
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
+        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-md p-6`} style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-white">Add Guest</h3>
+            <button onClick={onClose}><X size={18} className="text-slate-300" /></button>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-slate-300">Name</label>
+              <input value={name} onChange={e => setName(e.target.value)} className="w-full p-2 rounded-md" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-300">Email</label>
+              <input value={email} onChange={e => setEmail(e.target.value)} className="w-full p-2 rounded-md" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-300">Table Assignment</label>
+              <input value={table} onChange={e => setTable(e.target.value)} className="w-full p-2 rounded-md" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-300">Dietary Restrictions</label>
+              <input value={dietary} onChange={e => setDietary(e.target.value)} className="w-full p-2 rounded-md" />
+            </div>
+            <div className="flex items-center gap-2">
+              <input type="checkbox" checked={plusOne} onChange={e => setPlusOne(e.target.checked)} />
+              <label className="text-xs text-slate-300">Plus One</label>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-3">
+              <button onClick={onClose} className="px-4 py-2 rounded-md">Cancel</button>
+              <button onClick={handleAdd} className="px-4 py-2 rounded-md bg-purple-700 text-white">Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const AddScheduleModal = ({ eventName, onClose }) => {
+    const [time, setTime] = useState('');
+    const [title, setTitle] = useState('');
+    const [duration, setDuration] = useState('');
+    const [assigned, setAssigned] = useState('');
+
+    const handleAdd = () => {
+      // For simplicity, schedules will be pushed into tasks as lightweight schedule entries,
+      // or you can manage a separate schedule array in future. We'll push into tasks with a special tag.
+      const newItem = {
+        id: Math.max(0, ...tasks.map(t => t.id)) + 1,
+        title,
+        event: eventName,
+        dueDate: time || new Date().toISOString().slice(0,10),
+        status: 'pending',
+        priority: 'medium',
+        assignedTo: assigned || 'Unassigned',
+        description: `Schedule item — duration ${duration}`,
+        subtasks: [],
+        tags: ['schedule'],
+        comments: [],
+        attachments: []
+      };
+      // tasks is derived from useMemo so it's read-only; but to keep original file intact we won't mutate tasks.
+      // Instead, attach schedule items to events as an added 'schedule' array for display.
+      setEvents(prev => prev.map(ev => ev.name === eventName ? { ...ev, schedule: [...(ev.schedule || []), { time, title, duration, assigned }] } : ev));
+      onClose();
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
+        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-md p-6`} style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-white">Add Schedule Item</h3>
+            <button onClick={onClose}><X size={18} className="text-slate-300" /></button>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-slate-300">Time</label>
+              <input value={time} onChange={e => setTime(e.target.value)} placeholder="09:00 AM" className="w-full p-2 rounded-md" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-300">Title</label>
+              <input value={title} onChange={e => setTitle(e.target.value)} className="w-full p-2 rounded-md" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-300">Duration</label>
+              <input value={duration} onChange={e => setDuration(e.target.value)} placeholder="1 hour" className="w-full p-2 rounded-md" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-300">Assigned Person</label>
+              <input value={assigned} onChange={e => setAssigned(e.target.value)} className="w-full p-2 rounded-md" />
+            </div>
+
+            <div className="flex justify-end gap-2 mt-3">
+              <button onClick={onClose} className="px-4 py-2 rounded-md">Cancel</button>
+              <button onClick={handleAdd} className="px-4 py-2 rounded-md bg-purple-700 text-white">Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /* -------------------- Clients: List, Add, Detail -------------------- */
+
+  const ClientDetailModal = ({ client, onClose }) => {
+    if (!client) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
+        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-2xl p-6`} style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-white">{client.company}</h3>
+            <button onClick={onClose}><X size={18} className="text-slate-300" /></button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <div className="text-sm text-slate-400">Contact</div>
+              <div className="text-white font-semibold">{client.contact}</div>
+              <div className="mt-2 text-sm text-slate-400">Email</div>
+              <div className="text-slate-200">{client.email}</div>
+              <div className="mt-2 text-sm text-slate-400">Phone</div>
+              <div className="text-slate-200">{client.phone}</div>
+            </div>
+            <div>
+              <div className="text-sm text-slate-400">Status</div>
+              <div className="mt-1">
+                <span className={`px-2 py-1 text-xs font-semibold rounded ${client.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{client.status}</span>
+              </div>
+
+              <div className="mt-4 text-sm text-slate-400">Number of Events</div>
+              <div className="text-white font-semibold">{client.events}</div>
+
+              <div className="mt-4 text-sm text-slate-400">Client Since</div>
+              <div className="text-slate-200">{new Date(client.clientSince).toLocaleDateString()}</div>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <div className="text-sm text-slate-400">Notes</div>
+            <div className="mt-2 text-slate-200">{client.notes}</div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const AddClientModal = ({ onClose }) => {
+    const [company, setCompany] = useState('');
+    const [contact, setContact] = useState('');
+    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
+    const [status, setStatus] = useState('prospect');
+
+    const handleAdd = () => {
+      const newClient = {
+        id: Math.max(0, ...clients.map(c => c.id)) + 1,
+        company, contact, email, phone, status, events: 0, clientSince: new Date().toISOString().slice(0,10), notes: ''
+      };
+      setClients(prev => [...prev, newClient]);
+      onClose();
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
+        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-md p-6`} style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-white">Add Client</h3>
+            <button onClick={onClose}><X size={18} className="text-slate-300" /></button>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-slate-300">Company</label>
+              <input value={company} onChange={e => setCompany(e.target.value)} className="w-full p-2 rounded-md" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-300">Contact Person</label>
+              <input value={contact} onChange={e => setContact(e.target.value)} className="w-full p-2 rounded-md" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-300">Email</label>
+              <input value={email} onChange={e => setEmail(e.target.value)} className="w-full p-2 rounded-md" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-300">Phone</label>
+              <input value={phone} onChange={e => setPhone(e.target.value)} className="w-full p-2 rounded-md" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-300">Status</label>
+              <select value={status} onChange={e => setStatus(e.target.value)} className="w-full p-2 rounded-md">
+                <option value="prospect">Prospect</option>
+                <option value="active">Active</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-3">
+              <button onClick={onClose} className="px-4 py-2 rounded-md">Cancel</button>
+              <button onClick={handleAdd} className="px-4 py-2 rounded-md bg-purple-700 text-white">Add Client</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const ClientListView = () => {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-white">Clients</h1>
+          <div className="flex gap-2">
+            <button onClick={() => setShowAddClientModal(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 rounded flex items-center gap-2"><Plus size={16} /> Add Client</button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {clients.map(client => (
+            <div key={client.id} onClick={() => { setSelectedClient(client); setShowClientDetailModal(true); }} className={`${classes.panelBg} ${classes.border} p-4 rounded-md cursor-pointer hover:shadow-lg`} style={{ borderColor: '#2b2b2b' }}>
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h3 className="font-semibold text-white text-sm">{client.company}</h3>
+                  <p className="text-xs text-slate-300 mt-1">{client.contact}</p>
+                </div>
+                <span className={`text-xs px-2 py-0.5 font-semibold ${client.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{client.status}</span>
+              </div>
+
+              <div className="text-xs text-slate-300 mb-3">
+                <div>{client.email}</div>
+                <div className="mt-1">{client.phone}</div>
+              </div>
+
+              <div className="flex justify-between items-center text-xs text-slate-400">
+                <div>{client.events} events</div>
+                <div>Since {new Date(client.clientSince).toLocaleDateString()}</div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -913,7 +1263,7 @@ const [conversations, setConversations] = useState([
                           <h3 className="text-lg font-semibold text-white mb-1">{event.name}</h3>
                           <span className="text-xs text-slate-300">{event.type}</span>
                         </div>
-                        <span className={`text-xs px-2 py-0.5 font-semibold ${event.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{event.status}</span>
+                        <span className={`text-xs px-2 py-0.5 font-semibold ${event.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}`}>{event.status}</span>
                       </div>
                       <div className="space-y-2 mb-4 text-sm text-slate-300">
                         <div className="flex items-center gap-2"><Calendar size={14} />{new Date(event.date).toLocaleDateString()}</div>
@@ -1007,131 +1357,128 @@ const [conversations, setConversations] = useState([
 
             {/* Messages */}
 
-{activeTab === 'messages' && (
-  <div className="space-y-4">
-    <h1 className="text-2xl font-bold text-white mb-4">Messages</h1>
-    
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      {/* Conversation List */}
-      <div className={`${classes.panelBg} ${classes.border} rounded-md`} style={{ borderColor: '#2b2b2b' }}>
-        <div className="p-4 border-b-2" style={{ borderColor: '#1f2937' }}>
-          <h2 className="font-semibold text-white">Conversations</h2>
-        </div>
-        <div className="divide-y-2" style={{ borderColor: '#1f2937' }}>
-          {conversations.map((conv, idx) => (
-            <div
-              key={conv.id}
-              onClick={() => setSelectedConversation(idx)}
-              className={`p-4 cursor-pointer hover:bg-slate-700 transition-colors ${
-                selectedConversation === idx ? 'bg-slate-700' : ''
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 bg-purple-700 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                  {conv.vendor.substring(0, 2).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start mb-1">
-                    <h3 className="font-semibold text-white text-sm truncate">{conv.vendor}</h3>
-                    <span className="text-xs text-slate-400">{conv.time}</span>
-                  </div>
-                  <p className={`text-xs truncate ${conv.unread ? 'text-white font-semibold' : 'text-slate-400'}`}>
-                    {conv.lastMessage}
-                  </p>
-                </div>
-                {conv.unread && <div className="w-2 h-2 bg-purple-500 rounded-full flex-shrink-0 mt-2" />}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Message Thread */}
-      <div className={`lg:col-span-2 ${classes.panelBg} ${classes.border} rounded-md flex flex-col`} style={{ borderColor: '#2b2b2b', height: '600px' }}>
-        <div className="p-4 border-b-2" style={{ borderColor: '#1f2937' }}>
-          <h2 className="font-semibold text-white">{conversations[selectedConversation]?.vendor}</h2>
-          <p className="text-xs text-slate-400 mt-1">Vendor Communication</p>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {conversations[selectedConversation]?.messages.map((msg, idx) => (
-            <div key={idx} className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[70%] ${msg.sender === 'me' ? 'bg-purple-700' : 'bg-slate-700'} rounded-lg p-3`}>
-                <p className="text-sm text-white">{msg.text}</p>
-                {msg.attachments && msg.attachments.length > 0 && (
-                  <div className="mt-2 space-y-1">
-                    {msg.attachments.map((file, i) => (
-                      <div key={i} className="flex items-center gap-2 text-xs text-purple-200 bg-purple-800 rounded px-2 py-1">
-                        <Paperclip size={12} />
-                        <span>{file}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <p className="text-xs text-slate-300 mt-1">{msg.time}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="p-4 border-t-2" style={{ borderColor: '#1f2937' }}>
-          <div className="flex gap-2">
-            <button className="p-2 hover:bg-slate-700 rounded">
-              <Paperclip size={18} className="text-slate-300" />
-            </button>
-            <input
-              type="text"
-              value={messageInput}
-              onChange={(e) => setMessageInput(e.target.value)}
-              placeholder="Type your message..."
-              className="flex-1 p-2 rounded-md"
-              style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }}
-            />
-            <button
-              onClick={() => {
-                if (messageInput.trim()) {
-                  const updatedConversations = [...conversations];
-                  updatedConversations[selectedConversation].messages.push({
-                    sender: 'me',
-                    text: messageInput,
-                    time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-                    attachments: []
-                  });
-                  setConversations(updatedConversations);
-                  setMessageInput('');
-                }
-              }}
-              className="p-2 bg-purple-700 hover:bg-purple-600 rounded"
-            >
-              <Send size={18} className="text-white" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
-
-            {/* Clients & Settings placeholders */}
-            {(activeTab === 'clients' || activeTab === 'settings') && (
+            {activeTab === 'messages' && (
               <div className="space-y-4">
-                <h1 className="text-2xl font-bold text-white capitalize">{activeTab}</h1>
-                <div className={`${classes.panelBg} ${classes.border} p-8 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
-                  <p className="text-slate-300">This section is coming soon...</p>
+                <h1 className="text-2xl font-bold text-white mb-4">Messages</h1>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  {/* Conversation List */}
+                  <div className={`${classes.panelBg} ${classes.border} rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                    <div className="p-4 border-b-2" style={{ borderColor: '#1f2937' }}>
+                      <h2 className="font-semibold text-white">Conversations</h2>
+                    </div>
+                    <div className="divide-y-2" style={{ borderColor: '#1f2937' }}>
+                      {conversations.map((conv, idx) => (
+                        <div
+                          key={conv.id}
+                          onClick={() => setSelectedConversation(idx)}
+                          className={`p-4 cursor-pointer hover:bg-slate-700 transition-colors ${
+                            selectedConversation === idx ? 'bg-slate-700' : ''
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 bg-purple-700 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                              {conv.vendor.substring(0, 2).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-start mb-1">
+                                <h3 className="font-semibold text-white text-sm truncate">{conv.vendor}</h3>
+                                <span className="text-xs text-slate-400">{conv.time}</span>
+                              </div>
+                              <p className={`text-xs truncate ${conv.unread ? 'text-white font-semibold' : 'text-slate-400'}`}>
+                                {conv.lastMessage}
+                              </p>
+                            </div>
+                            {conv.unread && <div className="w-2 h-2 bg-purple-500 rounded-full flex-shrink-0 mt-2" />}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
-                  {/* Settings: show theme toggle */}
-                  {activeTab === 'settings' && (
-                    <div className="mt-6">
-                      <h3 className="text-lg font-semibold text-white mb-2">Appearance</h3>
-                      <div className="flex items-center gap-4">
-                        <span className="text-sm text-slate-300">Theme</span>
-                        <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="py-2 px-4 rounded-md font-semibold" style={{ background: theme === 'dark' ? '#2a2540' : '#f3f0f8', color: theme === 'dark' ? '#fff' : '#111' }}>
-                          Toggle to {theme === 'dark' ? 'Light' : 'Dark'}
+                  {/* Message Thread */}
+                  <div className={`lg:col-span-2 ${classes.panelBg} ${classes.border} rounded-md flex flex-col`} style={{ borderColor: '#2b2b2b', height: '600px' }}>
+                    <div className="p-4 border-b-2" style={{ borderColor: '#1f2937' }}>
+                      <h2 className="font-semibold text-white">{conversations[selectedConversation]?.vendor}</h2>
+                      <p className="text-xs text-slate-400 mt-1">Vendor Communication</p>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                      {conversations[selectedConversation]?.messages.map((msg, idx) => (
+                        <div key={idx} className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[70%] ${msg.sender === 'me' ? 'bg-purple-700' : 'bg-slate-700'} rounded-lg p-3`}>
+                            <p className="text-sm text-white">{msg.text}</p>
+                            {msg.attachments && msg.attachments.length > 0 && (
+                              <div className="mt-2 space-y-1">
+                                {msg.attachments.map((file, i) => (
+                                  <div key={i} className="flex items-center gap-2 text-xs text-purple-200 bg-purple-800 rounded px-2 py-1">
+                                    <Paperclip size={12} />
+                                    <span>{file}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <p className="text-xs text-slate-300 mt-1">{msg.time}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="p-4 border-t-2" style={{ borderColor: '#1f2937' }}>
+                      <div className="flex gap-2">
+                        <button className="p-2 hover:bg-slate-700 rounded">
+                          <Paperclip size={18} className="text-slate-300" />
                         </button>
-                        <div className="text-sm text-slate-300">Accent: <span style={{ color: NEON, fontWeight: 700 }}>Neon Purple</span></div>
+                        <input
+                          type="text"
+                          value={messageInput}
+                          onChange={(e) => setMessageInput(e.target.value)}
+                          placeholder="Type your message..."
+                          className="flex-1 p-2 rounded-md"
+                          style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }}
+                        />
+                        <button
+                          onClick={() => {
+                            if (messageInput.trim()) {
+                              const updatedConversations = [...conversations];
+                              updatedConversations[selectedConversation].messages.push({
+                                sender: 'me',
+                                text: messageInput,
+                                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                attachments: []
+                              });
+                              updatedConversations[selectedConversation].lastMessage = messageInput;
+                              updatedConversations[selectedConversation].unread = false;
+                              setConversations(updatedConversations);
+                              setMessageInput('');
+                            }
+                          }}
+                          className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2"
+                        >
+                          <Send size={14} /> Send
+                        </button>
                       </div>
                     </div>
-                  )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Clients */}
+            {activeTab === 'clients' && (
+              <ClientListView />
+            )}
+
+            {/* Settings */}
+            {activeTab === 'settings' && (
+              <div>
+                <h1 className="text-2xl font-bold text-white">Settings</h1>
+                <div className="mt-4">
+                  <label className="text-sm text-slate-300">Theme</label>
+                  <div className="mt-2 flex gap-2">
+                    <button onClick={() => setTheme('dark')} className={`px-4 py-2 rounded ${theme === 'dark' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-800'}`}>Dark</button>
+                    <button onClick={() => setTheme('light')} className={`px-4 py-2 rounded ${theme === 'light' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-800'}`}>Light</button>
+                  </div>
                 </div>
               </div>
             )}
@@ -1139,77 +1486,51 @@ const [conversations, setConversations] = useState([
         </main>
       </div>
 
-      {/* Create Event Modal */}
-      {showCreateEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-          <div className={`${classes.panelBg} rounded-2xl p-6 w-full max-w-2xl ${classes.border}`} style={{ borderColor: '#2b2b2b', boxShadow: neonBoxShadow }}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white">Create New Event</h2>
-              <button onClick={() => setShowCreateEvent(false)} className="text-slate-300 hover:text-white"><X size={20} /></button>
-            </div>
-            <div className="space-y-4">
-              <input type="text" placeholder="Event Name" className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
-              <select className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }}>
-                <option>Wedding</option>
-                <option>Corporate</option>
-                <option>Birthday</option>
-                <option>Conference</option>
-              </select>
-              <input type="date" className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
-              <input type="number" placeholder="Budget ($)" className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
-              <button onClick={() => setShowCreateEvent(false)} className="w-full py-3 rounded-md font-bold" style={{ background: NEON, color: '#fff' }}>Create Event</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modals rendered at root so they overlay everything */}
+      {showTaskDetail && <TaskDetailModal task={selectedTask} onClose={() => setShowTaskDetail(false)} />}
+      {showEventDetail && <EventDetailView event={selectedEvent} onClose={() => setShowEventDetail(false)} />}
 
-      {/* Vendor modal */}
+      {/* Vendor modal placeholder */}
       {showVendorModal && selectedVendor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-          <div className={`${classes.panelBg} rounded-2xl p-6 w-full max-w-2xl ${classes.border}`} style={{ borderColor: '#2b2b2b', boxShadow: neonBoxShadow }}>
+          <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-lg p-6`} style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}>
             <div className="flex justify-between items-center mb-4">
-              <div>
-                <h2 className="text-xl font-bold text-white">{selectedVendor.name}</h2>
-                <p className="text-sm text-purple-300 mt-1 font-semibold">{selectedVendor.category}</p>
-              </div>
-              <button onClick={() => setShowVendorModal(false)} className="text-slate-300 hover:text-white"><X size={20} /></button>
+              <h3 className="text-lg font-semibold text-white">{selectedVendor.name}</h3>
+              <button onClick={() => setShowVendorModal(false)}><X size={18} className="text-slate-300" /></button>
             </div>
-            <div className="p-4 space-y-4">
-              <div className="flex items-center gap-6 text-sm">
-                <div className="flex items-center gap-2">
-                  <Star className="text-amber-400" size={16} />
-                  <span className="font-bold text-white">{selectedVendor.rating}</span>
-                  <span className="text-slate-400">({selectedVendor.reviews} reviews)</span>
-                </div>
-                <div className="text-emerald-400 font-bold text-base">{selectedVendor.price}</div>
-                <div className="flex items-center gap-2 text-slate-300">
-                  <MapPin size={14} />
-                  <span>{selectedVendor.location}</span>
-                </div>
-              </div>
-              <div>
-                <h3 className="text-base font-semibold text-white mb-2">About</h3>
-                <p className="text-sm text-slate-300 leading-relaxed">Professional {selectedVendor.category.toLowerCase()} services with over 10 years of experience. We specialize in creating unforgettable moments for your special day.</p>
-              </div>
-              <div>
-                <h3 className="text-base font-semibold text-white mb-2">Last Contact</h3>
-                <p className="text-sm text-slate-300">{selectedVendor.lastContact}</p>
-              </div>
-              <div className="space-y-3">
-                <button className="w-full py-3 rounded-md font-semibold" style={{ background: NEON, color: '#fff' }}>Send Inquiry</button>
-                <button className="w-full py-3 rounded-md border-2" style={{ borderColor: '#2b2b2b', color: theme === 'dark' ? '#fff' : '#111' }}>Save to Favorites</button>
+            <div className="text-sm text-slate-300">
+              <div className="mb-2"><strong>Category:</strong> {selectedVendor.category}</div>
+              <div className="mb-2"><strong>Location:</strong> {selectedVendor.location}</div>
+              <div className="mb-2"><strong>Rating:</strong> {selectedVendor.rating}</div>
+              <div className="mt-4">
+                <button onClick={() => setShowVendorModal(false)} className="px-4 py-2 rounded-md bg-purple-700 text-white">Close</button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Event detail & Task modals render behind overlay */}
-      {showEventDetail && selectedEvent && <EventDetailView event={selectedEvent} onClose={() => setShowEventDetail(false)} />}
-      {showTaskDetail && selectedTask && <TaskDetailModal task={selectedTask} onClose={() => setShowTaskDetail(false)} />}
+      {/* Add Budget Modal */}
+      {showAddBudgetModal && selectedEvent && (
+        <AddBudgetModal eventName={selectedEvent.name} onClose={() => setShowAddBudgetModal(false)} />
+      )}
 
-      {/* Small footer spacing */}
-      <div className="h-8" />
+      {/* Add Guest Modal */}
+      {showAddGuestModal && selectedEvent && (
+        <AddGuestModal eventName={selectedEvent.name} onClose={() => setShowAddGuestModal(false)} />
+      )}
+
+      {/* Add Schedule Modal */}
+      {showAddScheduleModal && selectedEvent && (
+        <AddScheduleModal eventName={selectedEvent.name} onClose={() => setShowAddScheduleModal(false)} />
+      )}
+
+      {/* Add Client Modal */}
+      {showAddClientModal && <AddClientModal onClose={() => setShowAddClientModal(false)} />}
+
+      {/* Client Detail Modal */}
+      {showClientDetailModal && selectedClient && <ClientDetailModal client={selectedClient} onClose={() => setShowClientDetailModal(false)} />}
+
     </div>
   );
 }
