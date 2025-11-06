@@ -1,4 +1,3 @@
-// ==== FILE: src/utils/validation.js ====
 export function isEmailValid(email){
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
