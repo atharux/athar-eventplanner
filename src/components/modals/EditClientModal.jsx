@@ -1,7 +1,8 @@
 // ==== FILE: src/components/modals/EditClientModal.jsx ====
 import React, { useState } from 'react';
 import ModalWrapper from './ModalWrapper';
-import { isEmailValid, requireValue } from '../../utils/validation';
+import { isEmailValid, requireValue } from '../../utils/validation.js';
+
 
 export default function EditClientModal({ client, onClose, onEdit, events }){
   const [company, setCompany] = useState(client.company);

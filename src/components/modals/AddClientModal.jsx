@@ -1,7 +1,8 @@
 // ==== FILE: src/components/modals/AddClientModal.jsx ====
 import React, { useState } from 'react';
 import ModalWrapper from './ModalWrapper';
-import { isEmailValid, requireValue } from '../../utils/validation';
+import { isEmailValid, requireValue } from '../../utils/validation.js';
+
 
 export default function AddClientModal({ onClose, onAdd, events }){
   const [company, setCompany] = useState('');
