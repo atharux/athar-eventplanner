@@ -62,6 +62,9 @@ export default function App() {
   const [showClientDetailModal, setShowClientDetailModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
 
+  // Add Task modal toggle
+  const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+
   /* -------------------- Sample Data (kept from your original file but converted to state where requested) -------------------- */
   const [events, setEvents] = useState([
     {
@@ -120,7 +123,8 @@ export default function App() {
     }
   ]);
 
-  const tasks = useMemo(() => ([
+  // Converted tasks to state so they can be updated and new tasks added
+  const [tasks, setTasks] = useState([
     {
       id: 1, title: 'Finalize menu with caterer', event: 'Summer Gala 2025', dueDate: '2025-05-01',
       status: 'in-progress', priority: 'high', assignedTo: 'James Cooper', createdBy: 'Sarah Mitchell',
@@ -178,7 +182,7 @@ export default function App() {
       ],
       attachments: ['floral-inspiration.jpg']
     }
-  ]), []);
+  ]);
 
   // Converted to state so they can be updated
   const [budgetItems, setBudgetItems] = useState([
@@ -559,7 +563,7 @@ export default function App() {
                       <button onClick={() => setTaskView('board')} className={`px-3 py-1 text-xs font-semibold rounded ${taskView === 'board' ? 'bg-slate-700 text-white shadow' : 'text-slate-300'}`}>Board</button>
                     </div>
                   </div>
-                  <button className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2"><Plus size={16} /> Add Task</button>
+                  <button onClick={() => setShowAddTaskModal(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2"><Plus size={16} /> Add Task</button>
                 </div>
 
                 {taskView === 'list' && (
@@ -598,8 +602,23 @@ export default function App() {
 
                 {taskView === 'board' && (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Three columns: pending, in-progress, completed */}
                     {['pending', 'in-progress', 'completed'].map(status => (
-                      <div key={status} className={`${classes.panelBg} ${classes.border} rounded-md p-4`} style={{ borderColor: '#2b2b2b', minHeight: 200 }}>
+                      <div
+                        key={status}
+                        className={`${classes.panelBg} ${classes.border} rounded-md p-4`}
+                        style={{ borderColor: '#2b2b2b', minHeight: 200 }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const idStr = e.dataTransfer.getData('text/task-id');
+                          if (!idStr) return;
+                          const id = Number(idStr);
+                          setTasks(prev => prev.map(t => t.id === id ? { ...t, status } : t));
+                        }}
+                      >
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="text-sm font-semibold text-slate-300 uppercase">{status.replace('-', ' ')}</h4>
                           <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded font-semibold">
@@ -611,6 +630,12 @@ export default function App() {
                           {tasks.filter(t => t.event === event.name && t.status === status).map(task => (
                             <div
                               key={task.id}
+                              draggable
+                              onDragStart={(e) => {
+                                e.dataTransfer.setData('text/task-id', String(task.id));
+                                // optional: set drag image or effect
+                                e.dataTransfer.effectAllowed = 'move';
+                              }}
                               onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }}
                               className="bg-slate-800 p-3 rounded-md cursor-pointer hover:border-purple-500 transition-all border-2"
                               style={{ borderColor: '#1f2937' }}
@@ -759,7 +784,7 @@ export default function App() {
     );
   };
 
-  /* -------------------- New Modals: Add Budget, Add Guest, Add Schedule -------------------- */
+  /* -------------------- New Modals: Add Budget, Add Guest, Add Schedule (unchanged) -------------------- */
 
   const AddBudgetModal = ({ eventName, onClose }) => {
     const [category, setCategory] = useState('Venue');
@@ -894,8 +919,6 @@ export default function App() {
     const [assigned, setAssigned] = useState('');
 
     const handleAdd = () => {
-      // For simplicity, schedules will be pushed into tasks as lightweight schedule entries,
-      // or you can manage a separate schedule array in future. We'll push into tasks with a special tag.
       const newItem = {
         id: Math.max(0, ...tasks.map(t => t.id)) + 1,
         title,
@@ -910,8 +933,6 @@ export default function App() {
         comments: [],
         attachments: []
       };
-      // tasks is derived from useMemo so it's read-only; but to keep original file intact we won't mutate tasks.
-      // Instead, attach schedule items to events as an added 'schedule' array for display.
       setEvents(prev => prev.map(ev => ev.name === eventName ? { ...ev, schedule: [...(ev.schedule || []), { time, title, duration, assigned }] } : ev));
       onClose();
     };
@@ -952,7 +973,7 @@ export default function App() {
     );
   };
 
-  /* -------------------- Clients: List, Add, Detail -------------------- */
+  /* -------------------- Clients: List, Add, Detail (unchanged) -------------------- */
 
   const ClientDetailModal = ({ client, onClose }) => {
     if (!client) return null;
@@ -1087,6 +1108,94 @@ export default function App() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    );
+  };
+
+  /* -------------------- Add Task Modal & helpers -------------------- */
+
+  const AddTaskModal = ({ eventName, onClose }) => {
+    const [title, setTitle] = useState('');
+    const [description, setDescription] = useState('');
+    const [assignedTo, setAssignedTo] = useState('');
+    const [dueDate, setDueDate] = useState('');
+    const [status, setStatus] = useState('pending'); // pending, in-progress, completed
+    const [priority, setPriority] = useState('medium');
+
+    const handleAdd = () => {
+      const newTask = {
+        id: Math.max(0, ...tasks.map(t => t.id)) + 1,
+        title: title || 'Untitled Task',
+        event: eventName,
+        dueDate: dueDate || new Date().toISOString().slice(0,10),
+        status,
+        priority,
+        assignedTo: assignedTo || 'Unassigned',
+        createdBy: 'You',
+        description,
+        subtasks: [],
+        tags: [],
+        comments: [],
+        attachments: []
+      };
+      setTasks(prev => [...prev, newTask]);
+      onClose();
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
+        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-md p-6`} style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-white">Add Task</h3>
+            <button onClick={onClose}><X size={18} className="text-slate-300" /></button>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-slate-300">Title</label>
+              <input value={title} onChange={e => setTitle(e.target.value)} className="w-full p-2 rounded-md" />
+            </div>
+
+            <div>
+              <label className="text-xs text-slate-300">Description</label>
+              <textarea rows={3} value={description} onChange={e => setDescription(e.target.value)} className="w-full p-2 rounded-md" />
+            </div>
+
+            <div>
+              <label className="text-xs text-slate-300">Assigned Person</label>
+              <input value={assignedTo} onChange={e => setAssignedTo(e.target.value)} className="w-full p-2 rounded-md" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-slate-300">Due Date</label>
+                <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full p-2 rounded-md" />
+              </div>
+              <div>
+                <label className="text-xs text-slate-300">Status</label>
+                <select value={status} onChange={e => setStatus(e.target.value)} className="w-full p-2 rounded-md">
+                  <option value="pending">To Do</option>
+                  <option value="in-progress">In Progress</option>
+                  <option value="completed">Done</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs text-slate-300">Priority</label>
+              <select value={priority} onChange={e => setPriority(e.target.value)} className="w-full p-2 rounded-md">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-3">
+              <button onClick={onClose} className="px-4 py-2 rounded-md">Cancel</button>
+              <button onClick={handleAdd} className="px-4 py-2 rounded-md bg-purple-700 text-white">Add Task</button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -1523,6 +1632,11 @@ export default function App() {
       {/* Add Schedule Modal */}
       {showAddScheduleModal && selectedEvent && (
         <AddScheduleModal eventName={selectedEvent.name} onClose={() => setShowAddScheduleModal(false)} />
+      )}
+
+      {/* Add Task Modal */}
+      {showAddTaskModal && selectedEvent && (
+        <AddTaskModal eventName={selectedEvent.name} onClose={() => setShowAddTaskModal(false)} />
       )}
 
       {/* Add Client Modal */}
