@@ -64,7 +64,184 @@ export default function App() {
 
   // Add Task modal toggle
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+    
+    const [newEventForm, setNewEventForm] = useState({
+  name: '',
+  date: '',
+  type: 'Corporate',
+  location: '',
+  description: '',
+  budget: '',
+  guests: ''
+});
 
+    /* -------------------- Create Event Modal -------------------- */
+
+const CreateEventModal = ({ onClose }) => {
+  const handleCreate = () => {
+    if (!newEventForm.name || !newEventForm.date) {
+      alert('Please fill in event name and date');
+      return;
+    }
+
+    const newEvent = {
+      id: Math.max(0, ...events.map(e => e.id)) + 1,
+      name: newEventForm.name,
+      date: newEventForm.date,
+      type: newEventForm.type,
+      location: newEventForm.location || 'TBD',
+      description: newEventForm.description || 'Event description to be added',
+      budget: Number(newEventForm.budget) || 0,
+      spent: 0,
+      guests: Number(newEventForm.guests) || 0,
+      confirmed: 0,
+      status: 'planning',
+      vendors: 0,
+      tasks: 0,
+      completed: 0,
+      team: [
+        { id: 1, name: 'Sarah Mitchell', role: 'Lead Planner', email: 'sarah@eventflow.com', avatar: 'SM' }
+      ],
+      schedule: []
+    };
+
+    setEvents(prev => [...prev, newEvent]);
+    
+    // Reset form
+    setNewEventForm({
+      name: '',
+      date: '',
+      type: 'Corporate',
+      location: '',
+      description: '',
+      budget: '',
+      guests: ''
+    });
+    
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
+      <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto`} style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}>
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold text-white">Create New Event</h3>
+          <button onClick={onClose}><X size={20} className="text-slate-300 hover:text-white" /></button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-semibold text-slate-300 mb-2 block">Event Name *</label>
+              <input
+                value={newEventForm.name}
+                onChange={e => setNewEventForm(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Summer Gala 2025"
+                className="w-full p-3 rounded-md border-2"
+                style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', borderColor: '#2b2b2b', color: theme === 'dark' ? '#fff' : '#111' }}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-semibold text-slate-300 mb-2 block">Date *</label>
+              <input
+                type="date"
+                value={newEventForm.date}
+                onChange={e => setNewEventForm(prev => ({ ...prev, date: e.target.value }))}
+                className="w-full p-3 rounded-md border-2"
+                style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', borderColor: '#2b2b2b', color: theme === 'dark' ? '#fff' : '#111' }}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-semibold text-slate-300 mb-2 block">Event Type</label>
+              <select
+                value={newEventForm.type}
+                onChange={e => setNewEventForm(prev => ({ ...prev, type: e.target.value }))}
+                className="w-full p-3 rounded-md border-2"
+                style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', borderColor: '#2b2b2b', color: theme === 'dark' ? '#fff' : '#111' }}
+              >
+                <option>Corporate</option>
+                <option>Wedding</option>
+                <option>Conference</option>
+                <option>Birthday</option>
+                <option>Fundraiser</option>
+                <option>Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm font-semibold text-slate-300 mb-2 block">Location</label>
+              <input
+                value={newEventForm.location}
+                onChange={e => setNewEventForm(prev => ({ ...prev, location: e.target.value }))}
+                placeholder="Grand Ballroom, Downtown"
+                className="w-full p-3 rounded-md border-2"
+                style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', borderColor: '#2b2b2b', color: theme === 'dark' ? '#fff' : '#111' }}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-semibold text-slate-300 mb-2 block">Budget</label>
+              <input
+                type="number"
+                value={newEventForm.budget}
+                onChange={e => setNewEventForm(prev => ({ ...prev, budget: e.target.value }))}
+                placeholder="50000"
+                className="w-full p-3 rounded-md border-2"
+                style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', borderColor: '#2b2b2b', color: theme === 'dark' ? '#fff' : '#111' }}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-semibold text-slate-300 mb-2 block">Expected Guests</label>
+              <input
+                type="number"
+                value={newEventForm.guests}
+                onChange={e => setNewEventForm(prev => ({ ...prev, guests: e.target.value }))}
+                placeholder="250"
+                className="w-full p-3 rounded-md border-2"
+                style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', borderColor: '#2b2b2b', color: theme === 'dark' ? '#fff' : '#111' }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-slate-300 mb-2 block">Description</label>
+            <textarea
+              rows={4}
+              value={newEventForm.description}
+              onChange={e => setNewEventForm(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Describe the event, theme, special requirements..."
+              className="w-full p-3 rounded-md border-2"
+              style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', borderColor: '#2b2b2b', color: theme === 'dark' ? '#fff' : '#111' }}
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t-2" style={{ borderColor: '#2b2b2b' }}>
+            <button
+              onClick={onClose}
+              className="px-6 py-2 rounded-md font-semibold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleCreate}
+              className="px-6 py-2 rounded-md bg-purple-700 hover:bg-purple-600 text-white font-semibold flex items-center gap-2"
+            >
+              <Plus size={16} /> Create Event
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+    
   /* -------------------- Sample Data (kept from your original file but converted to state where requested) -------------------- */
   const [events, setEvents] = useState([
     {
@@ -1596,6 +1773,7 @@ export default function App() {
       </div>
 
       {/* Modals rendered at root so they overlay everything */}
+      {showCreateEvent && <CreateEventModal onClose={() => setShowCreateEvent(false)} />}
       {showTaskDetail && <TaskDetailModal task={selectedTask} onClose={() => setShowTaskDetail(false)} />}
       {showEventDetail && <EventDetailView event={selectedEvent} onClose={() => setShowEventDetail(false)} />}
 
