@@ -1425,7 +1425,7 @@ const [editingItem, setEditingItem] = useState(null);
     
     // Local schedule state (safe copy of event.schedule)
 const [localSchedule, setLocalSchedule] = useState(event?.schedule || []);
-
+if (event) event.schedule = localSchedule;
 
   /* -------------------- Clients: List, Add, Detail (unchanged) -------------------- */
 
