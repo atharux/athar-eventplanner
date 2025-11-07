@@ -1144,9 +1144,18 @@ const [editingItem, setEditingItem] = useState(null);
               s.title === editingItem.title ? { ...editingItem } : s
             )
           );
-          // Also sync to event.schedule if it exists
-          if (event) event.schedule = localSchedule;
-          setShowGanttEditModal(false);
+     // Optionally sync with selectedEvent if accessible
+if (selectedEvent) {
+  setEvents((prev) =>
+    prev.map((e) =>
+      e.id === selectedEvent.id
+        ? { ...e, schedule: localSchedule }
+        : e
+    )
+  );
+}
+setShowGanttEditModal(false);
+
         }}
         className="space-y-4"
       >
