@@ -1,4 +1,4 @@
-// newSurgical.jsx
+// DEVnewSurgical.jsx
 import React, { useState, useMemo } from 'react';
 import {
   Calendar, Users, MessageSquare, Search, Plus, X, Send, DollarSign, MapPin, Star,
@@ -911,50 +911,112 @@ const CreateEventModal = ({ onClose }) => {
               </div>
             )}
 
-            {activeEventTab === 'schedule' && (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-white">Event Schedule</h2>
-                  <button onClick={() => setShowAddScheduleModal(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm">
-                    <Plus size={14} /> Add Item
-                  </button>
-                </div>
+{activeEventTab === 'schedule' && (
+  <div className="space-y-6">
+    <div className="flex justify-between items-center">
+      <h2 className="text-xl font-semibold text-white">Gantt Chart / Run Sheet View</h2>
+      <button
+        onClick={() => setShowAddScheduleModal(true)}
+        className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm"
+      >
+        <Plus size={14} /> Add Item
+      </button>
+    </div>
 
-                <div className="space-y-3">
-                  {[
-                    { time: '09:00 AM', title: 'Venue Setup', duration: '2 hours', assigned: 'Setup Crew', eventName: 'Summer Gala 2025' },
-                    { time: '05:00 PM', title: 'Guest Arrival', duration: '1 hour', assigned: 'Reception Team', eventName: 'Summer Gala 2025' },
-                    { time: '06:00 PM', title: 'Cocktail Hour', duration: '1 hour', assigned: 'Catering Staff', eventName: 'Summer Gala 2025' },
-                    { time: '07:00 PM', title: 'Dinner Service', duration: '2 hours', assigned: 'Elegant Catering', eventName: 'Summer Gala 2025' },
-                    { time: '09:00 PM', title: 'Entertainment Begins', duration: '3 hours', assigned: 'Harmony DJ', eventName: 'Summer Gala 2025' },
-                    { time: '12:00 AM', title: 'Event Wrap-up', duration: '1 hour', assigned: 'Full Team', eventName: 'Summer Gala 2025' }
-                  ].map((item, idx) => (
-                    <div
-                      key={idx}
-                      className={`${classes.panelBg} ${classes.border} p-4 rounded-md hover:shadow-lg transition-all`}
-                      style={{ borderColor: '#2b2b2b' }}
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className="text-center min-w-[80px]">
-                          <div className="text-lg font-bold text-purple-300">{item.time}</div>
-                          <div className="text-xs text-slate-400">{item.duration}</div>
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-white mb-1">{item.title}</h3>
-                          <div className="flex items-center gap-2 text-sm text-slate-300">
-                            <Users size={14} />
-                            <span>{item.assigned}</span>
-                          </div>
-                        </div>
-                        <button className="p-2 hover:bg-slate-700 rounded">
-                          <Edit size={16} className="text-slate-400" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+    {/* Quick Stats */}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+        <div className="text-sm text-slate-400 mb-1">Total Activities</div>
+        <div className="text-2xl font-bold text-white">{(event.schedule?.length || 6)}</div>
+      </div>
+      <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+        <div className="text-sm text-slate-400 mb-1">Start</div>
+        <div className="text-2xl font-bold text-emerald-400">09:00 AM</div>
+      </div>
+      <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+        <div className="text-sm text-slate-400 mb-1">End</div>
+        <div className="text-2xl font-bold text-emerald-400">12:00 AM</div>
+      </div>
+      <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+        <div className="text-sm text-slate-400 mb-1">Total Duration</div>
+        <div className="text-2xl font-bold text-purple-400">10 hrs</div>
+      </div>
+    </div>
+
+    {/* Gantt Chart Timeline */}
+    <div
+      className={`${classes.panelBg} ${classes.border} rounded-md p-6 relative overflow-x-auto`}
+      style={{ borderColor: '#2b2b2b', boxShadow: neonBoxShadow }}
+    >
+      <div className="min-w-[900px] relative">
+        {/* Time scale */}
+        <div className="flex justify-between text-xs text-slate-400 mb-2">
+          {['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00', '00:00'].map((t) => (
+            <div key={t} className="flex-1 text-center">{t}</div>
+          ))}
+        </div>
+
+        {/* Bars */}
+        <div className="space-y-3">
+          {(event.schedule?.length ? event.schedule : [
+            { time: '09:00 AM', title: 'Venue Setup', duration: '2 hours', assigned: 'Setup Crew' },
+            { time: '05:00 PM', title: 'Guest Arrival', duration: '1 hour', assigned: 'Reception Team' },
+            { time: '06:00 PM', title: 'Cocktail Hour', duration: '1 hour', assigned: 'Catering Staff' },
+            { time: '07:00 PM', title: 'Dinner Service', duration: '2 hours', assigned: 'Elegant Catering' },
+            { time: '09:00 PM', title: 'Entertainment Begins', duration: '3 hours', assigned: 'Harmony DJ' },
+            { time: '12:00 AM', title: 'Event Wrap-up', duration: '1 hour', assigned: 'Full Team' }
+          ]).map((item, i) => {
+            const hour = parseInt(item.time?.split(':')[0] || '0', 10);
+            const ampm = item.time?.toLowerCase().includes('pm');
+            const start = ampm && hour !== 12 ? hour + 12 - 9 : hour - 9;
+            const dur = parseInt(item.duration) || 1;
+            const colors = ['#9333ea', '#38bdf8', '#facc15', '#22c55e', '#a855f7', '#ef4444'];
+            const color = colors[i % colors.length];
+            return (
+              <div key={i} className="relative h-12 flex items-center group">
+                <div
+                  className="absolute h-8 rounded-md flex items-center justify-between px-3 text-xs font-semibold text-white cursor-pointer transition-transform duration-150 group-hover:scale-[1.02]"
+                  style={{
+                    left: `${(start / 16) * 100}%`,
+                    width: `${(dur / 16) * 100}%`,
+                    backgroundColor: color,
+                    boxShadow: `0 0 12px ${color}AA`
+                  }}
+                >
+                  <span>{item.title}</span>
+                  <span className="text-[10px] opacity-75">{item.duration}</span>
                 </div>
+                <div className="ml-2 text-slate-400 text-xs group-hover:text-slate-200 transition">
+                  <Users size={12} className="inline-block mr-1" /> {item.assigned}
+                </div>
+                <button className="absolute right-0 opacity-0 group-hover:opacity-100 bg-slate-700 hover:bg-slate-600 p-1 rounded ml-2 transition">
+                  <Edit size={14} className="text-slate-300" />
+                </button>
               </div>
-            )}
+            );
+          })}
+        </div>
+      </div>
+    </div>
+
+    {/* Legend */}
+    <div className="flex flex-wrap gap-3 mt-4 text-xs text-slate-300">
+      {[
+        { label: 'Setup', color: '#9333ea' },
+        { label: 'Reception', color: '#38bdf8' },
+        { label: 'Catering', color: '#22c55e' },
+        { label: 'Entertainment', color: '#a855f7' },
+        { label: 'Wrap-up', color: '#ef4444' }
+      ].map((cat, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: cat.color, boxShadow: `0 0 6px ${cat.color}` }}></div>
+          <span>{cat.label}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
           </div>
         </div>
       </div>
