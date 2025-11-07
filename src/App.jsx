@@ -928,8 +928,7 @@ const CreateEventModal = ({ onClose }) => {
     const TIMELINE_END_HOUR = 24;
     const TIMELINE_HOURS = TIMELINE_END_HOUR - TIMELINE_START_HOUR;
 
-    const scheduleData = event?.schedule?.length
-      ? event.schedule
+    const scheduleData = localSchedule?.length ? localSchedule
       : [
           { time: '09:00 AM', title: 'Venue Setup', duration: '2 hours', assigned: 'Setup Crew', category: 'Setup' },
           { time: '05:00 PM', title: 'Guest Arrival', duration: '1 hour', assigned: 'Reception Team', category: 'Reception' },
@@ -983,6 +982,10 @@ const CreateEventModal = ({ onClose }) => {
         setShowAddScheduleModal(true);
       }
     };
+      // Gantt edit modal state
+const [showGanttEditModal, setShowGanttEditModal] = useState(false);
+const [editingItem, setEditingItem] = useState(null);
+
 
     return (
       <div className="space-y-6 relative">
@@ -1040,13 +1043,17 @@ const CreateEventModal = ({ onClose }) => {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-300 hidden sm:block">{it.assigned}</span>
-                  <button
-                    className="p-1 hover:bg-slate-700 rounded"
-                    onClick={() => handleEdit(it)}
-                    title="Edit this item"
-                  >
-                    <Edit size={14} className="text-slate-300" />
-                  </button>
+              <button
+  className="p-1 hover:bg-slate-700 rounded"
+  onClick={() => {
+    setEditingItem(it);
+    setShowGanttEditModal(true);
+  }}
+  title="Edit this schedule item"
+>
+  <Edit size={14} className="text-slate-300" />
+</button>
+
                 </div>
               </div>
             ))}
@@ -1117,6 +1124,106 @@ const CreateEventModal = ({ onClose }) => {
       </div>
     );
   })()
+)}
+{/* Edit Modal */}
+{showGanttEditModal && editingItem && (
+  <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center">
+    <div
+      className={`${classes.panelBg} ${classes.border} rounded-xl p-6 w-[95%] max-w-md`}
+      style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}
+    >
+      <h3 className="text-lg font-semibold text-white mb-4">Edit Schedule Item</h3>
+      <form
+        onSubmit={(e) => {
+  e.preventDefault();
+  if (!editingItem) return;
+  setLocalSchedule((prev) =>
+    prev.map((s) => (s.title === editingItem.title ? editingItem : s))
+  );
+  setShowGanttEditModal(false);
+}}
+      >
+        {/* Title */}
+        <div>
+          <label className="block text-sm text-slate-400 mb-1">Title</label>
+          <input
+            type="text"
+            value={editingItem.title}
+            onChange={(e) => setEditingItem({ ...editingItem, title: e.target.value })}
+            className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
+
+        {/* Assigned */}
+        <div>
+          <label className="block text-sm text-slate-400 mb-1">Assigned To</label>
+          <input
+            type="text"
+            value={editingItem.assigned}
+            onChange={(e) => setEditingItem({ ...editingItem, assigned: e.target.value })}
+            className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
+
+        {/* Time */}
+        <div>
+          <label className="block text-sm text-slate-400 mb-1">Start Time</label>
+          <input
+            type="text"
+            placeholder="e.g. 07:00 PM"
+            value={editingItem.time}
+            onChange={(e) => setEditingItem({ ...editingItem, time: e.target.value })}
+            className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
+
+        {/* Duration */}
+        <div>
+          <label className="block text-sm text-slate-400 mb-1">Duration</label>
+          <input
+            type="text"
+            placeholder="e.g. 2 hours"
+            value={editingItem.duration}
+            onChange={(e) => setEditingItem({ ...editingItem, duration: e.target.value })}
+            className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
+
+        {/* Category */}
+        <div>
+          <label className="block text-sm text-slate-400 mb-1">Category</label>
+          <select
+            value={editingItem.category}
+            onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
+            className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+          >
+            <option>Setup</option>
+            <option>Reception</option>
+            <option>Catering</option>
+            <option>Entertainment</option>
+            <option>Wrap-up</option>
+          </select>
+        </div>
+
+        {/* Buttons */}
+        <div className="flex justify-end gap-3 pt-3">
+          <button
+            type="button"
+            onClick={() => setShowGanttEditModal(false)}
+            className="px-4 py-2 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 rounded bg-purple-700 hover:bg-purple-600 text-white text-sm shadow-lg"
+          >
+            Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 )}
 
 
@@ -1314,6 +1421,11 @@ const CreateEventModal = ({ onClose }) => {
       </div>
     );
   };
+    
+    
+    // Local schedule state (safe copy of event.schedule)
+const [localSchedule, setLocalSchedule] = useState(event?.schedule || []);
+
 
   /* -------------------- Clients: List, Add, Detail (unchanged) -------------------- */
 
