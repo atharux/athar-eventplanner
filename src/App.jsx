@@ -1125,7 +1125,8 @@ const [editingItem, setEditingItem] = useState(null);
     );
   })()
 )}
-{/* Edit Modal */}
+
+              {/* Edit Modal */}
 {showGanttEditModal && editingItem && (
   <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center">
     <div
@@ -1135,21 +1136,29 @@ const [editingItem, setEditingItem] = useState(null);
       <h3 className="text-lg font-semibold text-white mb-4">Edit Schedule Item</h3>
       <form
         onSubmit={(e) => {
-  e.preventDefault();
-  if (!editingItem) return;
-  setLocalSchedule((prev) =>
-    prev.map((s) => (s.title === editingItem.title ? editingItem : s))
-  );
-  setShowGanttEditModal(false);
-}}
+          e.preventDefault();
+          if (!editingItem) return;
+          // Safely update the local schedule
+          setLocalSchedule((prev) =>
+            prev.map((s) =>
+              s.title === editingItem.title ? { ...editingItem } : s
+            )
+          );
+          // Also sync to event.schedule if it exists
+          if (event) event.schedule = localSchedule;
+          setShowGanttEditModal(false);
+        }}
+        className="space-y-4"
       >
         {/* Title */}
         <div>
           <label className="block text-sm text-slate-400 mb-1">Title</label>
           <input
             type="text"
-            value={editingItem.title}
-            onChange={(e) => setEditingItem({ ...editingItem, title: e.target.value })}
+            value={editingItem.title || ''}
+            onChange={(e) =>
+              setEditingItem({ ...editingItem, title: e.target.value })
+            }
             className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
         </div>
@@ -1159,20 +1168,24 @@ const [editingItem, setEditingItem] = useState(null);
           <label className="block text-sm text-slate-400 mb-1">Assigned To</label>
           <input
             type="text"
-            value={editingItem.assigned}
-            onChange={(e) => setEditingItem({ ...editingItem, assigned: e.target.value })}
+            value={editingItem.assigned || ''}
+            onChange={(e) =>
+              setEditingItem({ ...editingItem, assigned: e.target.value })
+            }
             className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
         </div>
 
-        {/* Time */}
+        {/* Start Time */}
         <div>
           <label className="block text-sm text-slate-400 mb-1">Start Time</label>
           <input
             type="text"
             placeholder="e.g. 07:00 PM"
-            value={editingItem.time}
-            onChange={(e) => setEditingItem({ ...editingItem, time: e.target.value })}
+            value={editingItem.time || ''}
+            onChange={(e) =>
+              setEditingItem({ ...editingItem, time: e.target.value })
+            }
             className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
         </div>
@@ -1183,8 +1196,10 @@ const [editingItem, setEditingItem] = useState(null);
           <input
             type="text"
             placeholder="e.g. 2 hours"
-            value={editingItem.duration}
-            onChange={(e) => setEditingItem({ ...editingItem, duration: e.target.value })}
+            value={editingItem.duration || ''}
+            onChange={(e) =>
+              setEditingItem({ ...editingItem, duration: e.target.value })
+            }
             className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
         </div>
@@ -1193,8 +1208,10 @@ const [editingItem, setEditingItem] = useState(null);
         <div>
           <label className="block text-sm text-slate-400 mb-1">Category</label>
           <select
-            value={editingItem.category}
-            onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
+            value={editingItem.category || 'Setup'}
+            onChange={(e) =>
+              setEditingItem({ ...editingItem, category: e.target.value })
+            }
             className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
             <option>Setup</option>
@@ -1205,7 +1222,7 @@ const [editingItem, setEditingItem] = useState(null);
           </select>
         </div>
 
-        {/* Buttons */}
+        {/* Action Buttons */}
         <div className="flex justify-end gap-3 pt-3">
           <button
             type="button"
@@ -1225,6 +1242,7 @@ const [editingItem, setEditingItem] = useState(null);
     </div>
   </div>
 )}
+
 
 
           </div>
