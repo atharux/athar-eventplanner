@@ -911,7 +911,7 @@ const CreateEventModal = ({ onClose }) => {
               </div>
             )}
 
-{activeEventTab === 'schedule' && (
+{activeEventTab === 'schedule' && selectedEvent && localSchedule && (
   (() => {
     const parseHour24 = (t) => {
       if (!t) return 9;
@@ -1166,8 +1166,8 @@ setShowGanttEditModal(false);
             type="text"
             value={editingItem.title || ''}
             onChange={(e) =>
-              setEditingItem({ ...editingItem, title: e.target.value })
-            }
+              setEditingItem((prev) => ({ ...editingItem, title: e.target.value }))
+}
             className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
         </div>
@@ -1450,9 +1450,15 @@ setShowGanttEditModal(false);
   };
     
     
-    // Local schedule state (safe copy of event.schedule)
-const [localSchedule, setLocalSchedule] = useState(event?.schedule || []);
-if (event) event.schedule = localSchedule;
+// Local schedule state (safe copy of event.schedule)
+const [localSchedule, setLocalSchedule] = useState([]);
+
+useEffect(() => {
+  if (selectedEvent?.schedule?.length) {
+    setLocalSchedule(selectedEvent.schedule);
+  }
+}, [selectedEvent]);
+
 
   /* -------------------- Clients: List, Add, Detail (unchanged) -------------------- */
 
