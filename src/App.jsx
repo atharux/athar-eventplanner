@@ -911,259 +911,367 @@ const CreateEventModal = ({ onClose }) => {
               </div>
             )}
 
-{/* -------------------- Gantt / Run Sheet View -------------------- */}
-{activeEventTab === 'schedule' && selectedEvent != null && (
-  (() => {
-    try {
-      // Local schedule state
-      const [localSchedule, setLocalSchedule] = React.useState([]);
-      const [showGanttEditModal, setShowGanttEditModal] = React.useState(false);
-      const [editingItem, setEditingItem] = React.useState(null);
+{/* -------------------- GANTT CHART / RUN SHEET VIEW -------------------- */}
+{activeEventTab === 'schedule' && selectedEvent && (
+  <div className="space-y-4">
+    <div className="flex justify-between items-center mb-6">
+      <div>
+        <h2 className="text-xl font-semibold text-white">Event Run Sheet</h2>
+        <p className="text-sm text-slate-400 mt-1">Timeline for {selectedEvent.name}</p>
+      </div>
+      <button
+        onClick={() => setShowAddScheduleModal(true)}
+        className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm font-semibold"
+      >
+        <Plus size={14} /> Add Item
+      </button>
+    </div>
 
-      // Initialize from selectedEvent safely
+    {(() => {
+      // Sample schedule data (replace with selectedEvent.schedule when available)
+      const scheduleData = selectedEvent.schedule?.length ? selectedEvent.schedule : [
+        { time: '09:00', title: 'Venue Setup', duration: 120, assigned: 'Setup Crew', category: 'Setup' },
+        { time: '11:00', title: 'Catering Arrival', duration: 60, assigned: 'Elegant Catering', category: 'Catering' },
+        { time: '14:00', title: 'Sound Check', duration: 90, assigned: 'Harmony DJ', category: 'Entertainment' },
+        { time: '16:00', title: 'Final Walkthrough', duration: 60, assigned: 'Sarah Mitchell', category: 'Coordination' },
+        { time: '17:00', title: 'Guest Arrival', duration: 60, assigned: 'Reception Team', category: 'Reception' },
+        { time: '18:00', title: 'Cocktail Hour', duration: 60, assigned: 'Catering Staff', category: 'Catering' },
+        { time: '19:00', title: 'Dinner Service', duration: 120, assigned: 'Elegant Catering', category: 'Catering' },
+        { time: '21:00', title: 'Entertainment Begins', duration: 180, assigned: 'Harmony DJ', category: 'Entertainment' },
+        { time: '00:00', title: 'Event Wrap-up', duration: 60, assigned: 'Full Team', category: 'Wrap-up' }
+      ];
+
+      // Category colors
+      const categoryColors = {
+        Setup: '#3b82f6',
+        Catering: '#10b981',
+        Entertainment: '#8b5cf6',
+        Coordination: '#f59e0b',
+        Reception: '#06b6d4',
+        'Wrap-up': '#ef4444'
+      };
+
+      // Convert time string to minutes since midnight
+      const timeToMinutes = (timeStr) => {
+        const [hours, mins] = timeStr.split(':').map(Number);
+        return hours * 60 + mins;
+      };
+
+      // Format minutes to time string
+      const minutesToTime = (mins) => {
+        const h = Math.floor(mins / 60) % 24;
+        const m = mins % 60;
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+      };
+
+      // Current time in minutes
+      const [currentMinutes, setCurrentMinutes] = React.useState(() => {
+        const now = new Date();
+        return now.getHours() * 60 + now.getMinutes();
+      });
+
+      // Update current time every minute
       React.useEffect(() => {
-        if (selectedEvent?.schedule?.length) {
-          setLocalSchedule(selectedEvent.schedule);
-        } else {
-          setLocalSchedule([]);
-        }
-      }, [selectedEvent]);
+        const interval = setInterval(() => {
+          const now = new Date();
+          setCurrentMinutes(now.getHours() * 60 + now.getMinutes());
+        }, 60000);
+        return () => clearInterval(interval);
+      }, []);
 
-      // Neon helpers (already declared in parent scope)
-      const NEON = '#A020F0';
-      const neonBoxShadow = `0 6px 30px -6px ${NEON}, 0 0 20px 2px ${NEON}55`;
+      // Process schedule items
+      const processedItems = scheduleData.map((item, idx) => {
+        const startMinutes = timeToMinutes(item.time);
+        const endMinutes = startMinutes + item.duration;
+        return {
+          ...item,
+          id: idx,
+          startMinutes,
+          endMinutes,
+          color: categoryColors[item.category] || '#6b7280'
+        };
+      });
 
-      // Sample data fallback
-      const data = localSchedule?.length
-        ? localSchedule
-        : [
-            { time: '09:00 AM', title: 'Venue Setup', duration: '2 hours', assigned: 'Setup Crew', category: 'Setup' },
-            { time: '05:00 PM', title: 'Guest Arrival', duration: '1 hour', assigned: 'Reception Team', category: 'Reception' },
-            { time: '06:00 PM', title: 'Cocktail Hour', duration: '1 hour', assigned: 'Catering Staff', category: 'Catering' },
-            { time: '07:00 PM', title: 'Dinner Service', duration: '2 hours', assigned: 'Elegant Catering', category: 'Catering' },
-            { time: '09:00 PM', title: 'Entertainment Begins', duration: '3 hours', assigned: 'Harmony DJ', category: 'Entertainment' },
-            { time: '12:00 AM', title: 'Event Wrap-up', duration: '1 hour', assigned: 'Full Team', category: 'Wrap-up' }
-          ];
+      // Timeline parameters
+      const totalMinutes = 24 * 60; // Full 24 hours
+      const pixelsPerMinute = 2; // 2px per minute = 2880px for 24h
+      const timelineWidth = totalMinutes * pixelsPerMinute;
+
+      // Tooltip state
+      const [tooltip, setTooltip] = React.useState(null);
 
       return (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-white">Gantt Chart / Run Sheet</h2>
-            <button
-              onClick={() => setShowAddScheduleModal(true)}
-              className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm"
-              title="Add new schedule item"
-            >
-              <Plus size={14} /> Add Item
-            </button>
+        <div className="flex gap-4 relative">
+          {/* LEFT PANEL: List View */}
+          <div className="w-72 flex-shrink-0 space-y-2 max-h-[600px] overflow-y-auto pr-2">
+            {processedItems.map((item) => (
+              <div
+                key={item.id}
+                onClick={() => {
+                  // Find or create corresponding task
+                  const task = tasks.find(t => t.title === item.title) || {
+                    id: item.id,
+                    title: item.title,
+                    event: selectedEvent.name,
+                    dueDate: selectedEvent.date,
+                    status: 'pending',
+                    priority: 'medium',
+                    assignedTo: item.assigned,
+                    description: `Schedule item: ${item.title}`,
+                    subtasks: [],
+                    tags: [item.category.toLowerCase()],
+                    comments: [],
+                    attachments: []
+                  };
+                  setSelectedTask(task);
+                  setShowTaskDetail(true);
+                }}
+                className={`${classes.panelBg} ${classes.border} p-3 rounded-md cursor-pointer hover:shadow-lg transition-all group`}
+                style={{ borderColor: '#2b2b2b' }}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div
+                        className="w-3 h-3 rounded-sm"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <span className="text-purple-300 font-bold text-sm">{item.time}</span>
+                    </div>
+                    <h3 className="text-white font-semibold text-sm mb-1">{item.title}</h3>
+                    <div className="text-slate-400 text-xs">
+                      {Math.floor(item.duration / 60)}h {item.duration % 60}m • {item.assigned}
+                    </div>
+                  </div>
+                  <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-700 rounded">
+                    <Edit size={12} className="text-slate-300" />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* Dual-panel layout */}
-          <div className="flex flex-col md:flex-row gap-4">
-            {/* Left list */}
-            <div className="w-full md:w-1/3 space-y-2">
-              {data.map((it, idx) => (
-                <div
-                  key={idx}
-                  className={`${classes.panelBg} ${classes.border} p-3 rounded-md transition-all hover:shadow-lg`}
-                  style={{ borderColor: '#2b2b2b' }}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="text-purple-300 font-bold">{it.time}</div>
-                      <div className="text-white font-semibold">{it.title}</div>
-                      <div className="text-slate-400 text-xs">
-                        {it.duration} • {it.assigned}
-                      </div>
+          {/* RIGHT PANEL: Gantt Timeline */}
+          <div className="flex-1 min-w-0">
+            <div
+              className={`${classes.panelBg} ${classes.border} rounded-lg overflow-hidden relative`}
+              style={{ borderColor: '#2b2b2b' }}
+            >
+              {/* Timeline Container with Horizontal Scroll */}
+              <div className="overflow-x-auto overflow-y-visible" style={{ maxHeight: '600px' }}>
+                <div style={{ width: `${timelineWidth}px`, minHeight: '500px', position: 'relative' }}>
+                  
+                  {/* TIME RULER (top) */}
+                  <div className="sticky top-0 z-20 bg-slate-800 border-b-2" style={{ borderColor: '#2b2b2b', height: '48px' }}>
+                    <div className="relative h-full" style={{ width: `${timelineWidth}px` }}>
+                      {Array.from({ length: 25 }, (_, i) => {
+                        const x = i * 60 * pixelsPerMinute;
+                        return (
+                          <div
+                            key={i}
+                            className="absolute top-0 h-full flex flex-col justify-center"
+                            style={{ left: `${x}px` }}
+                          >
+                            <div className="text-xs font-semibold text-slate-300 px-2">
+                              {i.toString().padStart(2, '0')}:00
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <button
-                      onClick={() => {
-                        setEditingItem(it);
-                        setShowGanttEditModal(true);
+                  </div>
+
+                  {/* GRID: Vertical hour lines */}
+                  <div className="absolute inset-0 top-12 pointer-events-none">
+                    {Array.from({ length: 25 }, (_, i) => {
+                      const x = i * 60 * pixelsPerMinute;
+                      return (
+                        <div
+                          key={i}
+                          className="absolute top-0 bottom-0 border-l"
+                          style={{
+                            left: `${x}px`,
+                            borderColor: i % 3 === 0 ? '#334155' : '#1e293b'
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* CURRENT TIME INDICATOR */}
+                  {currentMinutes >= 0 && currentMinutes < totalMinutes && (
+                    <div
+                      className="absolute top-12 bottom-0 w-0.5 z-30 pointer-events-none"
+                      style={{
+                        left: `${currentMinutes * pixelsPerMinute}px`,
+                        backgroundColor: NEON,
+                        boxShadow: `0 0 8px ${NEON}`
                       }}
-                      className="p-1 hover:bg-slate-700 rounded"
-                      title="Edit this item"
                     >
-                      <Edit size={14} className="text-slate-300" />
-                    </button>
+                      <div
+                        className="absolute -top-2 -left-2 w-4 h-4 rounded-full"
+                        style={{
+                          backgroundColor: NEON,
+                          boxShadow: `0 0 8px ${NEON}`
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* TASK BARS */}
+                  <div className="relative pt-12 pb-4">
+                    {processedItems.map((item, idx) => {
+                      const left = item.startMinutes * pixelsPerMinute;
+                      const width = item.duration * pixelsPerMinute;
+                      const top = idx * 56 + 8; // 56px per row
+
+                      return (
+                        <React.Fragment key={item.id}>
+                          {/* Horizontal row separator */}
+                          {idx > 0 && (
+                            <div
+                              className="absolute left-0 right-0 border-t"
+                              style={{
+                                top: `${top - 4}px`,
+                                borderColor: '#1e293b'
+                              }}
+                            />
+                          )}
+
+                          {/* Task Bar */}
+                          <div
+                            className="absolute cursor-pointer group transition-all duration-200"
+                            style={{
+                              left: `${left}px`,
+                              width: `${width}px`,
+                              top: `${top}px`,
+                              height: '40px'
+                            }}
+                            onClick={() => {
+                              const task = tasks.find(t => t.title === item.title) || {
+                                id: item.id,
+                                title: item.title,
+                                event: selectedEvent.name,
+                                dueDate: selectedEvent.date,
+                                status: 'pending',
+                                priority: 'medium',
+                                assignedTo: item.assigned,
+                                description: `Schedule item: ${item.title}`,
+                                subtasks: [],
+                                tags: [item.category.toLowerCase()],
+                                comments: [],
+                                attachments: []
+                              };
+                              setSelectedTask(task);
+                              setShowTaskDetail(true);
+                            }}
+                            onMouseEnter={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setTooltip({
+                                item,
+                                x: rect.left + rect.width / 2,
+                                y: rect.top - 10
+                              });
+                            }}
+                            onMouseLeave={() => setTooltip(null)}
+                          >
+                            <div
+                              className="h-full rounded-md flex items-center px-3 group-hover:opacity-90 shadow-lg"
+                              style={{
+                                backgroundColor: item.color,
+                                boxShadow: `0 2px 8px ${item.color}40`
+                              }}
+                            >
+                              <span className="text-white font-semibold text-xs truncate">
+                                {item.title}
+                              </span>
+                              <span className="text-white/80 text-xs ml-auto pl-2">
+                                {Math.floor(item.duration / 60)}h {item.duration % 60}m
+                              </span>
+                            </div>
+                          </div>
+                        </React.Fragment>
+                      );
+                    })}
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
 
-            {/* Right time-based chart */}
-            <div className="flex-1 overflow-x-auto relative h-64 bg-slate-800 rounded-lg border border-slate-700">
-              {/* Time ruler */}
-              <div className="absolute top-0 left-0 w-full flex justify-between text-xs text-slate-400 p-2">
-                {['09 AM', '12 PM', '03 PM', '06 PM', '09 PM', '12 AM'].map((t) => (
-                  <span key={t}>{t}</span>
-                ))}
-              </div>
-
-              {/* Activity bars */}
-              <div className="absolute inset-0 mt-5 space-y-3 p-4">
-                {data.map((it, idx) => (
-                  <div
-                    key={idx}
-                    className="relative group"
-                    title={`${it.title} — ${it.duration}`}
-                  >
-                    <div
-                      className="h-6 rounded-md cursor-pointer transition-all duration-200"
-                      style={{
-                        width: `${Math.min(parseInt(it.duration) * 20 || 40, 100)}%`,
-                        backgroundColor: '#A020F0aa',
-                        boxShadow: neonBoxShadow
-                      }}
-                    />
-                    <div className="absolute hidden group-hover:flex top-7 left-0 bg-slate-900 text-white text-xs px-2 py-1 rounded shadow-lg border border-slate-700 z-10 whitespace-nowrap">
-                      <div className="flex flex-col">
-                        <span className="font-semibold">{it.title}</span>
-                        <span>{it.time} • {it.duration}</span>
-                        <span className="text-slate-400">{it.assigned}</span>
-                      </div>
-                    </div>
+            {/* LEGEND */}
+            <div className={`${classes.panelBg} ${classes.border} p-4 rounded-lg mt-4`} style={{ borderColor: '#2b2b2b' }}>
+              <h3 className="text-sm font-semibold text-white mb-3">Color Legend</h3>
+              <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300">
+                {Object.entries(categoryColors).map(([category, color]) => (
+                  <div key={category} className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded" style={{ backgroundColor: color }} />
+                    <span>{category}</span>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* STATS */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+              <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                <div className="text-xs text-slate-400 mb-1">TOTAL DURATION</div>
+                <div className="text-xl font-bold text-white">
+                  {Math.floor(processedItems.reduce((sum, i) => sum + i.duration, 0) / 60)}h
+                </div>
+              </div>
+              <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                <div className="text-xs text-slate-400 mb-1">ACTIVITIES</div>
+                <div className="text-xl font-bold text-white">{processedItems.length}</div>
+              </div>
+              <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                <div className="text-xs text-slate-400 mb-1">START TIME</div>
+                <div className="text-xl font-bold text-white">
+                  {processedItems[0]?.time || '--:--'}
+                </div>
+              </div>
+              <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                <div className="text-xs text-slate-400 mb-1">END TIME</div>
+                <div className="text-xl font-bold text-white">
+                  {processedItems.length > 0
+                    ? minutesToTime(processedItems[processedItems.length - 1].endMinutes)
+                    : '--:--'}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Edit Modal */}
-          {showGanttEditModal && editingItem && (
-            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center">
+          {/* TOOLTIP (Fixed position overlay) */}
+          {tooltip && (
+            <div
+              className="fixed z-50 pointer-events-none"
+              style={{
+                left: `${tooltip.x}px`,
+                top: `${tooltip.y}px`,
+                transform: 'translate(-50%, -100%)'
+              }}
+            >
               <div
-                className={`${classes.panelBg} ${classes.border} rounded-xl p-6 w-[95%] max-w-md`}
-                style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}
+                className={`${classes.panelBg} border-2 rounded-lg p-3 shadow-xl`}
+                style={{
+                  borderColor: tooltip.item.color,
+                  boxShadow: `0 4px 20px ${tooltip.item.color}40`
+                }}
               >
-                <h3 className="text-lg font-semibold text-white mb-4">Edit Schedule Item</h3>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (!editingItem) return;
-                    setLocalSchedule((prev) =>
-                      prev.map((s) =>
-                        s.title === editingItem.title ? { ...editingItem } : s
-                      )
-                    );
-                    // Optional sync to global event
-                    if (selectedEvent) {
-                      setEvents((prev) =>
-                        prev.map((ev) =>
-                          ev.id === selectedEvent.id
-                            ? { ...ev, schedule: localSchedule }
-                            : ev
-                        )
-                      );
-                    }
-                    setShowGanttEditModal(false);
-                  }}
-                  className="space-y-4"
-                >
-                  {/* Title */}
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-1">Title</label>
-                    <input
-                      type="text"
-                      value={editingItem.title || ''}
-                      onChange={(e) =>
-                        setEditingItem((prev) => ({ ...prev, title: e.target.value }))
-                      }
-                      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-
-                  {/* Assigned */}
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-1">Assigned To</label>
-                    <input
-                      type="text"
-                      value={editingItem.assigned || ''}
-                      onChange={(e) =>
-                        setEditingItem((prev) => ({ ...prev, assigned: e.target.value }))
-                      }
-                      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-
-                  {/* Start Time */}
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-1">Start Time</label>
-                    <input
-                      type="text"
-                      value={editingItem.time || ''}
-                      onChange={(e) =>
-                        setEditingItem((prev) => ({ ...prev, time: e.target.value }))
-                      }
-                      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-
-                  {/* Duration */}
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-1">Duration</label>
-                    <input
-                      type="text"
-                      value={editingItem.duration || ''}
-                      onChange={(e) =>
-                        setEditingItem((prev) => ({ ...prev, duration: e.target.value }))
-                      }
-                      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-
-                  {/* Category */}
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-1">Category</label>
-                    <select
-                      value={editingItem.category || 'Setup'}
-                      onChange={(e) =>
-                        setEditingItem((prev) => ({ ...prev, category: e.target.value }))
-                      }
-                      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    >
-                      <option>Setup</option>
-                      <option>Reception</option>
-                      <option>Catering</option>
-                      <option>Entertainment</option>
-                      <option>Wrap-up</option>
-                    </select>
-                  </div>
-
-                  {/* Buttons */}
-                  <div className="flex justify-end gap-3 pt-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowGanttEditModal(false)}
-                      className="px-4 py-2 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 rounded bg-purple-700 hover:bg-purple-600 text-white text-sm shadow-lg"
-                    >
-                      Save Changes
-                    </button>
-                  </div>
-                </form>
+                <div className="text-white font-semibold text-sm mb-1">{tooltip.item.title}</div>
+                <div className="text-slate-300 text-xs space-y-0.5">
+                  <div>{tooltip.item.time} - {minutesToTime(tooltip.item.endMinutes)}</div>
+                  <div>{Math.floor(tooltip.item.duration / 60)}h {tooltip.item.duration % 60}m</div>
+                  <div className="text-slate-400">{tooltip.item.assigned}</div>
+                  <div className="text-purple-300">{tooltip.item.category}</div>
+                </div>
               </div>
             </div>
           )}
         </div>
       );
-    } catch (err) {
-      console.error('Schedule render error:', err);
-      return (
-        <div className="text-red-400 text-sm p-6">
-          Error rendering schedule. Check console for details.
-        </div>
-      );
-    }
-  })()
+    })()}
+  </div>
 )}
-
-
 
           </div>
         </div>
@@ -2035,4 +2143,364 @@ const CreateEventModal = ({ onClose }) => {
 
     </div>
   );
-}
+}{/* -------------------- GANTT CHART / RUN SHEET VIEW -------------------- */}
+{activeEventTab === 'schedule' && selectedEvent && (
+  <div className="space-y-4">
+    <div className="flex justify-between items-center mb-6">
+      <div>
+        <h2 className="text-xl font-semibold text-white">Event Run Sheet</h2>
+        <p className="text-sm text-slate-400 mt-1">Timeline for {selectedEvent.name}</p>
+      </div>
+      <button
+        onClick={() => setShowAddScheduleModal(true)}
+        className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm font-semibold"
+      >
+        <Plus size={14} /> Add Item
+      </button>
+    </div>
+
+    {(() => {
+      // Sample schedule data (replace with selectedEvent.schedule when available)
+      const scheduleData = selectedEvent.schedule?.length ? selectedEvent.schedule : [
+        { time: '09:00', title: 'Venue Setup', duration: 120, assigned: 'Setup Crew', category: 'Setup' },
+        { time: '11:00', title: 'Catering Arrival', duration: 60, assigned: 'Elegant Catering', category: 'Catering' },
+        { time: '14:00', title: 'Sound Check', duration: 90, assigned: 'Harmony DJ', category: 'Entertainment' },
+        { time: '16:00', title: 'Final Walkthrough', duration: 60, assigned: 'Sarah Mitchell', category: 'Coordination' },
+        { time: '17:00', title: 'Guest Arrival', duration: 60, assigned: 'Reception Team', category: 'Reception' },
+        { time: '18:00', title: 'Cocktail Hour', duration: 60, assigned: 'Catering Staff', category: 'Catering' },
+        { time: '19:00', title: 'Dinner Service', duration: 120, assigned: 'Elegant Catering', category: 'Catering' },
+        { time: '21:00', title: 'Entertainment Begins', duration: 180, assigned: 'Harmony DJ', category: 'Entertainment' },
+        { time: '00:00', title: 'Event Wrap-up', duration: 60, assigned: 'Full Team', category: 'Wrap-up' }
+      ];
+
+      // Category colors
+      const categoryColors = {
+        Setup: '#3b82f6',
+        Catering: '#10b981',
+        Entertainment: '#8b5cf6',
+        Coordination: '#f59e0b',
+        Reception: '#06b6d4',
+        'Wrap-up': '#ef4444'
+      };
+
+      // Convert time string to minutes since midnight
+      const timeToMinutes = (timeStr) => {
+        const [hours, mins] = timeStr.split(':').map(Number);
+        return hours * 60 + mins;
+      };
+
+      // Format minutes to time string
+      const minutesToTime = (mins) => {
+        const h = Math.floor(mins / 60) % 24;
+        const m = mins % 60;
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+      };
+
+      // Current time in minutes
+      const [currentMinutes, setCurrentMinutes] = React.useState(() => {
+        const now = new Date();
+        return now.getHours() * 60 + now.getMinutes();
+      });
+
+      // Update current time every minute
+      React.useEffect(() => {
+        const interval = setInterval(() => {
+          const now = new Date();
+          setCurrentMinutes(now.getHours() * 60 + now.getMinutes());
+        }, 60000);
+        return () => clearInterval(interval);
+      }, []);
+
+      // Process schedule items
+      const processedItems = scheduleData.map((item, idx) => {
+        const startMinutes = timeToMinutes(item.time);
+        const endMinutes = startMinutes + item.duration;
+        return {
+          ...item,
+          id: idx,
+          startMinutes,
+          endMinutes,
+          color: categoryColors[item.category] || '#6b7280'
+        };
+      });
+
+      // Timeline parameters
+      const totalMinutes = 24 * 60; // Full 24 hours
+      const pixelsPerMinute = 2; // 2px per minute = 2880px for 24h
+      const timelineWidth = totalMinutes * pixelsPerMinute;
+
+      // Tooltip state
+      const [tooltip, setTooltip] = React.useState(null);
+
+      return (
+        <div className="flex gap-4 relative">
+          {/* LEFT PANEL: List View */}
+          <div className="w-72 flex-shrink-0 space-y-2 max-h-[600px] overflow-y-auto pr-2">
+            {processedItems.map((item) => (
+              <div
+                key={item.id}
+                onClick={() => {
+                  // Find or create corresponding task
+                  const task = tasks.find(t => t.title === item.title) || {
+                    id: item.id,
+                    title: item.title,
+                    event: selectedEvent.name,
+                    dueDate: selectedEvent.date,
+                    status: 'pending',
+                    priority: 'medium',
+                    assignedTo: item.assigned,
+                    description: `Schedule item: ${item.title}`,
+                    subtasks: [],
+                    tags: [item.category.toLowerCase()],
+                    comments: [],
+                    attachments: []
+                  };
+                  setSelectedTask(task);
+                  setShowTaskDetail(true);
+                }}
+                className={`${classes.panelBg} ${classes.border} p-3 rounded-md cursor-pointer hover:shadow-lg transition-all group`}
+                style={{ borderColor: '#2b2b2b' }}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div
+                        className="w-3 h-3 rounded-sm"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <span className="text-purple-300 font-bold text-sm">{item.time}</span>
+                    </div>
+                    <h3 className="text-white font-semibold text-sm mb-1">{item.title}</h3>
+                    <div className="text-slate-400 text-xs">
+                      {Math.floor(item.duration / 60)}h {item.duration % 60}m • {item.assigned}
+                    </div>
+                  </div>
+                  <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-700 rounded">
+                    <Edit size={12} className="text-slate-300" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* RIGHT PANEL: Gantt Timeline */}
+          <div className="flex-1 min-w-0">
+            <div
+              className={`${classes.panelBg} ${classes.border} rounded-lg overflow-hidden relative`}
+              style={{ borderColor: '#2b2b2b' }}
+            >
+              {/* Timeline Container with Horizontal Scroll */}
+              <div className="overflow-x-auto overflow-y-visible" style={{ maxHeight: '600px' }}>
+                <div style={{ width: `${timelineWidth}px`, minHeight: '500px', position: 'relative' }}>
+                  
+                  {/* TIME RULER (top) */}
+                  <div className="sticky top-0 z-20 bg-slate-800 border-b-2" style={{ borderColor: '#2b2b2b', height: '48px' }}>
+                    <div className="relative h-full" style={{ width: `${timelineWidth}px` }}>
+                      {Array.from({ length: 25 }, (_, i) => {
+                        const x = i * 60 * pixelsPerMinute;
+                        return (
+                          <div
+                            key={i}
+                            className="absolute top-0 h-full flex flex-col justify-center"
+                            style={{ left: `${x}px` }}
+                          >
+                            <div className="text-xs font-semibold text-slate-300 px-2">
+                              {i.toString().padStart(2, '0')}:00
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* GRID: Vertical hour lines */}
+                  <div className="absolute inset-0 top-12 pointer-events-none">
+                    {Array.from({ length: 25 }, (_, i) => {
+                      const x = i * 60 * pixelsPerMinute;
+                      return (
+                        <div
+                          key={i}
+                          className="absolute top-0 bottom-0 border-l"
+                          style={{
+                            left: `${x}px`,
+                            borderColor: i % 3 === 0 ? '#334155' : '#1e293b'
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* CURRENT TIME INDICATOR */}
+                  {currentMinutes >= 0 && currentMinutes < totalMinutes && (
+                    <div
+                      className="absolute top-12 bottom-0 w-0.5 z-30 pointer-events-none"
+                      style={{
+                        left: `${currentMinutes * pixelsPerMinute}px`,
+                        backgroundColor: NEON,
+                        boxShadow: `0 0 8px ${NEON}`
+                      }}
+                    >
+                      <div
+                        className="absolute -top-2 -left-2 w-4 h-4 rounded-full"
+                        style={{
+                          backgroundColor: NEON,
+                          boxShadow: `0 0 8px ${NEON}`
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* TASK BARS */}
+                  <div className="relative pt-12 pb-4">
+                    {processedItems.map((item, idx) => {
+                      const left = item.startMinutes * pixelsPerMinute;
+                      const width = item.duration * pixelsPerMinute;
+                      const top = idx * 56 + 8; // 56px per row
+
+                      return (
+                        <React.Fragment key={item.id}>
+                          {/* Horizontal row separator */}
+                          {idx > 0 && (
+                            <div
+                              className="absolute left-0 right-0 border-t"
+                              style={{
+                                top: `${top - 4}px`,
+                                borderColor: '#1e293b'
+                              }}
+                            />
+                          )}
+
+                          {/* Task Bar */}
+                          <div
+                            className="absolute cursor-pointer group transition-all duration-200"
+                            style={{
+                              left: `${left}px`,
+                              width: `${width}px`,
+                              top: `${top}px`,
+                              height: '40px'
+                            }}
+                            onClick={() => {
+                              const task = tasks.find(t => t.title === item.title) || {
+                                id: item.id,
+                                title: item.title,
+                                event: selectedEvent.name,
+                                dueDate: selectedEvent.date,
+                                status: 'pending',
+                                priority: 'medium',
+                                assignedTo: item.assigned,
+                                description: `Schedule item: ${item.title}`,
+                                subtasks: [],
+                                tags: [item.category.toLowerCase()],
+                                comments: [],
+                                attachments: []
+                              };
+                              setSelectedTask(task);
+                              setShowTaskDetail(true);
+                            }}
+                            onMouseEnter={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setTooltip({
+                                item,
+                                x: rect.left + rect.width / 2,
+                                y: rect.top - 10
+                              });
+                            }}
+                            onMouseLeave={() => setTooltip(null)}
+                          >
+                            <div
+                              className="h-full rounded-md flex items-center px-3 group-hover:opacity-90 shadow-lg"
+                              style={{
+                                backgroundColor: item.color,
+                                boxShadow: `0 2px 8px ${item.color}40`
+                              }}
+                            >
+                              <span className="text-white font-semibold text-xs truncate">
+                                {item.title}
+                              </span>
+                              <span className="text-white/80 text-xs ml-auto pl-2">
+                                {Math.floor(item.duration / 60)}h {item.duration % 60}m
+                              </span>
+                            </div>
+                          </div>
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* LEGEND */}
+            <div className={`${classes.panelBg} ${classes.border} p-4 rounded-lg mt-4`} style={{ borderColor: '#2b2b2b' }}>
+              <h3 className="text-sm font-semibold text-white mb-3">Color Legend</h3>
+              <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300">
+                {Object.entries(categoryColors).map(([category, color]) => (
+                  <div key={category} className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded" style={{ backgroundColor: color }} />
+                    <span>{category}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* STATS */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+              <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                <div className="text-xs text-slate-400 mb-1">TOTAL DURATION</div>
+                <div className="text-xl font-bold text-white">
+                  {Math.floor(processedItems.reduce((sum, i) => sum + i.duration, 0) / 60)}h
+                </div>
+              </div>
+              <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                <div className="text-xs text-slate-400 mb-1">ACTIVITIES</div>
+                <div className="text-xl font-bold text-white">{processedItems.length}</div>
+              </div>
+              <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                <div className="text-xs text-slate-400 mb-1">START TIME</div>
+                <div className="text-xl font-bold text-white">
+                  {processedItems[0]?.time || '--:--'}
+                </div>
+              </div>
+              <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                <div className="text-xs text-slate-400 mb-1">END TIME</div>
+                <div className="text-xl font-bold text-white">
+                  {processedItems.length > 0
+                    ? minutesToTime(processedItems[processedItems.length - 1].endMinutes)
+                    : '--:--'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* TOOLTIP (Fixed position overlay) */}
+          {tooltip && (
+            <div
+              className="fixed z-50 pointer-events-none"
+              style={{
+                left: `${tooltip.x}px`,
+                top: `${tooltip.y}px`,
+                transform: 'translate(-50%, -100%)'
+              }}
+            >
+              <div
+                className={`${classes.panelBg} border-2 rounded-lg p-3 shadow-xl`}
+                style={{
+                  borderColor: tooltip.item.color,
+                  boxShadow: `0 4px 20px ${tooltip.item.color}40`
+                }}
+              >
+                <div className="text-white font-semibold text-sm mb-1">{tooltip.item.title}</div>
+                <div className="text-slate-300 text-xs space-y-0.5">
+                  <div>{tooltip.item.time} - {minutesToTime(tooltip.item.endMinutes)}</div>
+                  <div>{Math.floor(tooltip.item.duration / 60)}h {tooltip.item.duration % 60}m</div>
+                  <div className="text-slate-400">{tooltip.item.assigned}</div>
+                  <div className="text-purple-300">{tooltip.item.category}</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    })()}
+  </div>
+)}
