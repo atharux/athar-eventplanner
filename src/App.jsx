@@ -910,214 +910,258 @@ const CreateEventModal = ({ onClose }) => {
                 </div>
               </div>
             )}
-              
-              
 
-{/* -------------------- Gantt / Run Sheet (replace previous schedule block) -------------------- */}
-{activeEventTab === 'schedule' && (
-  <div className="space-y-4">
-    <div className="flex items-center justify-between">
-      <h2 className="text-xl font-semibold text-white">Gantt · Run Sheet</h2>
-      <div className="flex items-center gap-3">
-        <div className="text-xs text-slate-400 hidden md:block">00:00 — 23:59</div>
-        <button
-          onClick={() => setShowAddScheduleModal(true)}
-          className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded text-sm flex items-center gap-2"
-          title="Add schedule item"
-        >
-          <Plus size={14} /> Add Item
-        </button>
-      </div>
-    </div>
+{/* -------------------- Gantt / Run Sheet View -------------------- */}
+{activeEventTab === 'schedule' && selectedEvent != null && (
+  (() => {
+    try {
+      // Local schedule state
+      const [localSchedule, setLocalSchedule] = React.useState([]);
+      const [showGanttEditModal, setShowGanttEditModal] = React.useState(false);
+      const [editingItem, setEditingItem] = React.useState(null);
 
-    {/* grid: left narrow list, right timeline */}
-    <div className="grid" style={{ gridTemplateColumns: '280px 1fr', gap: '1rem', minHeight: 320 }}>
-      {/* Left column */}
-      <div className={`${classes.panelBg} ${classes.border} rounded-md p-2`} style={{ borderColor: '#2b2b2b' }}>
-        <div className="px-3 py-2 border-b border-slate-700 flex items-center justify-between">
-          <div className="text-sm text-slate-300 font-semibold">Activity</div>
-          <div className="text-xs text-slate-400">Assigned • Duration</div>
-        </div>
+      // Initialize from selectedEvent safely
+      React.useEffect(() => {
+        if (selectedEvent?.schedule?.length) {
+          setLocalSchedule(selectedEvent.schedule);
+        } else {
+          setLocalSchedule([]);
+        }
+      }, [selectedEvent]);
 
-        <div className="divide-y divide-slate-700 max-h-[520px] overflow-auto">
-          {(localSchedule?.length ? localSchedule : [
+      // Neon helpers (already declared in parent scope)
+      const NEON = '#A020F0';
+      const neonBoxShadow = `0 6px 30px -6px ${NEON}, 0 0 20px 2px ${NEON}55`;
+
+      // Sample data fallback
+      const data = localSchedule?.length
+        ? localSchedule
+        : [
             { time: '09:00 AM', title: 'Venue Setup', duration: '2 hours', assigned: 'Setup Crew', category: 'Setup' },
             { time: '05:00 PM', title: 'Guest Arrival', duration: '1 hour', assigned: 'Reception Team', category: 'Reception' },
             { time: '06:00 PM', title: 'Cocktail Hour', duration: '1 hour', assigned: 'Catering Staff', category: 'Catering' },
             { time: '07:00 PM', title: 'Dinner Service', duration: '2 hours', assigned: 'Elegant Catering', category: 'Catering' },
             { time: '09:00 PM', title: 'Entertainment Begins', duration: '3 hours', assigned: 'Harmony DJ', category: 'Entertainment' },
             { time: '12:00 AM', title: 'Event Wrap-up', duration: '1 hour', assigned: 'Full Team', category: 'Wrap-up' }
-          ]).map((it, i) => (
-            <div key={i} className="px-3 py-3 flex items-start justify-between group">
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-white truncate">{it.title}</div>
-                <div className="text-xs text-slate-400 mt-1">{it.time} • {it.duration}</div>
-              </div>
-              <div className="flex items-center gap-2 ml-3">
-                <div className="text-xs text-slate-300 hidden sm:block">{it.assigned}</div>
-                <button
-                  title="Edit this item"
-                  className="p-1 rounded hover:bg-slate-700"
-                  onClick={() => { setEditingItem?.(it); setShowGanttEditModal?.(true); }}
-                >
-                  <Edit size={14} className="text-slate-300" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+          ];
 
-      {/* Right timeline */}
-      <div className={`${classes.panelBg} ${classes.border} rounded-md relative`} style={{ borderColor: '#2b2b2b', padding: 12, overflow: 'auto' }}>
-        {/* timeline inner width: make each hour 96px (config) -> total width = 24 * hourPx */}
-        <div style={{ minWidth: 24 * 96 + 'px', position: 'relative' }}>
-          {/* hour header */}
-          <div style={{ display: 'flex', gap: 0, marginBottom: 8 }}>
-            {Array.from({ length: 24 }).map((_, h) => {
-              const label = h === 0 ? '00:00' : (h < 10 ? '0' + h + ':00' : h + ':00');
-              return (
-                <div key={h} style={{ width: 96 }} className="text-xs text-slate-400 text-center border-r border-slate-800">
-                  {label}
-                </div>
-              );
-            })}
+      return (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-white">Gantt Chart / Run Sheet</h2>
+            <button
+              onClick={() => setShowAddScheduleModal(true)}
+              className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm"
+              title="Add new schedule item"
+            >
+              <Plus size={14} /> Add Item
+            </button>
           </div>
 
-          {/* rows */}
-          <div className="space-y-2">
-            {(localSchedule?.length ? localSchedule : [
-              { time: '09:00 AM', title: 'Venue Setup', duration: '2 hours', assigned: 'Setup Crew', category: 'Setup' },
-              { time: '05:00 PM', title: 'Guest Arrival', duration: '1 hour', assigned: 'Reception Team', category: 'Reception' },
-              { time: '06:00 PM', title: 'Cocktail Hour', duration: '1 hour', assigned: 'Catering Staff', category: 'Catering' },
-              { time: '07:00 PM', title: 'Dinner Service', duration: '2 hours', assigned: 'Elegant Catering', category: 'Catering' },
-              { time: '09:00 PM', title: 'Entertainment Begins', duration: '3 hours', assigned: 'Harmony DJ', category: 'Entertainment' },
-              { time: '12:00 AM', title: 'Event Wrap-up', duration: '1 hour', assigned: 'Full Team', category: 'Wrap-up' }
-            ]).map((it, rowIdx) => {
-              // compute left & width (%) relative to total width (24 * 96px)
-              const startMinutes = parseTimeToMinutes(it.time); // 0..1439
-              const durMinutes = parseDurationToMinutes(it.duration);
-              const leftPx = (startMinutes / (24 * 60)) * (24 * 96);
-              const widthPx = (Math.max(5, durMinutes) / (24 * 60)) * (24 * 96); // min width
-              // colors by category (tweak as desired)
-              const categoryColors = {
-                Setup: '#9333ea',
-                Reception: '#38bdf8',
-                Catering: '#22c55e',
-                Entertainment: '#a855f7',
-                'Wrap-up': '#ef4444',
-              };
-              const color = categoryColors[it.category] || '#64748b';
-
-              return (
-                <div key={rowIdx} className="relative h-12" style={{ borderBottom: '1px solid rgba(15,23,42,0.6)' }}>
-                  {/* faint vertical hour grid lines (absolute over each row) */}
-                  <div className="absolute inset-0 pointer-events-none">
-                    <div style={{ display: 'flex', height: '100%' }}>
-                      {Array.from({ length: 24 }).map((_, c) => (
-                        <div key={c} style={{ width: 96, borderLeft: c === 0 ? 'none' : '1px solid rgba(15,23,42,0.6)' }} />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* clickable bar */}
-                  <div
-                    onMouseEnter={(e) => { setHoveredTask(it); setHoverPos({ x: e.clientX, y: e.clientY }); }}
-                    onMouseMove={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
-                    onMouseLeave={() => setHoveredTask(null)}
-                    onClick={() => { setSelectedTask?.(it); setShowTaskDetail?.(true); }}
-                    role="button"
-                    className="absolute top-2 h-8 rounded-md flex items-center px-3 text-sm text-white cursor-pointer select-none"
-                    style={{
-                      left: leftPx,
-                      width: widthPx,
-                      minWidth: 40,
-                      background: `linear-gradient(90deg, ${color}, ${color}cc)`,
-                      boxShadow: `0 6px 18px -8px ${color}88, 0 0 12px ${color}55`
-                    }}
-                  >
-                    <div className="truncate font-semibold text-sm" style={{ textShadow: '0 1px 0 rgba(0,0,0,0.6)' }}>
-                      {it.title} <span className="ml-2 text-xs opacity-80">• {Math.round(durMinutes/60)}h</span>
-                    </div>
-
-                    {/* subtle affordance edit icon on hover */}
-                    <div className="ml-auto opacity-0 group-hover:opacity-100" />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* NOW indicator (positioned over full timeline) */}
-          {(() => {
-            const nowMinutes = now.getHours() * 60 + now.getMinutes();
-            const nowLeftPx = (nowMinutes / (24 * 60)) * (24 * 96);
-            // show only if within range
-            if (nowLeftPx >= 0 && nowLeftPx <= 24 * 96) {
-              return (
+          {/* Dual-panel layout */}
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Left list */}
+            <div className="w-full md:w-1/3 space-y-2">
+              {data.map((it, idx) => (
                 <div
-                  aria-hidden
-                  style={{
-                    position: 'absolute',
-                    top: 32,
-                    left: nowLeftPx,
-                    width: 2,
-                    height: 'calc(100% - 36px)',
-                    background: 'rgba(160,32,240,0.9)',
-                    boxShadow: '0 0 10px rgba(160,32,240,0.9)',
-                    zIndex: 40,
-                    pointerEvents: 'none'
-                  }}
-                />
-              );
-            }
-            return null;
-          })()}
-        </div>
+                  key={idx}
+                  className={`${classes.panelBg} ${classes.border} p-3 rounded-md transition-all hover:shadow-lg`}
+                  style={{ borderColor: '#2b2b2b' }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="text-purple-300 font-bold">{it.time}</div>
+                      <div className="text-white font-semibold">{it.title}</div>
+                      <div className="text-slate-400 text-xs">
+                        {it.duration} • {it.assigned}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setEditingItem(it);
+                        setShowGanttEditModal(true);
+                      }}
+                      className="p-1 hover:bg-slate-700 rounded"
+                      title="Edit this item"
+                    >
+                      <Edit size={14} className="text-slate-300" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
 
-        {/* floating tooltip as fixed element (prevents scrollbars on hover) */}
-        {hoveredTask && (
-          <div
-            style={{
-              position: 'fixed',
-              left: Math.max(8, hoverPos.x - 140),
-              top: Math.max(60, hoverPos.y - 84),
-              zIndex: 60,
-              minWidth: 220
-            }}
-            className={`${classes.panelBg} ${classes.border} rounded-md p-3 text-xs`}
-          >
-            <div className="flex justify-between items-start gap-2">
-              <div>
-                <div className="font-semibold text-white">{hoveredTask.title}</div>
-                <div className="text-slate-300 text-xs mt-1">{hoveredTask.time} • {hoveredTask.duration}</div>
+            {/* Right time-based chart */}
+            <div className="flex-1 overflow-x-auto relative h-64 bg-slate-800 rounded-lg border border-slate-700">
+              {/* Time ruler */}
+              <div className="absolute top-0 left-0 w-full flex justify-between text-xs text-slate-400 p-2">
+                {['09 AM', '12 PM', '03 PM', '06 PM', '09 PM', '12 AM'].map((t) => (
+                  <span key={t}>{t}</span>
+                ))}
               </div>
-              <div className="text-right text-slate-300 text-xs">
-                <div>{hoveredTask.assigned}</div>
-                <div className="mt-2 text-[11px] text-slate-400">{hoveredTask.category || 'General'}</div>
+
+              {/* Activity bars */}
+              <div className="absolute inset-0 mt-5 space-y-3 p-4">
+                {data.map((it, idx) => (
+                  <div
+                    key={idx}
+                    className="relative group"
+                    title={`${it.title} — ${it.duration}`}
+                  >
+                    <div
+                      className="h-6 rounded-md cursor-pointer transition-all duration-200"
+                      style={{
+                        width: `${Math.min(parseInt(it.duration) * 20 || 40, 100)}%`,
+                        backgroundColor: '#A020F0aa',
+                        boxShadow: neonBoxShadow
+                      }}
+                    />
+                    <div className="absolute hidden group-hover:flex top-7 left-0 bg-slate-900 text-white text-xs px-2 py-1 rounded shadow-lg border border-slate-700 z-10 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <span className="font-semibold">{it.title}</span>
+                        <span>{it.time} • {it.duration}</span>
+                        <span className="text-slate-400">{it.assigned}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
-        )}
-      </div>
-    </div>
 
-    {/* Reuse your existing TaskDetailModal (renders when showTaskDetail + selectedTask are set elsewhere) */}
-    {showTaskDetail && selectedTask && (
-      <TaskDetailModal task={selectedTask} onClose={() => setShowTaskDetail(false)} />
-    )}
+          {/* Edit Modal */}
+          {showGanttEditModal && editingItem && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center">
+              <div
+                className={`${classes.panelBg} ${classes.border} rounded-xl p-6 w-[95%] max-w-md`}
+                style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}
+              >
+                <h3 className="text-lg font-semibold text-white mb-4">Edit Schedule Item</h3>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!editingItem) return;
+                    setLocalSchedule((prev) =>
+                      prev.map((s) =>
+                        s.title === editingItem.title ? { ...editingItem } : s
+                      )
+                    );
+                    // Optional sync to global event
+                    if (selectedEvent) {
+                      setEvents((prev) =>
+                        prev.map((ev) =>
+                          ev.id === selectedEvent.id
+                            ? { ...ev, schedule: localSchedule }
+                            : ev
+                        )
+                      );
+                    }
+                    setShowGanttEditModal(false);
+                  }}
+                  className="space-y-4"
+                >
+                  {/* Title */}
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-1">Title</label>
+                    <input
+                      type="text"
+                      value={editingItem.title || ''}
+                      onChange={(e) =>
+                        setEditingItem((prev) => ({ ...prev, title: e.target.value }))
+                      }
+                      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
 
-    {/* Optional: small legend */}
-    <div className="flex gap-3 text-xs text-slate-300 mt-2">
-      <div className="flex items-center gap-2"><div style={{ width: 12, height: 8, background: '#9333ea' }} /> Setup</div>
-      <div className="flex items-center gap-2"><div style={{ width: 12, height: 8, background: '#38bdf8' }} /> Reception</div>
-      <div className="flex items-center gap-2"><div style={{ width: 12, height: 8, background: '#22c55e' }} /> Catering</div>
-      <div className="flex items-center gap-2"><div style={{ width: 12, height: 8, background: '#a855f7' }} /> Entertainment</div>
-      <div className="flex items-center gap-2"><div style={{ width: 12, height: 8, background: '#ef4444' }} /> Wrap-up</div>
-    </div>
-  </div>
+                  {/* Assigned */}
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-1">Assigned To</label>
+                    <input
+                      type="text"
+                      value={editingItem.assigned || ''}
+                      onChange={(e) =>
+                        setEditingItem((prev) => ({ ...prev, assigned: e.target.value }))
+                      }
+                      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+
+                  {/* Start Time */}
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-1">Start Time</label>
+                    <input
+                      type="text"
+                      value={editingItem.time || ''}
+                      onChange={(e) =>
+                        setEditingItem((prev) => ({ ...prev, time: e.target.value }))
+                      }
+                      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+
+                  {/* Duration */}
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-1">Duration</label>
+                    <input
+                      type="text"
+                      value={editingItem.duration || ''}
+                      onChange={(e) =>
+                        setEditingItem((prev) => ({ ...prev, duration: e.target.value }))
+                      }
+                      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+
+                  {/* Category */}
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-1">Category</label>
+                    <select
+                      value={editingItem.category || 'Setup'}
+                      onChange={(e) =>
+                        setEditingItem((prev) => ({ ...prev, category: e.target.value }))
+                      }
+                      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option>Setup</option>
+                      <option>Reception</option>
+                      <option>Catering</option>
+                      <option>Entertainment</option>
+                      <option>Wrap-up</option>
+                    </select>
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="flex justify-end gap-3 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowGanttEditModal(false)}
+                      className="px-4 py-2 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 rounded bg-purple-700 hover:bg-purple-600 text-white text-sm shadow-lg"
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    } catch (err) {
+      console.error('Schedule render error:', err);
+      return (
+        <div className="text-red-400 text-sm p-6">
+          Error rendering schedule. Check console for details.
+        </div>
+      );
+    }
+  })()
 )}
-
 
 
 
@@ -1543,54 +1587,6 @@ const CreateEventModal = ({ onClose }) => {
       </div>
     );
   };
-    
-    // ---------- Gantt helpers (place with other hooks at top of App) ----------
-const [localSchedule, setLocalSchedule] = useState([]);
-
-// sync localSchedule whenever selectedEvent changes (safe)
-useEffect(() => {
-  setLocalSchedule(selectedEvent?.schedule ? [...selectedEvent.schedule] : []);
-}, [selectedEvent]);
-
-// tooltip hover state (fixed-position tooltip to avoid scroll reflow)
-const [hoveredTask, setHoveredTask] = useState(null);
-const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
-
-// live "now" indicator
-const [now, setNow] = useState(() => new Date());
-useEffect(() => {
-  const t = setInterval(() => setNow(new Date()), 60_000); // update every minute
-  return () => clearInterval(t);
-}, []);
-
-// small util: parse "07:30 PM" -> minutes since midnight
-const parseTimeToMinutes = (timeStr = '') => {
-  // accepts "07:00 PM", "19:30", "00:00", "12:00 AM"
-  const m = String(timeStr).trim().match(/(\d{1,2}):?(\d{0,2})\s*(am|pm)?/i);
-  if (!m) return 0;
-  let hh = parseInt(m[1], 10);
-  const mm = m[2] ? parseInt(m[2], 10) : 0;
-  const ampm = (m[3] || '').toLowerCase();
-  if (ampm === 'pm' && hh !== 12) hh += 12;
-  if (ampm === 'am' && hh === 12) hh = 0;
-  // if no am/pm and hh is 24 treat as 0
-  if (!m[3] && hh === 24) hh = 0;
-  return hh * 60 + mm;
-};
-
-// parse duration like "2 hours" or "90 minutes" -> minutes
-const parseDurationToMinutes = (dur) => {
-  if (dur == null) return 60;
-  const s = String(dur).toLowerCase();
-  const mHours = s.match(/(\d+(\.\d+)?)\s*hour/);
-  if (mHours) return Math.round(parseFloat(mHours[1]) * 60);
-  const mMin = s.match(/(\d+)\s*min/);
-  if (mMin) return parseInt(mMin[1], 10);
-  const mNum = s.match(/(\d+(\.\d+)?)/);
-  if (mNum) return Math.round(parseFloat(mNum[1]) * 60); // assume hours if no unit
-  return 60;
-};
-
 
   /* -------------------- Main App JSX -------------------- */
 
