@@ -242,6 +242,22 @@ const CreateEventModal = ({ onClose }) => {
               )}
             </button>
           </div>
+            <script>
+  const generateBtn = document.getElementById("generate-plan-btn");
+  const outputPanel = document.getElementById("ai-output-panel");
+
+  generateBtn.addEventListener("click", () => {
+    // Simulate AI processing delay
+    generateBtn.disabled = true;
+    generateBtn.textContent = "Generating…";
+
+    setTimeout(() => {
+      outputPanel.style.display = "block";
+      generateBtn.textContent = "Plan Generated";
+    }, 800);
+  });
+</script>
+
 
           {/* DIVIDER */}
           <div className="flex items-center gap-4 my-6">
@@ -250,9 +266,68 @@ const CreateEventModal = ({ onClose }) => {
             <div className="flex-1 h-px" style={{ backgroundColor: '#2b2b2b' }}></div>
           </div>
             
-                <!-- AI Output Panel (hidden initially) -->
+                /* AI Output Panel (hidden initially) */
 <div id="ai-output-panel" style="display:none;">
-  <!-- paste the AI Output UI panel here -->
+ <div class="ai-output-panel">
+  <div class="ai-header">
+    <span class="ai-badge">✨ AI Assistant</span>
+    <h2>Event Plan Generated</h2>
+    <p class="ai-subtitle">
+      Operational summary based on your event description
+    </p>
+  </div>
+
+  <div class="ai-summary">
+    <div class="summary-card">
+      <label>Total Estimated Cost</label>
+      <div class="summary-value">€11,360</div>
+      <span class="status success">Within Budget</span>
+    </div>
+
+    <div class="summary-card">
+      <label>Risk Assessment</label>
+      <div class="summary-value">No Risks Detected</div>
+      <span class="status neutral">All clear</span>
+    </div>
+  </div>
+
+  <div class="ai-section">
+    <h3>Recommended Vendors</h3>
+
+    <div class="vendor-row">
+      <span class="vendor-type">Venue</span>
+      <span class="vendor-tier">Standard</span>
+      <span class="vendor-cost">€3,600</span>
+    </div>
+
+    <div class="vendor-row">
+      <span class="vendor-type">Catering</span>
+      <span class="vendor-tier">Mid</span>
+      <span class="vendor-cost">€4,800</span>
+    </div>
+
+    <div class="vendor-row">
+      <span class="vendor-type">DJ</span>
+      <span class="vendor-tier">Standard</span>
+      <span class="vendor-cost">€2,000</span>
+    </div>
+
+    <div class="vendor-row">
+      <span class="vendor-type">Security</span>
+      <span class="vendor-tier">Standard</span>
+      <span class="vendor-cost">€960</span>
+    </div>
+  </div>
+
+  <div class="ai-section">
+    <h3>Next Actions</h3>
+    <ul class="next-actions">
+      <li>Proceed to vendor outreach</li>
+      <li>Confirm availability</li>
+    </ul>
+  </div>
+</div>
+        
 </div>
 
     
