@@ -64,7 +64,7 @@ export default function App() {
 
   // Add Task modal toggle
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
-    
+    const [showAIOutput, setShowAIOutput] = useState(false);
     const [newEventForm, setNewEventForm] = useState({
   name: '',
   date: '',
@@ -156,8 +156,9 @@ const CreateEventModal = ({ onClose }) => {
         guests: mockParsed.guests
       }));
       
-      setIsGenerating(false);
-    }, 1500);
+setShowAIOutput(true);
+setIsGenerating(false);
+}, 1500);
   };
 
   return (
@@ -240,8 +241,77 @@ const CreateEventModal = ({ onClose }) => {
               ) : (
                 "Generate Event Plan"
               )}
-            </button>
+    </button>
           </div>
+
+          {/* AI OUTPUT PANEL */}
+          {showAIOutput && (
+            <div className="p-6 rounded-xl mb-6" style={{
+              background: 'linear-gradient(180deg, rgba(40, 45, 75, 0.85), rgba(20, 25, 45, 0.9))',
+              boxShadow: '0 0 0 1px rgba(150, 100, 255, 0.35), 0 0 40px rgba(150, 100, 255, 0.25)'
+            }}>
+              <div className="mb-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-2" style={{
+                  background: 'rgba(150, 100, 255, 0.25)',
+                  color: '#cdbbff'
+                }}>
+                  <span>✨</span>
+                  <span>AI Assistant</span>
+                </div>
+                <h3 className="text-lg font-semibold text-white mt-2">Event Plan Generated</h3>
+                <p className="text-sm text-slate-300 mt-1">Operational summary based on your event description</p>
+              </div>
+
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="p-4 rounded-xl" style={{ background: 'rgba(10, 15, 30, 0.6)' }}>
+                  <div className="text-xs text-slate-400 mb-2">Total Estimated Cost</div>
+                  <div className="text-2xl font-semibold text-white mb-2">€11,360</div>
+                  <span className="text-xs px-2 py-1 rounded bg-emerald-500/20 text-emerald-300">Within Budget</span>
+                </div>
+
+                <div className="p-4 rounded-xl" style={{ background: 'rgba(10, 15, 30, 0.6)' }}>
+                  <div className="text-xs text-slate-400 mb-2">Risk Assessment</div>
+                  <div className="text-2xl font-semibold text-white mb-2">No Risks Detected</div>
+                  <span className="text-xs px-2 py-1 rounded bg-slate-500/20 text-slate-300">All clear</span>
+                </div>
+              </div>
+
+              {/* Recommended Vendors */}
+              <div className="mb-6">
+                <h4 className="text-sm font-semibold text-white mb-3">Recommended Vendors</h4>
+                <div className="space-y-2">
+                  {[
+                    { type: 'Venue', tier: 'Standard', cost: '€3,600' },
+                    { type: 'Catering', tier: 'Mid', cost: '€4,800' },
+                    { type: 'DJ', tier: 'Standard', cost: '€2,000' },
+                    { type: 'Security', tier: 'Standard', cost: '€960' }
+                  ].map((vendor, idx) => (
+                    <div key={idx} className="grid grid-cols-3 gap-4 py-2 px-3 rounded" style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <span className="text-sm text-slate-200">{vendor.type}</span>
+                      <span className="text-sm text-slate-400">{vendor.tier}</span>
+                      <span className="text-sm text-purple-300 text-right font-semibold">{vendor.cost}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Next Actions */}
+              <div>
+                <h4 className="text-sm font-semibold text-white mb-3">Next Actions</h4>
+                <ul className="space-y-2 text-sm text-slate-300">
+                  <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                    Proceed to vendor outreach
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                    Confirm availability
+                  </li>
+                </ul>
+              </div>
+            </div>
+          )}
 
           {/* DIVIDER */}
           <div className="flex items-center gap-4 my-6">
