@@ -75,9 +75,13 @@ export default function App() {
   guests: ''
 });
 
-    /* -------------------- Create Event Modal -------------------- */
+    /* -------------------- Enhanced Create Event Modal with AI Prompt -------------------- */
 
 const CreateEventModal = ({ onClose }) => {
+  // Add AI-related state
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const handleCreate = () => {
     if (!newEventForm.name || !newEventForm.date) {
       alert('Please fill in event name and date');
@@ -121,15 +125,132 @@ const CreateEventModal = ({ onClose }) => {
     onClose();
   };
 
+  const handleAIGenerate = async () => {
+    if (!aiPrompt.trim()) return;
+    
+    setIsGenerating(true);
+    
+    // TODO: Replace with actual API call to your AI backend
+    // Simulating AI generation for now
+    setTimeout(() => {
+      // Mock extraction - replace with real AI parsing
+      // This is where you'd call your backend API
+      const mockParsed = {
+        name: "Annual Tech Summit 2025",
+        date: "2025-06-15",
+        type: "Conference",
+        location: "Convention Center, Berlin",
+        description: "Three-day technology conference featuring keynote speakers, workshops, and networking sessions.",
+        budget: "75000",
+        guests: "500"
+      };
+      
+      setNewEventForm(prev => ({
+        ...prev,
+        name: mockParsed.name,
+        date: mockParsed.date,
+        type: mockParsed.type,
+        location: mockParsed.location,
+        description: mockParsed.description,
+        budget: mockParsed.budget,
+        guests: mockParsed.guests
+      }));
+      
+      setIsGenerating(false);
+    }, 1500);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
       <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto`} style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}>
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold text-white">Create New Event</h3>
+          <div>
+            <h3 className="text-xl font-bold text-white">Create New Event</h3>
+            <p className="text-sm text-slate-400 mt-1">Use AI or fill in the details manually</p>
+          </div>
           <button onClick={onClose}><X size={20} className="text-slate-300 hover:text-white" /></button>
         </div>
 
         <div className="space-y-4">
+          {/* AI PROMPT SECTION - SURGICAL ADDITION */}
+          <div className="p-5 rounded-xl mb-6" style={{ 
+            background: 'linear-gradient(135deg, rgba(160, 32, 240, 0.1) 0%, rgba(160, 32, 240, 0.2) 100%)',
+            border: '2px solid rgba(160, 32, 240, 0.5)'
+          }}>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-3" style={{
+              background: 'linear-gradient(135deg, #A020F0 0%, #8B00FF 100%)',
+              color: 'white'
+            }}>
+              <span>✨</span>
+              <span>AI Assistant</span>
+            </div>
+            
+            <label className="block mb-2">
+              <span className="text-sm font-semibold text-slate-300">
+                Describe your event in natural language
+              </span>
+              <textarea
+                className="w-full border-2 rounded-lg px-3 py-2.5 mt-2 transition-all resize-none"
+                style={{ 
+                  backgroundColor: theme === 'dark' ? '#0b1220' : '#fff',
+                  borderColor: '#2b2b2b',
+                  color: theme === 'dark' ? '#fff' : '#111'
+                }}
+                rows="3"
+                placeholder="Example: Corporate tech conference for 500 attendees on June 15th at the Convention Center. Budget around €75,000 for venue, catering, speakers, and AV equipment."
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                onFocus={(e) => e.target.style.borderColor = '#A020F0'}
+                onBlur={(e) => e.target.style.borderColor = '#2b2b2b'}
+              />
+            </label>
+            
+            <p className="text-xs text-slate-400 italic mb-3">
+              The AI will analyze your description and populate the event details below.
+            </p>
+            
+            <button
+              type="button"
+              onClick={handleAIGenerate}
+              disabled={!aiPrompt.trim() || isGenerating}
+              className="px-4 py-2 rounded-lg text-white font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                background: isGenerating ? '#6B7280' : 'linear-gradient(135deg, #A020F0 0%, #8B00FF 100%)',
+                boxShadow: !isGenerating ? '0 4px 12px rgba(160, 32, 240, 0.4)' : 'none'
+              }}
+              onMouseEnter={(e) => {
+                if (!isGenerating && aiPrompt.trim()) {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 6px 16px rgba(160, 32, 240, 0.6)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = '0 4px 12px rgba(160, 32, 240, 0.4)';
+              }}
+            >
+              {isGenerating ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Generating...
+                </span>
+              ) : (
+                "Generate Event Plan"
+              )}
+            </button>
+          </div>
+
+          {/* DIVIDER */}
+          <div className="flex items-center gap-4 my-6">
+            <div className="flex-1 h-px" style={{ backgroundColor: '#2b2b2b' }}></div>
+            <span className="text-sm font-semibold text-slate-400">OR ENTER MANUALLY</span>
+            <div className="flex-1 h-px" style={{ backgroundColor: '#2b2b2b' }}></div>
+          </div>
+
+          {/* EXISTING FORM FIELDS - Keep all your original fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-semibold text-slate-300 mb-2 block">Event Name *</label>
@@ -241,7 +362,6 @@ const CreateEventModal = ({ onClose }) => {
     </div>
   );
 };
-    
   /* -------------------- Sample Data (kept from your original file but converted to state where requested) -------------------- */
   const [events, setEvents] = useState([
     {
