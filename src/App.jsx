@@ -209,7 +209,7 @@ const CreateEventModal = ({ onClose }) => {
               The AI will analyze your description and populate the event details below.
             </p>
             
-            <button
+            <button id="generate-plan-btn"
               type="button"
               onClick={handleAIGenerate}
               disabled={!aiPrompt.trim() || isGenerating}
@@ -249,6 +249,14 @@ const CreateEventModal = ({ onClose }) => {
             <span className="text-sm font-semibold text-slate-400">OR ENTER MANUALLY</span>
             <div className="flex-1 h-px" style={{ backgroundColor: '#2b2b2b' }}></div>
           </div>
+            
+                <!-- AI Output Panel (hidden initially) -->
+<div id="ai-output-panel" style="display:none;">
+  <!-- paste the AI Output UI panel here -->
+</div>
+
+    
+    
 
           {/* EXISTING FORM FIELDS - Keep all your original fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -360,8 +368,27 @@ const CreateEventModal = ({ onClose }) => {
         </div>
       </div>
     </div>
+      <script>
+  const generateBtn = document.getElementById("generate-plan-btn");
+  const outputPanel = document.getElementById("ai-output-panel");
+
+  generateBtn.addEventListener("click", () => {
+    // Simulate AI processing delay
+    generateBtn.disabled = true;
+    generateBtn.textContent = "Generating…";
+
+    setTimeout(() => {
+      outputPanel.style.display = "block";
+      generateBtn.textContent = "Plan Generated";
+    }, 800);
+  });
+</script>
+
   );
 };
+    
+
+    
   /* -------------------- Sample Data (kept from your original file but converted to state where requested) -------------------- */
   const [events, setEvents] = useState([
     {
