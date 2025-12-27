@@ -1,12 +1,4 @@
-// DEVnewSurgical.jsx
-import OnboardingQuestApp from "./OnboardingQuestApp";
-
-function App() {
-  const [showOnboarding, setShowOnboarding] = useState(true);
-
-  if (showOnboarding) {
-    return <OnboardingQuestApp onFinish={() => setShowOnboarding(false)} />;
-  }
+// APPDEVnewSurgical.jsx
 import React, { useState, useMemo } from 'react';
 import {
   Calendar, Users, MessageSquare, Search, Plus, X, Send, DollarSign, MapPin, Star,
