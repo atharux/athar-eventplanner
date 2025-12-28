@@ -13,11 +13,19 @@ import {
 ======================= */
 
 const GLASS =
-  "bg-[rgba(18,22,34,0.78)] backdrop-blur-xl border border-slate-700/60";
+  "bg-[rgba(18,22,34,0.78)] backdrop-blur-md";
+
+const GLASS_BORDER =
+  "border border-[rgba(255,255,255,0.08)]";
+
 const PANEL =
-  `${GLASS} shadow-[0_10px_40px_rgba(0,0,0,0.65)]`;
-const RADIUS = "rounded-lg";
-const NEON = "linear-gradient(90deg,#7c7cff,#b983ff)";
+  `${GLASS} ${GLASS_BORDER}`;
+
+const RADIUS =
+  "rounded-md";
+
+const NEON =
+  "linear-gradient(90deg, #7c3aed, #a855f7)";
 
 /* =======================
    Data
@@ -158,46 +166,4 @@ export default function PreviewGamifiedApp() {
                     </div>
                   );
                 })}
-              </div>
-            </div>
-
-            {/* Events */}
-            <div className={`${PANEL} ${RADIUS} p-6 xl:col-span-2`}>
-              <h2 className="text-lg font-semibold text-white mb-5">
-                Events Progress
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {EVENTS.map(event => (
-                  <div
-                    key={event.id}
-                    className={`p-5 border border-slate-700/60 ${RADIUS}`}
-                  >
-                    <div className="flex justify-between mb-3">
-                      <h3 className="font-semibold text-white">
-                        {event.name}
-                      </h3>
-                      <span className="text-xs bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded">
-                        Active
-                      </span>
-                    </div>
-
-                    <div className="h-2 bg-slate-800 rounded overflow-hidden">
-                      <div
-                        className="h-full"
-                        style={{
-                          width: `${event.progress * 100}%`,
-                          background: NEON
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-      </main>
-    </div>
-  );
-}
+              </div
