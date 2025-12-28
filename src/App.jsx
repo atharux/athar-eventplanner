@@ -67,7 +67,7 @@ function DemoModeToggle({ mode, setMode }) {
    Main App Wrapper
    ========================= */
 
-export default function PreviewGamifiedApp({ children }) {
+export default function newGamifiedPath({ children }) {
   const [demoMode, setDemoMode] = useState('classic');
   const [activeNarrative, setActiveNarrative] = useState(null);
 
