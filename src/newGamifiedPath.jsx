@@ -166,4 +166,46 @@ export default function PreviewGamifiedApp() {
                     </div>
                   );
                 })}
-              </div
+              </div>
+            </div>
+
+            {/* Events */}
+            <div className={`${PANEL} ${RADIUS} p-6 xl:col-span-2`}>
+              <h2 className="text-lg font-semibold text-white mb-5">
+                Events Progress
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {EVENTS.map(event => (
+                  <div
+                    key={event.id}
+                    className={`p-5 border border-slate-700/60 ${RADIUS}`}
+                  >
+                    <div className="flex justify-between mb-3">
+                      <h3 className="font-semibold text-white">
+                        {event.name}
+                      </h3>
+                      <span className="text-xs bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded">
+                        Active
+                      </span>
+                    </div>
+
+                    <div className="h-2 bg-slate-800 rounded overflow-hidden">
+                      <div
+                        className="h-full"
+                        style={{
+                          width: `${event.progress * 100}%`,
+                          background: NEON
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+      </main>
+    </div>
+  );
+}
