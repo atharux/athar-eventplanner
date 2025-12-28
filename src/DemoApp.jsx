@@ -4,15 +4,28 @@ import DEVnewSurgical from './DEVnewSurgical';
 import NewGamifiedPath from './newGamifiedPath';
 import NarrativeLayer from "./narrativeLayer";
 
+
 export default function DemoApp() {
-  const [mode, setMode] = useState('classic');
+  const [demoMode, setDemoMode] = useState("classic"); 
+  // "classic" | "gamified"
 
   return (
-    <div data-demo-mode={mode}>
-      <DemoModeToggle mode={mode} setMode={setMode} />
+    <div className="min-h-screen bg-[#070b14] text-slate-200">
+      {/* Narrative Layer is ALWAYS ON */}
+      <NarrativeLayer demoMode={demoMode} />
 
-      {mode === 'classic' && <DEVnewSurgical />}
-      {mode === 'gamified' && <NewGamifiedPath />}
+      {/* Safe demo switch */}
+      <DemoModeToggle
+        mode={demoMode}
+        onChange={setDemoMode}
+      />
+
+      {/* Render target */}
+      {demoMode === "classic" ? (
+        <APPDEVnewSurgical />
+      ) : (
+        <NewGamifiedPath />
+      )}
     </div>
   );
 }
