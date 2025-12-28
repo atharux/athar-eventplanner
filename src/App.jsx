@@ -1,52 +1,70 @@
 import React, { useState } from "react";
 import {
-  Home, Calendar, Users, Settings, Plus, Star, MessageSquare
+  Home,
+  Calendar,
+  Users,
+  MessageSquare,
+  Settings,
+  Plus
 } from "lucide-react";
 
 /* =======================
-   Visual Tokens
+   Visual System (Disciplined)
 ======================= */
 
 const GLASS =
-  "bg-[rgba(18,22,34,0.75)] backdrop-blur-xl border border-slate-700/60";
-const PANEL = `${GLASS} shadow-[0_8px_30px_rgba(0,0,0,0.6)]`;
-const NEON = "linear-gradient(90deg,#7c7cff,#b983ff)";
+  "bg-[rgba(18,22,34,0.78)] backdrop-blur-xl border border-slate-700/60";
+const PANEL =
+  `${GLASS} shadow-[0_10px_40px_rgba(0,0,0,0.65)]`;
 const RADIUS = "rounded-lg";
+const NEON = "linear-gradient(90deg,#7c7cff,#b983ff)";
 
 /* =======================
-   Gamification Config
+   Data
 ======================= */
 
 const QUESTS = [
   { id: 1, label: "Create your first event", xp: 50 },
-  { id: 2, label: "Add 5 tasks", xp: 75 },
+  { id: 2, label: "Add 5 tasks to an event", xp: 75 },
   { id: 3, label: "Message a vendor", xp: 40 }
+];
+
+const EVENTS = [
+  { id: 1, name: "Berlin Tech Mixer", progress: 0.8 },
+  { id: 2, name: "Private Dinner", progress: 0.55 }
 ];
 
 /* =======================
    App
 ======================= */
 
-export default function App() {
+export default function PreviewGamifiedApp() {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [xp, setXp] = useState(120);
+  const [xp, setXp] = useState(140);
+  const [rewardFlash, setRewardFlash] = useState(null);
   const [completedQuests, setCompletedQuests] = useState([1]);
 
-  const xpLevel = Math.floor(xp / 100);
+  const level = Math.floor(xp / 100);
   const xpProgress = xp % 100;
 
-  const completeQuest = (id, reward) => {
-    if (!completedQuests.includes(id)) {
-      setCompletedQuests([...completedQuests, id]);
-      setXp(xp + reward);
-    }
+  const completeQuest = (quest) => {
+    if (completedQuests.includes(quest.id)) return;
+
+    setCompletedQuests(prev => [...prev, quest.id]);
+    setXp(prev => prev + quest.xp);
+    setRewardFlash(`+${quest.xp} XP`);
+
+    setTimeout(() => setRewardFlash(null), 1200);
   };
 
   return (
     <div className="min-h-screen bg-[#070b14] text-slate-200 font-sans flex">
       {/* Sidebar */}
       <aside className={`w-64 p-6 ${PANEL}`}>
-        <h1 className="text-xl font-bold text-white mb-6">Athar UX</h1>
+        <h1 className="text-xl font-bold text-white mb-8">
+          Athar UX
+        </h1>
+
         {[
           { id: "dashboard", label: "Dashboard", icon: Home },
           { id: "events", label: "Events", icon: Calendar },
@@ -72,61 +90,69 @@ export default function App() {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 p-8 space-y-8">
-
+      <main className="flex-1 p-10 space-y-10">
         {/* Header */}
-        <header className={`${PANEL} ${RADIUS} p-6 flex justify-between`}>
-          <div>
-            <h2 className="text-xl font-semibold text-white">
-              Level {xpLevel}
-            </h2>
-            <div className="mt-2 h-2 bg-slate-800 rounded overflow-hidden">
-              <div
-                className="h-full"
-                style={{
-                  width: `${xpProgress}%`,
-                  background: NEON
-                }}
-              />
+        <header className={`${PANEL} ${RADIUS} p-6 relative`}>
+          <div className="flex justify-between items-center">
+            <div>
+              <div className="text-xs text-slate-400">Level</div>
+              <div className="text-2xl font-bold text-white">{level}</div>
+
+              <div className="mt-2 h-2 bg-slate-800 rounded overflow-hidden">
+                <div
+                  className="h-full transition-all duration-700"
+                  style={{ width: `${xpProgress}%`, background: NEON }}
+                />
+              </div>
+
+              <div className="text-xs text-slate-400 mt-1">
+                {xpProgress} / 100 XP
+              </div>
             </div>
-            <p className="text-xs mt-1 text-slate-400">
-              {xpProgress}/100 XP
-            </p>
+
+            <button className="flex items-center gap-2 bg-purple-700 px-4 py-2 text-sm font-semibold rounded-md">
+              <Plus size={14} /> New Event
+            </button>
           </div>
-          <button className="bg-purple-700 px-4 py-2 text-sm font-semibold rounded-md">
-            <Plus size={14} /> New
-          </button>
+
+          {rewardFlash && (
+            <div className="absolute top-4 right-6 text-sm font-semibold text-purple-300 animate-pulse">
+              {rewardFlash}
+            </div>
+          )}
         </header>
 
         {/* Dashboard */}
         {activeTab === "dashboard" && (
-          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <section className="grid grid-cols-1 xl:grid-cols-3 gap-8">
             {/* Quests */}
             <div className={`${PANEL} ${RADIUS} p-6`}>
-              <h3 className="text-lg font-semibold text-white mb-4">
+              <h2 className="text-lg font-semibold text-white mb-5">
                 Active Quests
-              </h3>
-              <div className="space-y-3">
+              </h2>
+
+              <div className="space-y-4">
                 {QUESTS.map(q => {
                   const done = completedQuests.includes(q.id);
                   return (
                     <div
                       key={q.id}
                       className={`p-4 border border-slate-700/60 ${RADIUS}
-                        ${done ? "opacity-50" : "hover:border-purple-500"}`}
+                        ${done ? "opacity-40" : "hover:border-purple-500/70"}`}
                     >
                       <div className="flex justify-between items-center">
-                        <span>{q.label}</span>
+                        <span className="text-sm">{q.label}</span>
                         <span className="text-xs text-purple-300">
                           +{q.xp} XP
                         </span>
                       </div>
+
                       {!done && (
                         <button
-                          onClick={() => completeQuest(q.id, q.xp)}
+                          onClick={() => completeQuest(q)}
                           className="mt-2 text-xs text-purple-400 hover:underline"
                         >
-                          Complete
+                          Complete Quest
                         </button>
                       )}
                     </div>
@@ -135,30 +161,34 @@ export default function App() {
               </div>
             </div>
 
-            {/* Events Preview */}
-            <div className={`${PANEL} ${RADIUS} p-6 lg:col-span-2`}>
-              <h3 className="text-lg font-semibold text-white mb-4">
-                Upcoming Events
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[1, 2, 3].map(i => (
+            {/* Events */}
+            <div className={`${PANEL} ${RADIUS} p-6 xl:col-span-2`}>
+              <h2 className="text-lg font-semibold text-white mb-5">
+                Events Progress
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {EVENTS.map(event => (
                   <div
-                    key={i}
-                    className={`p-4 border border-slate-700/60 ${RADIUS}`}
+                    key={event.id}
+                    className={`p-5 border border-slate-700/60 ${RADIUS}`}
                   >
-                    <div className="flex justify-between mb-2">
-                      <h4 className="font-semibold">Event {i}</h4>
+                    <div className="flex justify-between mb-3">
+                      <h3 className="font-semibold text-white">
+                        {event.name}
+                      </h3>
                       <span className="text-xs bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded">
                         Active
                       </span>
                     </div>
-                    <div className="text-xs text-slate-400 mb-2">
-                      12 tasks • 80% complete
-                    </div>
-                    <div className="h-1.5 bg-slate-800 rounded overflow-hidden">
+
+                    <div className="h-2 bg-slate-800 rounded overflow-hidden">
                       <div
                         className="h-full"
-                        style={{ width: "80%", background: NEON }}
+                        style={{
+                          width: `${event.progress * 100}%`,
+                          background: NEON
+                        }}
                       />
                     </div>
                   </div>
@@ -166,18 +196,6 @@ export default function App() {
               </div>
             </div>
           </section>
-        )}
-
-        {/* Placeholder Tabs */}
-        {activeTab !== "dashboard" && (
-          <div className={`${PANEL} ${RADIUS} p-10 text-center`}>
-            <h2 className="text-xl font-semibold text-white mb-2">
-              {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
-            </h2>
-            <p className="text-slate-400 text-sm">
-              UI preserved conceptually. Screenshots ready.
-            </p>
-          </div>
         )}
       </main>
     </div>
