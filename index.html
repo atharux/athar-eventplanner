@@ -4,9 +4,115 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Event Planner Dashboard</title>
+    <style>
+      #auth-gate {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        font-family: 'Courier New', monospace;
+        color: white;
+      }
+      #auth-gate.hidden {
+        display: none;
+      }
+      .auth-box {
+        border: 2px solid white;
+        padding: 40px;
+        max-width: 400px;
+        width: 90%;
+      }
+      .auth-box h2 {
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        margin-bottom: 24px;
+        font-size: 18px;
+      }
+      .auth-box input {
+        width: 100%;
+        background: transparent;
+        border: 2px solid white;
+        color: white;
+        padding: 12px;
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        margin-bottom: 16px;
+      }
+      .auth-box input:focus {
+        outline: none;
+        border-color: #888;
+      }
+      .auth-box button {
+        width: 100%;
+        background: white;
+        color: black;
+        border: 2px solid white;
+        padding: 12px;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        cursor: pointer;
+        font-weight: 700;
+      }
+      .auth-box button:hover {
+        background: black;
+        color: white;
+      }
+      .auth-error {
+        color: #ff4444;
+        font-size: 12px;
+        margin-top: 12px;
+        display: none;
+      }
+      .auth-error.show {
+        display: block;
+      }
+    </style>
   </head>
   <body>
+    <div id="auth-gate">
+      <div class="auth-box">
+        <h2>Access Required</h2>
+        <input type="password" id="auth-input" placeholder="Enter password" autocomplete="off" />
+        <button onclick="checkPassword()">Enter</button>
+        <div class="auth-error" id="auth-error">Incorrect password</div>
+      </div>
+    </div>
     <div id="root"></div>
+    <script>
+      const CORRECT_PASSWORD = 'r00tKan@l';
+      
+      function checkPassword() {
+        const input = document.getElementById('auth-input');
+        const error = document.getElementById('auth-error');
+        const gate = document.getElementById('auth-gate');
+        
+        if (input.value === CORRECT_PASSWORD) {
+          sessionStorage.setItem('authenticated', 'true');
+          gate.classList.add('hidden');
+        } else {
+          error.classList.add('show');
+          input.value = '';
+          setTimeout(() => error.classList.remove('show'), 2000);
+        }
+      }
+      
+      document.getElementById('auth-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') checkPassword();
+      });
+      
+      // Check if already authenticated this session
+      if (sessionStorage.getItem('authenticated') === 'true') {
+        document.getElementById('auth-gate').classList.add('hidden');
+      }
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
