@@ -1,9 +1,12 @@
-// APPDEVnewSurgical.jsx
 import React, { useState, useMemo } from 'react';
 import {
   Calendar, Users, MessageSquare, Search, Plus, X, Send, DollarSign, MapPin, Star,
-  Upload, Menu, Home, Settings, Building2, Edit, Paperclip, UserPlus
+  Upload, Menu, Home, Settings, Building2, Edit, Paperclip, UserPlus, Zap
 } from 'lucide-react';
+import { useLocalStorage, checkLimit } from '../useStorage';
+import { ProGate } from './ProGate';
+import { PricingModal } from './PricingModal';
+import '../theme.css';
 
 /**
  * Single-file Event Planner App
@@ -16,26 +19,31 @@ import {
  * Copy-paste into /src/App.jsx (Vite + React). Keep lucide-react installed.
  */
 
-/* Neon glow style using the chosen accent color: Neon Purple */
-const NEON = '#A020F0';
-const neonBoxShadow = `0 6px 30px -6px ${NEON}, 0 0 20px 2px ${NEON}55`;
+const NEON_COLOR = '#8b5cf6';
+const NEON = 'linear-gradient(90deg, #7c3aed, #8b5cf6)';
+const neonBoxShadow = '0 0 0 1px rgba(139,92,246,0.2), 0 8px 40px rgba(0,0,0,0.7)';
+const GLASS = 'panel-glass';
+const GLASS_BORDER = 'glass-border';
 
 /* Small helper to apply dark / light tokenized classes */
 function useThemeClasses(theme) {
-  const isDark = theme === 'dark';
   return {
-    appBg: isDark ? 'bg-slate-900 text-slate-100' : 'bg-white text-slate-900',
-    panelBg: isDark ? 'bg-slate-800' : 'bg-white',
-    subtleBg: isDark ? 'bg-slate-700' : 'bg-slate-50',
-    border: 'border-2',
-    mutedText: isDark ? 'text-slate-300' : 'text-slate-500',
-    strongText: isDark ? 'text-slate-100' : 'text-slate-900',
+    appBg: 'app-bg text-slate-200',
+    panelBg: 'panel-glass',
+    subtleBg: 'bg-slate-900',
+    border: 'glass-border',
+    mutedText: 'text-slate-400',
+    strongText: 'text-slate-100',
   };
 }
 
 export default function App() {
-  const [theme, setTheme] = useState('dark'); // dark default
+  const [theme, setTheme] = useState('dark');
   const classes = useThemeClasses(theme);
+
+  // Plan state — stored in localStorage; 'free' | 'pro'
+  const [plan, setPlan] = useLocalStorage('ef_plan', 'free');
+  const [showPricing, setShowPricing] = useState(false);
 
   // UI state
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -52,20 +60,26 @@ export default function App() {
   const [messageInput, setMessageInput] = useState('');
   const [selectedConversation, setSelectedConversation] = useState(0);
   const [activeEventTab, setActiveEventTab] = useState('overview');
-  const [taskView, setTaskView] = useState('list'); // list, board, calendar
+  const [taskView, setTaskView] = useState('list');
 
-  // New modal toggles for add forms & client management
+  // Modal toggles
   const [showAddBudgetModal, setShowAddBudgetModal] = useState(false);
   const [showAddGuestModal, setShowAddGuestModal] = useState(false);
   const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
   const [showAddClientModal, setShowAddClientModal] = useState(false);
+
+  // Venue discovery
+  const [discoverCity, setDiscoverCity] = useState('');
+  const [discoverCategory, setDiscoverCategory] = useState('event space');
+  const [discoverResults, setDiscoverResults] = useState([]);
+  const [isDiscovering, setIsDiscovering] = useState(false);
+  const [discoverError, setDiscoverError] = useState('');
   const [showClientDetailModal, setShowClientDetailModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
 
-  // Add Task modal toggle
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
-    const [showAIOutput, setShowAIOutput] = useState(false);
-    const [newEventForm, setNewEventForm] = useState({
+  const [showAIOutput, setShowAIOutput] = useState(false);
+  const [newEventForm, setNewEventForm] = useState({
   name: '',
   date: '',
   type: 'Corporate',
@@ -85,6 +99,11 @@ const CreateEventModal = ({ onClose }) => {
   const handleCreate = () => {
     if (!newEventForm.name || !newEventForm.date) {
       alert('Please fill in event name and date');
+      return;
+    }
+    const limit = checkLimit(plan, 'events', events.length);
+    if (!limit.allowed) {
+      alert(limit.reason);
       return;
     }
 
@@ -127,43 +146,58 @@ const CreateEventModal = ({ onClose }) => {
 
   const handleAIGenerate = async () => {
     if (!aiPrompt.trim()) return;
-    
+    const groqKey = localStorage.getItem('groq_api_key');
+    const orKey   = localStorage.getItem('openrouter_api_key');
+    if (!groqKey && !orKey) {
+      alert('Add a Groq or OpenRouter API key in Settings to use AI generation. Groq is free at console.groq.com');
+      return;
+    }
     setIsGenerating(true);
-    
-    // TODO: Replace with actual API call to your AI backend
-    // Simulating AI generation for now
-    setTimeout(() => {
-      // Mock extraction - replace with real AI parsing
-      // This is where you'd call your backend API
-      const mockParsed = {
-        name: "Annual Tech Summit 2025",
-        date: "2025-06-15",
-        type: "Conference",
-        location: "Convention Center, Berlin",
-        description: "Three-day technology conference featuring keynote speakers, workshops, and networking sessions.",
-        budget: "75000",
-        guests: "500"
+    try {
+      const useGroq = !!groqKey;
+      const endpoint = useGroq
+        ? 'https://api.groq.com/openai/v1/chat/completions'
+        : 'https://openrouter.ai/api/v1/chat/completions';
+      const headers = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${useGroq ? groqKey : orKey}`,
       };
-      
+      const body = {
+        model: useGroq ? 'llama-3.3-70b-versatile' : 'meta-llama/llama-3.3-70b-instruct:free',
+        temperature: 0.3,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an event planning assistant. Extract event details from the user description and return ONLY valid JSON with keys: name (string), date (YYYY-MM-DD, use next suitable future date if vague), type (one of: Corporate|Wedding|Conference|Birthday|Fundraiser|Other), location (string), description (string, 1-2 sentences), budget (number as string), guests (number as string). Return ONLY the JSON object, no markdown.',
+          },
+          { role: 'user', content: aiPrompt },
+        ],
+      };
+      const res = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body) });
+      const data = await res.json();
+      const raw = data.choices?.[0]?.message?.content ?? '{}';
+      const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
       setNewEventForm(prev => ({
         ...prev,
-        name: mockParsed.name,
-        date: mockParsed.date,
-        type: mockParsed.type,
-        location: mockParsed.location,
-        description: mockParsed.description,
-        budget: mockParsed.budget,
-        guests: mockParsed.guests
+        name: parsed.name || prev.name,
+        date: parsed.date || prev.date,
+        type: parsed.type || prev.type,
+        location: parsed.location || prev.location,
+        description: parsed.description || prev.description,
+        budget: parsed.budget || prev.budget,
+        guests: parsed.guests || prev.guests,
       }));
-      
-setShowAIOutput(true);
-setIsGenerating(false);
-}, 1500);
+      setShowAIOutput(true);
+    } catch (err) {
+      alert('AI generation failed: ' + (err.message || 'unknown error'));
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-      <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto`} style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}>
+      <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto`} style={{ boxShadow: neonBoxShadow, borderColor: 'rgba(255,255,255,0.08)' }}>
         <div className="flex justify-between items-center mb-6">
           <div>
             <h3 className="text-xl font-bold text-white">Create New Event</h3>
@@ -193,9 +227,9 @@ setIsGenerating(false);
               <textarea
                 className="w-full border-2 rounded-lg px-3 py-2.5 mt-2 transition-all resize-none"
                 style={{ 
-                  backgroundColor: theme === 'dark' ? '#0b1220' : '#fff',
-                  borderColor: '#2b2b2b',
-                  color: theme === 'dark' ? '#fff' : '#111'
+                  backgroundColor: '#06080f',
+                  borderColor: 'rgba(255,255,255,0.08)',
+                  color: '#e2e8f0'
                 }}
                 rows="3"
                 placeholder="Example: Corporate tech conference for 500 attendees on June 15th at the Convention Center. Budget around €75,000 for venue, catering, speakers, and AV equipment."
@@ -329,7 +363,7 @@ setIsGenerating(false);
                 onChange={e => setNewEventForm(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Summer Gala 2025"
                 className="w-full p-3 rounded-md border-2"
-                style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', borderColor: '#2b2b2b', color: theme === 'dark' ? '#fff' : '#111' }}
+                style={{ backgroundColor: '#06080f', borderColor: 'rgba(255,255,255,0.08)', color: '#e2e8f0' }}
               />
             </div>
 
@@ -340,7 +374,7 @@ setIsGenerating(false);
                 value={newEventForm.date}
                 onChange={e => setNewEventForm(prev => ({ ...prev, date: e.target.value }))}
                 className="w-full p-3 rounded-md border-2"
-                style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', borderColor: '#2b2b2b', color: theme === 'dark' ? '#fff' : '#111' }}
+                style={{ backgroundColor: '#06080f', borderColor: 'rgba(255,255,255,0.08)', color: '#e2e8f0' }}
               />
             </div>
           </div>
@@ -352,7 +386,7 @@ setIsGenerating(false);
                 value={newEventForm.type}
                 onChange={e => setNewEventForm(prev => ({ ...prev, type: e.target.value }))}
                 className="w-full p-3 rounded-md border-2"
-                style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', borderColor: '#2b2b2b', color: theme === 'dark' ? '#fff' : '#111' }}
+                style={{ backgroundColor: '#06080f', borderColor: 'rgba(255,255,255,0.08)', color: '#e2e8f0' }}
               >
                 <option>Corporate</option>
                 <option>Wedding</option>
@@ -370,7 +404,7 @@ setIsGenerating(false);
                 onChange={e => setNewEventForm(prev => ({ ...prev, location: e.target.value }))}
                 placeholder="Grand Ballroom, Downtown"
                 className="w-full p-3 rounded-md border-2"
-                style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', borderColor: '#2b2b2b', color: theme === 'dark' ? '#fff' : '#111' }}
+                style={{ backgroundColor: '#06080f', borderColor: 'rgba(255,255,255,0.08)', color: '#e2e8f0' }}
               />
             </div>
           </div>
@@ -384,7 +418,7 @@ setIsGenerating(false);
                 onChange={e => setNewEventForm(prev => ({ ...prev, budget: e.target.value }))}
                 placeholder="50000"
                 className="w-full p-3 rounded-md border-2"
-                style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', borderColor: '#2b2b2b', color: theme === 'dark' ? '#fff' : '#111' }}
+                style={{ backgroundColor: '#06080f', borderColor: 'rgba(255,255,255,0.08)', color: '#e2e8f0' }}
               />
             </div>
 
@@ -396,7 +430,7 @@ setIsGenerating(false);
                 onChange={e => setNewEventForm(prev => ({ ...prev, guests: e.target.value }))}
                 placeholder="250"
                 className="w-full p-3 rounded-md border-2"
-                style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', borderColor: '#2b2b2b', color: theme === 'dark' ? '#fff' : '#111' }}
+                style={{ backgroundColor: '#06080f', borderColor: 'rgba(255,255,255,0.08)', color: '#e2e8f0' }}
               />
             </div>
           </div>
@@ -409,14 +443,14 @@ setIsGenerating(false);
               onChange={e => setNewEventForm(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Describe the event, theme, special requirements..."
               className="w-full p-3 rounded-md border-2"
-              style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', borderColor: '#2b2b2b', color: theme === 'dark' ? '#fff' : '#111' }}
+              style={{ backgroundColor: '#06080f', borderColor: 'rgba(255,255,255,0.08)', color: '#e2e8f0' }}
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t-2" style={{ borderColor: '#2b2b2b' }}>
+          <div className="flex justify-end gap-3 pt-4 border-t-2" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
             <button
               onClick={onClose}
-              className="px-6 py-2 rounded-md font-semibold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+              className="px-6 py-2 rounded-md font-semibold text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
             >
               Cancel
             </button>
@@ -432,8 +466,8 @@ setIsGenerating(false);
     </div>
   );
 };
-  /* -------------------- Sample Data (kept from your original file but converted to state where requested) -------------------- */
-  const [events, setEvents] = useState([
+  /* ── Persisted data ── */
+  const [events, setEvents] = useLocalStorage('ef_events', [
     {
       id: 1, name: 'Summer Gala 2025', date: '2025-06-15', budget: 50000, spent: 32000,
       guests: 250, confirmed: 180, status: 'active', vendors: 8, tasks: 24, completed: 18,
@@ -461,22 +495,22 @@ setIsGenerating(false);
     }
   ]);
 
-  const vendors = useMemo(() => ([
+  const [vendors, setVendors] = useLocalStorage('ef_vendors', [
     { id: 1, name: 'Elegant Catering Co.', category: 'Catering', rating: 4.9, price: '$$$$', location: 'Downtown', reviews: 127, booked: true, lastContact: '2 days ago' },
     { id: 2, name: 'Harmony DJ Services', category: 'Entertainment', rating: 4.8, price: '$$$', location: 'Citywide', reviews: 89, booked: true, lastContact: '1 week ago' },
     { id: 3, name: 'Bloom & Petal', category: 'Florals', rating: 5.0, price: '$$$', location: 'Westside', reviews: 156, booked: false, lastContact: 'Never' },
     { id: 4, name: 'Gourmet Delights', category: 'Catering', rating: 4.8, price: '$$$', location: 'Midtown', reviews: 112, booked: false, lastContact: '1 month ago' },
     { id: 5, name: 'Live Band Collective', category: 'Entertainment', rating: 4.7, price: '$$$$', location: 'Downtown', reviews: 78, booked: false, lastContact: 'Never' }
-  ]), []);
+  ]);
 
-  const venues = useMemo(() => ([
+  const [venues, setVenues] = useLocalStorage('ef_venues', [
     { id: 1, name: 'Grand Ballroom', location: 'Downtown', capacity: 300, price: '$$$$$', rating: 4.7, reviews: 203, booked: true, amenities: ['Kitchen', 'Parking', 'AV Equipment'] },
     { id: 2, name: 'Crystal Palace', location: 'Waterfront', capacity: 250, price: '$$$$', rating: 4.8, reviews: 189, booked: false, amenities: ['Waterfront', 'Indoor/Outdoor', 'Catering'] },
     { id: 3, name: 'Convention Center', location: 'Tech District', capacity: 1000, price: '$$$$$', rating: 4.6, reviews: 267, booked: false, amenities: ['Multiple Rooms', 'Tech Setup', 'Catering'] },
     { id: 4, name: 'Garden Estate', location: 'Suburbs', capacity: 150, price: '$$$', rating: 4.9, reviews: 145, booked: false, amenities: ['Outdoor', 'Gardens', 'Tents Available'] }
-  ]), []);
+  ]);
 
-  const [conversations, setConversations] = useState([
+  const [conversations, setConversations] = useLocalStorage('ef_convos', [
     {
       id: 1, vendor: 'Elegant Catering Co.', lastMessage: 'Menu proposal attached', time: '10:30 AM', unread: true,
       messages: [
@@ -490,8 +524,7 @@ setIsGenerating(false);
     }
   ]);
 
-  // Converted tasks to state so they can be updated and new tasks added
-  const [tasks, setTasks] = useState([
+  const [tasks, setTasks] = useLocalStorage('ef_tasks', [
     {
       id: 1, title: 'Finalize menu with caterer', event: 'Summer Gala 2025', dueDate: '2025-05-01',
       status: 'in-progress', priority: 'high', assignedTo: 'James Cooper', createdBy: 'Sarah Mitchell',
@@ -551,25 +584,76 @@ setIsGenerating(false);
     }
   ]);
 
-  // Converted to state so they can be updated
-  const [budgetItems, setBudgetItems] = useState([
+  const [budgetItems, setBudgetItems] = useLocalStorage('ef_budget', [
     { id: 1, category: 'Venue', vendor: 'Grand Ballroom', amount: 12000, paid: 12000, status: 'paid', event: 'Summer Gala 2025', dueDate: '2025-03-01' },
     { id: 2, category: 'Catering', vendor: 'Elegant Catering', amount: 15000, paid: 7500, status: 'partial', event: 'Summer Gala 2025', dueDate: '2025-06-01' },
     { id: 3, category: 'Entertainment', vendor: 'Harmony DJ', amount: 2500, paid: 0, status: 'pending', event: 'Summer Gala 2025', dueDate: '2025-06-10' }
   ]);
 
-  const [guests, setGuests] = useState([
+  const [guests, setGuests] = useLocalStorage('ef_guests', [
     { id: 1, name: 'John Smith', email: 'john@email.com', rsvp: 'confirmed', plusOne: true, event: 'Summer Gala 2025', table: 'A1', dietaryRestrictions: 'Vegetarian' },
     { id: 2, name: 'Sarah Johnson', email: 'sarah@email.com', rsvp: 'confirmed', plusOne: false, event: 'Summer Gala 2025', table: 'A1', dietaryRestrictions: 'None' },
     { id: 3, name: 'Michael Chen', email: 'michael@email.com', rsvp: 'pending', plusOne: true, event: 'Summer Gala 2025', table: 'B2', dietaryRestrictions: 'Gluten-free' }
   ]);
 
-  // Clients sample data + state
-  const [clients, setClients] = useState([
+  const [clients, setClients] = useLocalStorage('ef_clients', [
     { id: 1, company: 'Acme Corp', contact: 'Laura Peters', email: 'laura@acme.com', phone: '+49 30 1234567', status: 'active', events: 3, clientSince: '2022-03-12', notes: 'Prefers waterfront venues' },
     { id: 2, company: 'The Thompson Family', contact: 'James Thompson', email: 'james@thompson.com', phone: '+49 30 9876543', status: 'active', events: 1, clientSince: '2025-01-05', notes: 'Wedding client' },
     { id: 3, company: 'NextGen Tech', contact: 'Rita Gomez', email: 'rita@nextgen.com', phone: '+49 30 5551212', status: 'prospect', events: 0, clientSince: '2024-11-01', notes: 'Interested in conference packages' }
   ]);
+
+  /* -------------------- Venue discovery -------------------- */
+  const DISCOVER_CATEGORIES = [
+    'event space', 'wedding venue', 'nightclub', 'hotel', 'boutique hotel',
+    'resort', 'restaurant', 'bar', 'coworking', 'live music venue',
+  ];
+
+  async function handleDiscover() {
+    const scraperUrl = import.meta.env.VITE_SCRAPER_URL;
+    if (!scraperUrl) {
+      setDiscoverError('Set VITE_SCRAPER_URL in .env.local to enable live discovery.');
+      return;
+    }
+    if (!discoverCity.trim()) return;
+    setIsDiscovering(true);
+    setDiscoverError('');
+    setDiscoverResults([]);
+    try {
+      const res = await fetch(`${scraperUrl}/discover`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ city: discoverCity.trim(), category: discoverCategory, limit: 20 }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Discovery failed');
+      if ((data.results ?? []).length === 0) setDiscoverError('No results found — try a different city or category.');
+      setDiscoverResults(data.results ?? []);
+    } catch (err) {
+      setDiscoverError(err.message);
+    } finally {
+      setIsDiscovering(false);
+    }
+  }
+
+  function saveDiscoveredVenue(v) {
+    const next = {
+      id: Date.now(),
+      name: v.name,
+      location: v.address?.city || discoverCity,
+      capacity: 0,
+      price: '$$$',
+      rating: 0,
+      reviews: 0,
+      booked: false,
+      amenities: [v.tags?.amenity ?? v.tags?.tourism ?? v.category].filter(Boolean),
+      website: v.website,
+      phone: v.phone,
+      lat: v.lat,
+      lng: v.lng,
+    };
+    // venues is a useMemo so we need a separate discovered list; merge into display
+    setDiscoverResults(prev => prev.filter(r => r.osm_id !== v.osm_id));
+  }
 
   /* -------------------- Filtering helpers -------------------- */
   const filteredVendors = vendors.filter(v => {
@@ -594,10 +678,10 @@ setIsGenerating(false);
           className={`w-full md:max-w-4xl md:max-h-[90vh] overflow-y-auto ${classes.panelBg} ${classes.border} rounded-2xl`}
           style={{
             boxShadow: neonBoxShadow,
-            borderColor: '#2b2b2b'
+            borderColor: 'rgba(255,255,255,0.08)'
           }}
         >
-          <div className="sticky top-0 p-4 flex justify-between items-start border-b-2" style={{ borderColor: '#2b2b2b' }}>
+          <div className="sticky top-0 p-4 flex justify-between items-start border-b-2" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
             <div className="flex-1">
               <input
                 type="text"
@@ -623,7 +707,7 @@ setIsGenerating(false);
             <div className="md:col-span-2 space-y-6">
               <div>
                 <label className="text-sm font-semibold text-slate-300 mb-2 block">Description</label>
-                <textarea rows="3" defaultValue={task.description} className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#111827' : '#f8fafc', color: theme === 'dark' ? '#fff' : '#111' }} />
+                <textarea rows="3" defaultValue={task.description} className="w-full p-3 rounded-md" style={{ backgroundColor: '#06080f', color: '#e2e8f0' }} />
               </div>
 
               <div>
@@ -633,7 +717,7 @@ setIsGenerating(false);
                 </div>
                 <div className="space-y-2">
                   {task.subtasks.map(s => (
-                    <div key={s.id} className="flex items-center gap-3 p-2 hover:bg-slate-700 rounded-md">
+                    <div key={s.id} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-md">
                       <input type="checkbox" checked={s.completed} readOnly className="w-4 h-4" />
                       <span className={`text-sm ${s.completed ? 'line-through text-slate-400' : 'text-slate-200'}`}>{s.title}</span>
                     </div>
@@ -661,7 +745,7 @@ setIsGenerating(false);
                   ))}
                   <div className="flex gap-3 mt-4">
                     <div className="w-8 h-8 bg-slate-600 flex items-center justify-center rounded text-slate-200">You</div>
-                    <input type="text" placeholder="Add a comment..." className="flex-1 p-2 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#f8fafc', color: theme === 'dark' ? '#fff' : '#111' }} />
+                    <input type="text" placeholder="Add a comment..." className="flex-1 p-2 rounded-md" style={{ backgroundColor: '#06080f', color: '#e2e8f0' }} />
                   </div>
                 </div>
               </div>
@@ -692,7 +776,7 @@ setIsGenerating(false);
               <div>
                 <label className="text-xs font-semibold text-slate-400 mb-2 block">TAGS</label>
                 <div className="flex flex-wrap gap-2">
-                  {task.tags.map(tag => <span key={tag} className="text-xs px-2 py-1 rounded-md bg-slate-700 text-slate-200">{tag}</span>)}
+                  {task.tags.map(tag => <span key={tag} className="text-xs px-2 py-1 rounded-md bg-white/5 text-slate-200">{tag}</span>)}
                 </div>
               </div>
 
@@ -701,7 +785,7 @@ setIsGenerating(false);
                   <label className="text-xs font-semibold text-slate-400 mb-2 block">ATTACHMENTS</label>
                   <div className="space-y-2">
                     {task.attachments.map((f, i) => (
-                      <div key={i} className="flex items-center gap-2 p-2 rounded-md hover:bg-slate-700 cursor-pointer">
+                      <div key={i} className="flex items-center gap-2 p-2 rounded-md hover:bg-white/5 cursor-pointer">
                         <Paperclip size={14} /> <span className="truncate">{f}</span>
                       </div>
                     ))}
@@ -709,7 +793,7 @@ setIsGenerating(false);
                 </div>
               )}
 
-              <button className="w-full py-2 rounded-md font-semibold bg-slate-700 hover:bg-slate-600">Add Attachment</button>
+              <button className="w-full py-2 rounded-md font-semibold bg-white/5 hover:bg-white/10">Add Attachment</button>
             </div>
           </div>
         </div>
@@ -722,15 +806,15 @@ setIsGenerating(false);
     if (!event) return null;
     return (
       <div className="fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-        <div className="min-h-screen bg-slate-900">
-          <div className={`${classes.panelBg} ${classes.border} rounded-b-2xl`} style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}>
+        <div className="min-h-screen app-bg">
+          <div className={`${classes.panelBg} ${classes.border} rounded-b-2xl`} style={{ boxShadow: neonBoxShadow, borderColor: 'rgba(255,255,255,0.08)' }}>
             <div className="max-w-7xl mx-auto px-6 py-4">
               <div className="flex justify-between items-center mb-4">
                 <button onClick={onClose} className="flex items-center gap-2 text-slate-200">
                   <X size={18} /> Back to Events
                 </button>
                 <div className="flex gap-2">
-                  <button className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 text-sm font-semibold rounded-md flex items-center gap-2">
+                  <button className="bg-white/5 hover:bg-white/10 text-white px-4 py-2 text-sm font-semibold rounded-md flex items-center gap-2">
                     <Edit size={14} /> Edit
                   </button>
                 </div>
@@ -743,7 +827,7 @@ setIsGenerating(false);
                 <span className={`px-2 py-0.5 text-xs font-semibold ${event.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{event.status}</span>
               </div>
 
-              <div className="flex gap-2 border-b-2 pb-4" style={{ borderColor: '#2b2b2b' }}>
+              <div className="flex gap-2 border-b-2 pb-4" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                 {['overview', 'team', 'vendors', 'tasks', 'budget', 'guests', 'schedule'].map(tab => (
                   <button key={tab} onClick={() => setActiveEventTab(tab)} className={`pb-2 px-3 text-sm font-semibold ${activeEventTab === tab ? 'text-purple-300 border-b-2 border-purple-400' : 'text-slate-300 hover:text-white'}`}>
                     {tab}
@@ -757,12 +841,12 @@ setIsGenerating(false);
             {activeEventTab === 'overview' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="lg:col-span-2 space-y-4">
-                  <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: '#2b2b2b', boxShadow: '0 8px 30px -10px rgba(0,0,0,0.6)' }}>
+                  <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)', boxShadow: '0 8px 30px -10px rgba(0,0,0,0.6)' }}>
                     <h2 className="text-lg font-semibold text-white mb-3">Description</h2>
                     <p className="text-slate-300 text-sm leading-relaxed">{event.description}</p>
                   </div>
 
-                  <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: '#2b2b2b', boxShadow: '0 8px 30px -10px rgba(0,0,0,0.6)' }}>
+                  <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)', boxShadow: '0 8px 30px -10px rgba(0,0,0,0.6)' }}>
                     <h2 className="text-lg font-semibold text-white mb-4">Progress</h2>
                     <div className="space-y-4">
                       <div>
@@ -770,21 +854,21 @@ setIsGenerating(false);
                           <span>Tasks Completion</span>
                           <span className="text-white font-semibold">{Math.round((event.completed / event.tasks) * 100)}%</span>
                         </div>
-                        <div className="w-full bg-slate-700 h-2 rounded"><div className="h-full" style={{ width: `${(event.completed / event.tasks) * 100}%`, background: NEON }} /></div>
+                        <div className="w-full bg-white/5 h-2 rounded"><div className="h-full" style={{ width: `${(event.completed / event.tasks) * 100}%`, background: NEON }} /></div>
                       </div>
                       <div>
                         <div className="flex justify-between mb-2 text-sm text-slate-300">
                           <span>Budget Used</span>
                           <span className="text-white font-semibold">{Math.round((event.spent / event.budget) * 100)}%</span>
                         </div>
-                        <div className="w-full bg-slate-700 h-2 rounded"><div className="h-full" style={{ width: `${(event.spent / event.budget) * 100}%`, background: '#00d19a' }} /></div>
+                        <div className="w-full bg-white/5 h-2 rounded"><div className="h-full" style={{ width: `${(event.spent / event.budget) * 100}%`, background: 'linear-gradient(90deg, #10b981, #059669)' }} /></div>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                  <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                     <h2 className="text-base font-semibold text-white mb-4">Quick Stats</h2>
                     <div className="space-y-3 text-sm text-slate-300">
                       <div className="flex justify-between"><span>Budget</span><span className="font-semibold text-white">${event.budget.toLocaleString()}</span></div>
@@ -794,7 +878,7 @@ setIsGenerating(false);
                     </div>
                   </div>
 
-                  <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                  <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                     <h2 className="text-base font-semibold text-white mb-4">Team</h2>
                     <div className="space-y-3">
                       {event.team.map(member => (
@@ -826,7 +910,7 @@ setIsGenerating(false);
           key={vendor.id}
           onClick={() => { setSelectedVendor(vendor); setShowVendorModal(true); }}
           className={`${classes.panelBg} ${classes.border} p-4 rounded-md cursor-pointer hover:shadow-lg transition-all`}
-          style={{ borderColor: '#2b2b2b' }}
+          style={{ borderColor: 'rgba(255,255,255,0.08)' }}
         >
           <div className="flex justify-between items-start mb-3">
             <div>
@@ -867,23 +951,23 @@ setIsGenerating(false);
     </div>
 
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+      <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
         <div className="text-sm text-slate-400 mb-1">Total Budget</div>
         <div className="text-2xl font-bold text-white">${event.budget.toLocaleString()}</div>
       </div>
-      <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+      <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
         <div className="text-sm text-slate-400 mb-1">Spent</div>
         <div className="text-2xl font-bold text-emerald-400">${event.spent.toLocaleString()}</div>
       </div>
-      <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+      <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
         <div className="text-sm text-slate-400 mb-1">Remaining</div>
         <div className="text-2xl font-bold text-purple-400">${(event.budget - event.spent).toLocaleString()}</div>
       </div>
     </div>
 
-    <div className={`${classes.panelBg} ${classes.border} rounded-md overflow-hidden`} style={{ borderColor: '#2b2b2b' }}>
+    <div className={`${classes.panelBg} ${classes.border} rounded-md overflow-hidden`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
       <table className="w-full text-sm">
-        <thead className="bg-slate-800">
+        <thead className="bg-slate-900">
           <tr>
             <th className="text-left py-3 px-4 text-slate-300 font-semibold">Category</th>
             <th className="text-left py-3 px-4 text-slate-300 font-semibold">Vendor</th>
@@ -895,7 +979,7 @@ setIsGenerating(false);
         </thead>
         <tbody>
           {budgetItems.filter(item => item.event === event.name).map(item => (
-            <tr key={item.id} className="border-b hover:bg-slate-700" style={{ borderColor: '#1f2937' }}>
+            <tr key={item.id} className="border-b hover:bg-white/5" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
               <td className="py-3 px-4 text-white font-semibold">{item.category}</td>
               <td className="py-3 px-4 text-slate-300">{item.vendor}</td>
               <td className="py-3 px-4 text-right text-white font-semibold">${item.amount.toLocaleString()}</td>
@@ -925,19 +1009,19 @@ setIsGenerating(false);
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-3">
                     <h2 className="text-xl font-semibold text-white">Tasks</h2>
-                    <div className="flex gap-1 bg-slate-800 p-1 rounded">
-                      <button onClick={() => setTaskView('list')} className={`px-3 py-1 text-xs font-semibold rounded ${taskView === 'list' ? 'bg-slate-700 text-white shadow' : 'text-slate-300'}`}>List</button>
-                      <button onClick={() => setTaskView('board')} className={`px-3 py-1 text-xs font-semibold rounded ${taskView === 'board' ? 'bg-slate-700 text-white shadow' : 'text-slate-300'}`}>Board</button>
+                    <div className="flex gap-1 bg-slate-900 p-1 rounded">
+                      <button onClick={() => setTaskView('list')} className={`px-3 py-1 text-xs font-semibold rounded ${taskView === 'list' ? 'bg-white/10 text-white shadow' : 'text-slate-300'}`}>List</button>
+                      <button onClick={() => setTaskView('board')} className={`px-3 py-1 text-xs font-semibold rounded ${taskView === 'board' ? 'bg-white/10 text-white shadow' : 'text-slate-300'}`}>Board</button>
                     </div>
                   </div>
                   <button onClick={() => setShowAddTaskModal(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2"><Plus size={16} /> Add Task</button>
                 </div>
 
                 {taskView === 'list' && (
-                  <div className={`${classes.panelBg} ${classes.border} rounded-md overflow-hidden`} style={{ borderColor: '#2b2b2b' }}>
+                  <div className={`${classes.panelBg} ${classes.border} rounded-md overflow-hidden`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-slate-800">
+                        <tr className="bg-slate-900">
                           <th className="text-left py-3 px-4 text-slate-300 font-semibold">Task</th>
                           <th className="text-left py-3 px-4 text-slate-300 font-semibold">Assigned</th>
                           <th className="text-center py-3 px-4 text-slate-300 font-semibold">Priority</th>
@@ -947,17 +1031,17 @@ setIsGenerating(false);
                       </thead>
                       <tbody>
                         {tasks.filter(t => t.event === event.name).map(task => (
-                          <tr key={task.id} onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }} className="border-b hover:bg-slate-700 cursor-pointer" style={{ borderColor: '#1f2937' }}>
+                          <tr key={task.id} onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }} className="border-b hover:bg-white/5 cursor-pointer" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                             <td className="py-3 px-4">
                               <div className="font-semibold text-white">{task.title}</div>
                               <div className="text-xs text-slate-400 mt-0.5">{task.subtasks.filter(s => s.completed).length}/{task.subtasks.length} subtasks</div>
                             </td>
                             <td className="py-3 px-4 text-slate-300">{task.assignedTo}</td>
                             <td className="py-3 px-4 text-center">
-                              <span className={`px-2 py-0.5 text-xs font-semibold rounded ${task.priority === 'high' ? 'bg-red-100 text-red-700' : task.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-slate-700 text-slate-200'}`}>{task.priority}</span>
+                              <span className={`px-2 py-0.5 text-xs font-semibold rounded ${task.priority === 'high' ? 'bg-red-100 text-red-700' : task.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-white/5 text-slate-200'}`}>{task.priority}</span>
                             </td>
                             <td className="py-3 px-4 text-center">
-                              <span className={`px-2 py-0.5 text-xs font-semibold rounded ${task.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : task.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-slate-700 text-slate-200'}`}>{task.status}</span>
+                              <span className={`px-2 py-0.5 text-xs font-semibold rounded ${task.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : task.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-white/5 text-slate-200'}`}>{task.status}</span>
                             </td>
                             <td className="py-3 px-4 text-center text-slate-300">{new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
                           </tr>
@@ -974,7 +1058,7 @@ setIsGenerating(false);
                       <div
                         key={status}
                         className={`${classes.panelBg} ${classes.border} rounded-md p-4`}
-                        style={{ borderColor: '#2b2b2b', minHeight: 200 }}
+                        style={{ borderColor: 'rgba(255,255,255,0.08)', minHeight: 200 }}
                         onDragOver={(e) => {
                           e.preventDefault();
                         }}
@@ -988,7 +1072,7 @@ setIsGenerating(false);
                       >
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="text-sm font-semibold text-slate-300 uppercase">{status.replace('-', ' ')}</h4>
-                          <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded font-semibold">
+                          <span className="text-xs bg-white/5 text-slate-300 px-2 py-0.5 rounded font-semibold">
                             {tasks.filter(t => t.event === event.name && t.status === status).length}
                           </span>
                         </div>
@@ -1004,8 +1088,8 @@ setIsGenerating(false);
                                 e.dataTransfer.effectAllowed = 'move';
                               }}
                               onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }}
-                              className="bg-slate-800 p-3 rounded-md cursor-pointer hover:border-purple-500 transition-all border-2"
-                              style={{ borderColor: '#1f2937' }}
+                              className="bg-slate-900 p-3 rounded-md cursor-pointer hover:border-purple-500 transition-all border-2"
+                              style={{ borderColor: 'rgba(255,255,255,0.05)' }}
                             >
                               <div className="flex items-start justify-between mb-2">
                                 <h4 className="text-sm font-semibold text-white flex-1">{task.title}</h4>
@@ -1036,7 +1120,7 @@ setIsGenerating(false);
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-semibold text-white">Guest List</h2>
                   <div className="flex gap-2">
-                    <button className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded text-sm">
+                    <button className="bg-white/5 hover:bg-white/10 text-white px-3 py-2 rounded text-sm">
                       Export CSV
                     </button>
                     <button onClick={() => setShowAddGuestModal(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm">
@@ -1046,27 +1130,27 @@ setIsGenerating(false);
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                  <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                  <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                     <div className="text-sm text-slate-400 mb-1">Total Invited</div>
                     <div className="text-2xl font-bold text-white">{event.guests}</div>
                   </div>
-                  <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                  <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                     <div className="text-sm text-slate-400 mb-1">Confirmed</div>
                     <div className="text-2xl font-bold text-emerald-400">{event.confirmed}</div>
                   </div>
-                  <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                  <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                     <div className="text-sm text-slate-400 mb-1">Pending</div>
                     <div className="text-2xl font-bold text-amber-400">{guests.filter(g => g.event === event.name && g.rsvp === 'pending').length}</div>
                   </div>
-                  <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                  <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                     <div className="text-sm text-slate-400 mb-1">Declined</div>
                     <div className="text-2xl font-bold text-red-400">{guests.filter(g => g.event === event.name && g.rsvp === 'declined').length}</div>
                   </div>
                 </div>
 
-                <div className={`${classes.panelBg} ${classes.border} rounded-md overflow-hidden`} style={{ borderColor: '#2b2b2b' }}>
+                <div className={`${classes.panelBg} ${classes.border} rounded-md overflow-hidden`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                   <table className="w-full text-sm">
-                    <thead className="bg-slate-800">
+                    <thead className="bg-slate-900">
                       <tr>
                         <th className="text-left py-3 px-4 text-slate-300 font-semibold">Name</th>
                         <th className="text-left py-3 px-4 text-slate-300 font-semibold">Email</th>
@@ -1078,7 +1162,7 @@ setIsGenerating(false);
                     </thead>
                     <tbody>
                       {guests.filter(g => g.event === event.name).map(guest => (
-                        <tr key={guest.id} className="border-b hover:bg-slate-700" style={{ borderColor: '#1f2937' }}>
+                        <tr key={guest.id} className="border-b hover:bg-white/5" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                           <td className="py-3 px-4 text-white font-semibold">{guest.name}</td>
                           <td className="py-3 px-4 text-slate-300">{guest.email}</td>
                           <td className="py-3 px-4 text-center">
@@ -1156,7 +1240,7 @@ setIsGenerating(false);
                 <div
                   key={idx}
                   className={`${classes.panelBg} ${classes.border} p-3 rounded-md transition-all hover:shadow-lg`}
-                  style={{ borderColor: '#2b2b2b' }}
+                  style={{ borderColor: 'rgba(255,255,255,0.08)' }}
                 >
                   <div className="flex items-start justify-between">
                     <div>
@@ -1171,7 +1255,7 @@ setIsGenerating(false);
                         setEditingItem(it);
                         setShowGanttEditModal(true);
                       }}
-                      className="p-1 hover:bg-slate-700 rounded"
+                      className="p-1 hover:bg-white/5 rounded"
                       title="Edit this item"
                     >
                       <Edit size={14} className="text-slate-300" />
@@ -1182,7 +1266,7 @@ setIsGenerating(false);
             </div>
 
             {/* Right time-based chart */}
-            <div className="flex-1 overflow-x-auto relative h-64 bg-slate-800 rounded-lg border border-slate-700">
+            <div className="flex-1 overflow-x-auto relative h-64 bg-slate-900 rounded-lg border border-white/5">
               {/* Time ruler */}
               <div className="absolute top-0 left-0 w-full flex justify-between text-xs text-slate-400 p-2">
                 {['09 AM', '12 PM', '03 PM', '06 PM', '09 PM', '12 AM'].map((t) => (
@@ -1206,7 +1290,7 @@ setIsGenerating(false);
                         boxShadow: neonBoxShadow
                       }}
                     />
-                    <div className="absolute hidden group-hover:flex top-7 left-0 bg-slate-900 text-white text-xs px-2 py-1 rounded shadow-lg border border-slate-700 z-10 whitespace-nowrap">
+                    <div className="absolute hidden group-hover:flex top-7 left-0 app-bg text-white text-xs px-2 py-1 rounded shadow-lg glass-border z-10 whitespace-nowrap">
                       <div className="flex flex-col">
                         <span className="font-semibold">{it.title}</span>
                         <span>{it.time} • {it.duration}</span>
@@ -1224,7 +1308,7 @@ setIsGenerating(false);
             <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center">
               <div
                 className={`${classes.panelBg} ${classes.border} rounded-xl p-6 w-[95%] max-w-md`}
-                style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}
+                style={{ boxShadow: neonBoxShadow, borderColor: 'rgba(255,255,255,0.08)' }}
               >
                 <h3 className="text-lg font-semibold text-white mb-4">Edit Schedule Item</h3>
                 <form
@@ -1259,7 +1343,7 @@ setIsGenerating(false);
                       onChange={(e) =>
                         setEditingItem((prev) => ({ ...prev, title: e.target.value }))
                       }
-                      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full dark-input glass-border rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
 
@@ -1272,7 +1356,7 @@ setIsGenerating(false);
                       onChange={(e) =>
                         setEditingItem((prev) => ({ ...prev, assigned: e.target.value }))
                       }
-                      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full dark-input glass-border rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
 
@@ -1285,7 +1369,7 @@ setIsGenerating(false);
                       onChange={(e) =>
                         setEditingItem((prev) => ({ ...prev, time: e.target.value }))
                       }
-                      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full dark-input glass-border rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
 
@@ -1298,7 +1382,7 @@ setIsGenerating(false);
                       onChange={(e) =>
                         setEditingItem((prev) => ({ ...prev, duration: e.target.value }))
                       }
-                      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full dark-input glass-border rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
 
@@ -1310,7 +1394,7 @@ setIsGenerating(false);
                       onChange={(e) =>
                         setEditingItem((prev) => ({ ...prev, category: e.target.value }))
                       }
-                      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full dark-input glass-border rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                     >
                       <option>Setup</option>
                       <option>Reception</option>
@@ -1325,7 +1409,7 @@ setIsGenerating(false);
                     <button
                       type="button"
                       onClick={() => setShowGanttEditModal(false)}
-                      className="px-4 py-2 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm"
+                      className="px-4 py-2 rounded bg-white/5 hover:bg-white/10 text-slate-200 text-sm"
                     >
                       Cancel
                     </button>
@@ -1387,7 +1471,7 @@ setIsGenerating(false);
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-md p-6`} style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}>
+        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-md p-6`} style={{ boxShadow: neonBoxShadow, borderColor: 'rgba(255,255,255,0.08)' }}>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-white">Add Budget Item</h3>
             <button onClick={onClose}><X size={18} className="text-slate-300" /></button>
@@ -1451,7 +1535,7 @@ setIsGenerating(false);
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-md p-6`} style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}>
+        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-md p-6`} style={{ boxShadow: neonBoxShadow, borderColor: 'rgba(255,255,255,0.08)' }}>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-white">Add Guest</h3>
             <button onClick={onClose}><X size={18} className="text-slate-300" /></button>
@@ -1516,7 +1600,7 @@ setIsGenerating(false);
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-md p-6`} style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}>
+        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-md p-6`} style={{ boxShadow: neonBoxShadow, borderColor: 'rgba(255,255,255,0.08)' }}>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-white">Add Schedule Item</h3>
             <button onClick={onClose}><X size={18} className="text-slate-300" /></button>
@@ -1556,7 +1640,7 @@ setIsGenerating(false);
     if (!client) return null;
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-2xl p-6`} style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}>
+        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-2xl p-6`} style={{ boxShadow: neonBoxShadow, borderColor: 'rgba(255,255,255,0.08)' }}>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-white">{client.company}</h3>
             <button onClick={onClose}><X size={18} className="text-slate-300" /></button>
@@ -1612,7 +1696,7 @@ setIsGenerating(false);
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-md p-6`} style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}>
+        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-md p-6`} style={{ boxShadow: neonBoxShadow, borderColor: 'rgba(255,255,255,0.08)' }}>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-white">Add Client</h3>
             <button onClick={onClose}><X size={18} className="text-slate-300" /></button>
@@ -1665,7 +1749,7 @@ setIsGenerating(false);
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {clients.map(client => (
-            <div key={client.id} onClick={() => { setSelectedClient(client); setShowClientDetailModal(true); }} className={`${classes.panelBg} ${classes.border} p-4 rounded-md cursor-pointer hover:shadow-lg`} style={{ borderColor: '#2b2b2b' }}>
+            <div key={client.id} onClick={() => { setSelectedClient(client); setShowClientDetailModal(true); }} className={`${classes.panelBg} ${classes.border} p-4 rounded-md cursor-pointer hover:shadow-lg`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <h3 className="font-semibold text-white text-sm">{client.company}</h3>
@@ -1722,7 +1806,7 @@ setIsGenerating(false);
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-md p-6`} style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}>
+        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-md p-6`} style={{ boxShadow: neonBoxShadow, borderColor: 'rgba(255,255,255,0.08)' }}>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-white">Add Task</h3>
             <button onClick={onClose}><X size={18} className="text-slate-300" /></button>
@@ -1783,9 +1867,9 @@ setIsGenerating(false);
   return (
     <div className={`min-h-screen ${classes.appBg} font-sans`}>
       {/* Top mobile header */}
-      <div className="md:hidden bg-slate-900 border-b-2" style={{ borderColor: '#1f2937' }}>
+      <div className="md:hidden app-bg border-b-2" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
         <div className="p-4 flex justify-between items-center">
-          <div className="text-lg font-bold text-white">Athar UX</div>
+          <div className="text-lg font-bold text-white">EventFlow</div>
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2">
             <Menu size={20} className="text-slate-200" />
           </button>
@@ -1795,9 +1879,9 @@ setIsGenerating(false);
       <div className="flex flex-col md:flex-row">
         {/* Sidebar */}
         <nav className={`${mobileMenuOpen ? 'block' : 'hidden'} md:block w-full md:w-64 ${classes.panelBg} ${classes.border} md:h-screen overflow-y-auto`}
-             style={{ borderColor: '#2b2b2b', boxShadow: '0 6px 20px -8px rgba(0,0,0,0.6)' }}>
-          <div className="hidden md:block p-6 border-b-2" style={{ borderColor: '#1f2937' }}>
-            <h1 className="text-xl font-bold text-white">Athar UX</h1>
+             style={{ borderColor: 'rgba(255,255,255,0.08)', boxShadow: '0 0 30px rgba(0,0,0,0.8)' }}>
+          <div className="hidden md:block p-6 border-b-2" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+            <h1 className="text-xl font-bold text-white">EventFlow</h1>
             <p className="text-xs text-slate-300 mt-1">Event planning platform</p>
           </div>
           <div className="p-4 space-y-2">
@@ -1808,14 +1892,14 @@ setIsGenerating(false);
               { id: 'venues', label: 'Venues', icon: MapPin },
               { id: 'clients', label: 'Clients', icon: Users },
               { id: 'messages', label: 'Messages', icon: MessageSquare },
-              { id: 'settings', label: 'Settings', icon: Settings }
+              { id: 'settings', label: 'Settings', icon: Settings },
             ].map(item => {
               const Icon = item.icon;
               return (
                 <button
                   key={item.id}
                   onClick={() => { setActiveTab(item.id); setMobileMenuOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded ${activeTab === item.id ? 'bg-slate-800 text-purple-300 font-semibold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded ${activeTab === item.id ? 'nav-active-bg text-purple-300 font-semibold border-l-2 border-purple-500' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
                 >
                   <Icon size={18} className="text-slate-300" />
                   <span className="font-semibold">{item.label}</span>
@@ -1823,12 +1907,32 @@ setIsGenerating(false);
               );
             })}
           </div>
+
+          {/* Pro upgrade CTA in sidebar */}
+          {plan === 'free' && (
+            <div className="p-4 mt-auto">
+              <button
+                onClick={() => setShowPricing(true)}
+                style={{ width: '100%', padding: '0.65rem', background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 6, color: '#c4b5fd', fontFamily: 'Space Mono, monospace', fontSize: '0.65rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, letterSpacing: '0.06em' }}
+              >
+                <Zap size={13} /> UPGRADE TO PRO
+              </button>
+              <p style={{ fontFamily: 'Space Mono, monospace', fontSize: '0.55rem', color: '#374151', textAlign: 'center', marginTop: 6 }}>
+                3 events remaining on free plan
+              </p>
+            </div>
+          )}
+          {plan === 'pro' && (
+            <div style={{ padding: '0.75rem 1rem', margin: '0 0.5rem 0.5rem', background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 4, fontFamily: 'Space Mono, monospace', fontSize: '0.6rem', color: '#c4b5fd', textAlign: 'center' }}>
+              ✓ PRO PLAN ACTIVE
+            </div>
+          )}
         </nav>
 
         {/* Main */}
         <main className="flex-1 p-6">
           {/* Top bar with stats and search */}
-          <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md mb-6 flex items-center justify-between`} style={{ borderColor: '#2b2b2b', boxShadow: '0 6px 20px -10px rgba(0,0,0,0.6)' }}>
+          <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md mb-6 flex items-center justify-between`} style={{ borderColor: 'rgba(255,255,255,0.08)', boxShadow: '0 0 20px rgba(0,0,0,0.8)', backdropFilter: 'blur(12px)' }}>
             <div className="flex items-center gap-8">
               <div className="text-center">
                 <div className="text-2xl font-bold text-white">{events.length}</div>
@@ -1847,9 +1951,28 @@ setIsGenerating(false);
             <div className="flex items-center gap-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
-                <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} type="text" placeholder="Search..." className="pl-9 pr-4 py-2 rounded-md text-sm" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#f8fafc', color: theme === 'dark' ? '#fff' : '#111' }} />
+                <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} type="text" placeholder="Search..." className="pl-9 pr-4 py-2 rounded-md text-sm" style={{ backgroundColor: '#06080f', color: '#e2e8f0' }} />
               </div>
+              <button
+                onClick={() => setShowPricing(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '0.4rem 0.75rem', background: plan === 'pro' ? 'rgba(139,92,246,0.12)' : 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 4, color: '#c4b5fd', fontFamily: 'Space Mono, monospace', fontSize: '0.62rem', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}
+              >
+                <Zap size={11} /> {plan === 'pro' ? 'PRO' : 'UPGRADE'}
+              </button>
             </div>
+          </div>
+
+          {/* XP strip */}
+          <div className="panel-glass border border-white/5 rounded-md px-5 py-3 mb-6 flex items-center gap-6">
+            <div className="flex items-center gap-3 flex-1">
+              <div className="text-xs text-slate-400 uppercase tracking-widest">Level</div>
+              <div className="text-lg font-bold text-white">{Math.floor(tasks.filter(t => t.status === 'completed').length / 3) + 1}</div>
+              <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${((tasks.filter(t => t.status === 'completed').length % 3) / 3) * 100}%`, background: 'linear-gradient(90deg, #7c3aed, #a855f7)' }} />
+              </div>
+              <div className="text-xs text-slate-400">{tasks.filter(t => t.status === 'completed').length * 50} XP</div>
+            </div>
+            <div className="text-xs text-purple-300 font-semibold">Event Planner</div>
           </div>
 
           {/* Content */}
@@ -1863,20 +1986,26 @@ setIsGenerating(false);
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className={`${classes.panelBg} ${classes.border} p-6 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                  <div className={`${classes.panelBg} ${classes.border} p-6 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                     <div className="flex justify-between items-center mb-5">
                       <h2 className="text-lg font-semibold text-white">Upcoming Events</h2>
-                      <button onClick={() => setShowCreateEvent(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2 shadow-sm"><Plus size={14} />New</button>
+                      {events.length >= 3 && plan === 'free' ? (
+                        <ProGate plan={plan} feature="Unlimited events" onUpgrade={() => setShowPricing(true)}>
+                          <button className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2 shadow-sm"><Zap size={14} />Upgrade</button>
+                        </ProGate>
+                      ) : (
+                        <button onClick={() => setShowCreateEvent(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2 shadow-sm"><Plus size={14} />New</button>
+                      )}
                     </div>
                     <div className="space-y-3">
                       {events.map(event => (
-                        <div key={event.id} onClick={() => { setSelectedEvent(event); setShowEventDetail(true); }} className="border-2 rounded-md p-4 hover:shadow-md cursor-pointer transition-all" style={{ borderColor: '#1f2937', background: theme === 'dark' ? '#0b1220' : '#fff' }}>
+                        <div key={event.id} onClick={() => { setSelectedEvent(event); setShowEventDetail(true); }} className="border-2 rounded-md p-4 hover:shadow-md cursor-pointer transition-all" style={{ borderColor: 'rgba(255,255,255,0.05)', background: '#06080f' }}>
                           <div className="flex justify-between items-start mb-2">
                             <h3 className="font-semibold text-white text-sm">{event.name}</h3>
                             <span className={`text-xs px-2 py-1 font-semibold ${event.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{event.status}</span>
                           </div>
                           <div className="text-xs text-slate-300 mb-3 font-medium">{new Date(event.date).toLocaleDateString()} • {event.guests} guests</div>
-                          <div className="w-full bg-slate-700 h-2 rounded overflow-hidden"><div className="h-full" style={{ width: `${(event.completed/event.tasks)*100}%`, background: NEON }} /></div>
+                          <div className="w-full bg-white/5 h-2 rounded overflow-hidden"><div className="h-full" style={{ width: `${(event.completed/event.tasks)*100}%`, background: NEON }} /></div>
                           <div className="text-xs text-slate-300 mt-2 font-medium">{event.completed}/{event.tasks} tasks completed</div>
                         </div>
                       ))}
@@ -1884,11 +2013,11 @@ setIsGenerating(false);
                   </div>
 
                   <div className="space-y-6">
-                    <div className={`${classes.panelBg} ${classes.border} p-6 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                    <div className={`${classes.panelBg} ${classes.border} p-6 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                       <h2 className="text-lg font-semibold text-white mb-5">High Priority Tasks</h2>
                       <div className="space-y-2">
                         {tasks.filter(t => t.priority === 'high' && t.status !== 'completed').map(task => (
-                          <div key={task.id} onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }} className="border-2 rounded-md p-4 hover:shadow-md cursor-pointer transition-all" style={{ borderColor: '#1f2937' }}>
+                          <div key={task.id} onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }} className="border-2 rounded-md p-4 hover:shadow-md cursor-pointer transition-all" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                             <div className="flex items-start gap-3">
                               <div className="w-2 h-2 bg-red-600 mt-2 flex-shrink-0"></div>
                               <div className="flex-1">
@@ -1902,7 +2031,7 @@ setIsGenerating(false);
                       </div>
                     </div>
 
-                    <div className={`${classes.panelBg} ${classes.border} p-6 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                    <div className={`${classes.panelBg} ${classes.border} p-6 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                       <h2 className="text-lg font-semibold text-white mb-5">Recent Activity</h2>
                       <div className="space-y-4">
                         <div className="flex items-start gap-3">
@@ -1938,12 +2067,18 @@ setIsGenerating(false);
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h1 className="text-2xl font-bold text-white">Events</h1>
-                  <button onClick={() => setShowCreateEvent(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2"><Plus size={16} />Create Event</button>
+                  {events.length >= 3 && plan === 'free' ? (
+                    <ProGate plan={plan} feature="Unlimited events" onUpgrade={() => setShowPricing(true)}>
+                      <button className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2"><Zap size={16} />Upgrade to add more</button>
+                    </ProGate>
+                  ) : (
+                    <button onClick={() => setShowCreateEvent(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2"><Plus size={16} />Create Event</button>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {events.map(event => (
-                    <div key={event.id} onClick={() => { setSelectedEvent(event); setShowEventDetail(true); }} className={`${classes.panelBg} ${classes.border} p-5 rounded-md cursor-pointer hover:shadow-lg`} style={{ borderColor: '#2b2b2b' }}>
+                    <div key={event.id} onClick={() => { setSelectedEvent(event); setShowEventDetail(true); }} className={`${classes.panelBg} ${classes.border} p-5 rounded-md cursor-pointer hover:shadow-lg`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <h3 className="text-lg font-semibold text-white mb-1">{event.name}</h3>
@@ -1956,9 +2091,9 @@ setIsGenerating(false);
                         <div className="flex items-center gap-2"><Users size={14} />{event.guests} guests</div>
                         <div className="flex items-center gap-2"><DollarSign size={14} />${event.spent.toLocaleString()} / ${event.budget.toLocaleString()}</div>
                       </div>
-                      <div className="bg-slate-800 border-2 rounded p-3" style={{ borderColor: '#1f2937' }}>
+                      <div className="bg-slate-900 border-2 rounded p-3" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                         <div className="flex justify-between text-xs mb-2"><span className="text-slate-300">Progress</span><span className="font-semibold text-white">{Math.round((event.completed/event.tasks)*100)}%</span></div>
-                        <div className="w-full bg-slate-700 h-1.5 rounded overflow-hidden"><div className="h-full" style={{ width: `${(event.completed/event.tasks)*100}%`, background: NEON }} /></div>
+                        <div className="w-full bg-white/5 h-1.5 rounded overflow-hidden"><div className="h-full" style={{ width: `${(event.completed/event.tasks)*100}%`, background: NEON }} /></div>
                       </div>
                     </div>
                   ))}
@@ -1970,10 +2105,10 @@ setIsGenerating(false);
             {activeTab === 'vendors' && (
               <div className="space-y-4">
                 <h1 className="text-2xl font-bold text-white">Vendors</h1>
-                <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
+                <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                   <div className="flex gap-3 mb-5">
-                    <input type="text" placeholder="Search vendors..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="flex-1 p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#f8fafc', color: theme === 'dark' ? '#fff' : '#111' }} />
-                    <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }}>
+                    <input type="text" placeholder="Search vendors..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="flex-1 p-3 rounded-md" style={{ backgroundColor: '#06080f', color: '#e2e8f0' }} />
+                    <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="p-3 rounded-md" style={{ backgroundColor: '#06080f', color: '#e2e8f0' }}>
                       <option>All</option>
                       <option>Catering</option>
                       <option>Entertainment</option>
@@ -1983,9 +2118,9 @@ setIsGenerating(false);
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {filteredVendors.map(vendor => (
-                      <div key={vendor.id} onClick={() => { setSelectedVendor(vendor); setShowVendorModal(true); }} className={`${classes.panelBg} ${classes.border} p-4 rounded-md cursor-pointer`} style={{ borderColor: '#2b2b2b' }}>
+                      <div key={vendor.id} onClick={() => { setSelectedVendor(vendor); setShowVendorModal(true); }} className={`${classes.panelBg} ${classes.border} p-4 rounded-md cursor-pointer`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                         <div className="flex justify-between items-start mb-3">
-                          <div className="flex items-center gap-1 bg-slate-800 px-2 py-1 rounded">
+                          <div className="flex items-center gap-1 bg-slate-900 px-2 py-1 rounded">
                             <Star className="text-amber-400" size={12} />
                             <span className="text-xs font-semibold text-white">{vendor.rating}</span>
                           </div>
@@ -2006,18 +2141,101 @@ setIsGenerating(false);
             
             {/* Venues */}
             {activeTab === 'venues' && (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <h1 className="text-2xl font-bold text-white">Venues</h1>
-                <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: '#2b2b2b' }}>
-                  <div className="mb-5">
-                    <input type="text" placeholder="Search venues..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full p-3 rounded-md" style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }} />
+
+                {/* Live discovery panel */}
+                <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)', boxShadow: neonBoxShadow }}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold" style={{ background: 'linear-gradient(135deg, #A020F0 0%, #8B00FF 100%)', color: 'white' }}>
+                      <Search size={12} /> Discover
+                    </div>
+                    <span className="text-sm text-slate-300">Find real venues anywhere via OpenStreetMap — free, no API key</span>
                   </div>
 
+                  <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                    <input
+                      type="text"
+                      placeholder="City (e.g. Berlin, Dubai, Amsterdam)"
+                      value={discoverCity}
+                      onChange={e => setDiscoverCity(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleDiscover()}
+                      className="flex-1 p-3 rounded-md border-2 text-sm"
+                      style={{ backgroundColor: '#06080f', borderColor: 'rgba(255,255,255,0.08)', color: '#e2e8f0' }}
+                    />
+                    <select
+                      value={discoverCategory}
+                      onChange={e => setDiscoverCategory(e.target.value)}
+                      className="p-3 rounded-md border-2 text-sm"
+                      style={{ backgroundColor: '#06080f', borderColor: 'rgba(255,255,255,0.08)', color: '#e2e8f0' }}
+                    >
+                      {DISCOVER_CATEGORIES.map(c => (
+                        <option key={c} value={c}>{c.replace(/\b\w/g, l => l.toUpperCase())}</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={handleDiscover}
+                      disabled={isDiscovering || !discoverCity.trim()}
+                      className="px-5 py-3 rounded-md font-semibold text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      style={{ background: 'linear-gradient(135deg, #A020F0 0%, #8B00FF 100%)' }}
+                    >
+                      {isDiscovering ? (
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                      ) : <Search size={16} />}
+                      {isDiscovering ? 'Searching...' : 'Search'}
+                    </button>
+                  </div>
+
+                  {discoverError && (
+                    <div className="text-sm text-red-400 bg-red-900/20 border border-red-800 rounded-md px-4 py-3 mb-4">{discoverError}</div>
+                  )}
+
+                  {discoverResults.length > 0 && (
+                    <>
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-sm text-slate-300">{discoverResults.length} venues found in <span className="text-white font-semibold">{discoverCity}</span></p>
+                        <button onClick={() => setDiscoverResults([])} className="text-xs text-slate-400 hover:text-white">Clear</button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {discoverResults.map(v => (
+                          <div key={v.osm_id} className="bg-slate-900 border-2 rounded-md p-4" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                            <h3 className="font-semibold text-white text-sm mb-1 leading-tight">{v.name}</h3>
+                            {v.address?.road && <p className="text-xs text-slate-400 mb-1">{v.address.road}</p>}
+                            <p className="text-xs text-purple-300 mb-2 capitalize">{v.category}</p>
+                            <div className="space-y-1 text-xs text-slate-400 mb-3">
+                              {v.phone && <div className="flex items-center gap-1">📞 {v.phone}</div>}
+                              {v.website && (
+                                <a href={v.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-purple-300 hover:text-purple-200 truncate">
+                                  🌐 {v.website.replace(/^https?:\/\//, '')}
+                                </a>
+                              )}
+                              {v.opening_hours && <div>🕐 {v.opening_hours}</div>}
+                            </div>
+                            <button
+                              onClick={() => saveDiscoveredVenue(v)}
+                              className="w-full text-xs py-1.5 rounded font-semibold text-white"
+                              style={{ background: '#A020F0' }}
+                            >
+                              + Save Venue
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Saved / hardcoded venues */}
+                <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                  <div className="flex items-center justify-between mb-5">
+                    <h2 className="text-base font-semibold text-white">Saved Venues</h2>
+                    <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="p-2 rounded-md text-sm" style={{ backgroundColor: '#06080f', color: '#e2e8f0' }} />
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredVenues.map(venue => (
-                      <div key={venue.id} className={`${classes.panelBg} ${classes.border} p-4 rounded-md cursor-pointer`} style={{ borderColor: '#2b2b2b' }}>
+                      <div key={venue.id} className={`${classes.panelBg} ${classes.border} p-4 rounded-md cursor-pointer`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                         <div className="flex justify-between items-start mb-3">
-                          <div className="flex items-center gap-1 bg-slate-800 px-2 py-1 rounded text-slate-300">
+                          <div className="flex items-center gap-1 bg-slate-900 px-2 py-1 rounded text-slate-300">
                             <Star size={12} />
                             <span className="text-xs font-semibold">{venue.rating}</span>
                           </div>
@@ -2031,7 +2249,7 @@ setIsGenerating(false);
                         </div>
                         <div className="flex flex-wrap gap-1">
                           {venue.amenities.slice(0, 2).map((amenity, idx) => (
-                            <span key={idx} className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded">{amenity}</span>
+                            <span key={idx} className="text-xs bg-white/5 text-slate-300 px-2 py-0.5 rounded">{amenity}</span>
                           ))}
                         </div>
                       </div>
@@ -2049,17 +2267,17 @@ setIsGenerating(false);
                 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   {/* Conversation List */}
-                  <div className={`${classes.panelBg} ${classes.border} rounded-md`} style={{ borderColor: '#2b2b2b' }}>
-                    <div className="p-4 border-b-2" style={{ borderColor: '#1f2937' }}>
+                  <div className={`${classes.panelBg} ${classes.border} rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                    <div className="p-4 border-b-2" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                       <h2 className="font-semibold text-white">Conversations</h2>
                     </div>
-                    <div className="divide-y-2" style={{ borderColor: '#1f2937' }}>
+                    <div className="divide-y-2" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                       {conversations.map((conv, idx) => (
                         <div
                           key={conv.id}
                           onClick={() => setSelectedConversation(idx)}
-                          className={`p-4 cursor-pointer hover:bg-slate-700 transition-colors ${
-                            selectedConversation === idx ? 'bg-slate-700' : ''
+                          className={`p-4 cursor-pointer hover:bg-white/5 transition-colors ${
+                            selectedConversation === idx ? 'bg-white/5' : ''
                           }`}
                         >
                           <div className="flex items-start gap-3">
@@ -2083,8 +2301,8 @@ setIsGenerating(false);
                   </div>
 
                   {/* Message Thread */}
-                  <div className={`lg:col-span-2 ${classes.panelBg} ${classes.border} rounded-md flex flex-col`} style={{ borderColor: '#2b2b2b', height: '600px' }}>
-                    <div className="p-4 border-b-2" style={{ borderColor: '#1f2937' }}>
+                  <div className={`lg:col-span-2 ${classes.panelBg} ${classes.border} rounded-md flex flex-col`} style={{ borderColor: 'rgba(255,255,255,0.08)', height: '600px' }}>
+                    <div className="p-4 border-b-2" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                       <h2 className="font-semibold text-white">{conversations[selectedConversation]?.vendor}</h2>
                       <p className="text-xs text-slate-400 mt-1">Vendor Communication</p>
                     </div>
@@ -2092,7 +2310,7 @@ setIsGenerating(false);
                     <div className="flex-1 overflow-y-auto p-4 space-y-4">
                       {conversations[selectedConversation]?.messages.map((msg, idx) => (
                         <div key={idx} className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-[70%] ${msg.sender === 'me' ? 'bg-purple-700' : 'bg-slate-700'} rounded-lg p-3`}>
+                          <div className={`max-w-[70%] ${msg.sender === 'me' ? 'bg-purple-700' : 'bg-white/5'} rounded-lg p-3`}>
                             <p className="text-sm text-white">{msg.text}</p>
                             {msg.attachments && msg.attachments.length > 0 && (
                               <div className="mt-2 space-y-1">
@@ -2110,9 +2328,9 @@ setIsGenerating(false);
                       ))}
                     </div>
 
-                    <div className="p-4 border-t-2" style={{ borderColor: '#1f2937' }}>
+                    <div className="p-4 border-t-2" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                       <div className="flex gap-2">
-                        <button className="p-2 hover:bg-slate-700 rounded">
+                        <button className="p-2 hover:bg-white/5 rounded">
                           <Paperclip size={18} className="text-slate-300" />
                         </button>
                         <input
@@ -2121,7 +2339,7 @@ setIsGenerating(false);
                           onChange={(e) => setMessageInput(e.target.value)}
                           placeholder="Type your message..."
                           className="flex-1 p-2 rounded-md"
-                          style={{ backgroundColor: theme === 'dark' ? '#0b1220' : '#fff', color: theme === 'dark' ? '#fff' : '#111' }}
+                          style={{ backgroundColor: '#06080f', color: '#e2e8f0' }}
                         />
                         <button
                           onClick={() => {
@@ -2162,8 +2380,8 @@ setIsGenerating(false);
                 <div className="mt-4">
                   <label className="text-sm text-slate-300">Theme</label>
                   <div className="mt-2 flex gap-2">
-                    <button onClick={() => setTheme('dark')} className={`px-4 py-2 rounded ${theme === 'dark' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-800'}`}>Dark</button>
-                    <button onClick={() => setTheme('light')} className={`px-4 py-2 rounded ${theme === 'light' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-800'}`}>Light</button>
+                    <button onClick={() => setTheme('dark')} className={`px-4 py-2 rounded ${theme === 'dark' ? 'bg-white/10 text-white' : 'bg-slate-200 text-slate-800'}`}>Dark</button>
+                    <button onClick={() => setTheme('light')} className={`px-4 py-2 rounded ${theme === 'light' ? 'bg-white/10 text-white' : 'bg-slate-200 text-slate-800'}`}>Light</button>
                   </div>
                 </div>
               </div>
@@ -2180,7 +2398,7 @@ setIsGenerating(false);
       {/* Vendor modal placeholder */}
       {showVendorModal && selectedVendor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-          <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-lg p-6`} style={{ boxShadow: neonBoxShadow, borderColor: '#2b2b2b' }}>
+          <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-lg p-6`} style={{ boxShadow: neonBoxShadow, borderColor: 'rgba(255,255,255,0.08)' }}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-white">{selectedVendor.name}</h3>
               <button onClick={() => setShowVendorModal(false)}><X size={18} className="text-slate-300" /></button>
@@ -2222,6 +2440,20 @@ setIsGenerating(false);
 
       {/* Client Detail Modal */}
       {showClientDetailModal && selectedClient && <ClientDetailModal client={selectedClient} onClose={() => setShowClientDetailModal(false)} />}
+
+      {/* Pricing modal */}
+      {showPricing && (
+        <PricingModal
+          onClose={() => setShowPricing(false)}
+          onUpgrade={(planId) => {
+            if (planId === 'solo' || planId === 'agency') {
+              // TODO: wire to Stripe / payment — for now simulate upgrade
+              setPlan('pro');
+              setShowPricing(false);
+            }
+          }}
+        />
+      )}
 
     </div>
   );

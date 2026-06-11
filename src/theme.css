@@ -1,0 +1,96 @@
+/* EventFlow — atharux design token system
+   Loaded after index.css. Uses !important where needed to override Tailwind. */
+
+:root {
+  --bg:            #07080c;
+  --surface-1:     #0d1117;
+  --surface-2:     #0f1320;
+  --surface-3:     #141828;
+
+  --accent:        #8b5cf6;          /* EventFlow purple */
+  --accent-dim:    rgba(139,92,246,0.10);
+  --accent-border: rgba(139,92,246,0.24);
+  --accent-glow:   0 0 28px rgba(139,92,246,0.18);
+
+  --teal:          #06b6d4;          /* atharux global accent */
+  --orange:        #f97316;
+
+  --glow-sm:  0 0 14px rgba(139,92,246,0.10);
+  --glow-md:  0 0 28px rgba(139,92,246,0.18);
+
+  --border:        rgba(255,255,255,0.07);
+  --border-subtle: rgba(255,255,255,0.04);
+
+  --text-1: #e2e8f0;
+  --text-2: #94a3b8;
+  --text-3: #475569;
+
+  --font-mono: 'Space Mono', 'Courier New', monospace;
+  --font-sans: 'Syne', sans-serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+
+  --r:    4px;
+  --r-lg: 8px;
+}
+
+/* ── Base ── */
+body {
+  background: var(--bg) !important;
+  font-family: var(--font-body) !important;
+  color: var(--text-1) !important;
+}
+
+.app-bg { background: var(--bg) !important; }
+
+/* ── Panels ── */
+.panel-glass {
+  background: rgba(13,17,23,0.9) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.glass-border { border-color: var(--border) !important; }
+
+/* ── Navigation active state ── */
+.nav-active-bg { background: rgba(139,92,246,0.12) !important; }
+
+/* ── Typography overrides ── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-sans) !important;
+  letter-spacing: -0.01em;
+}
+
+.font-mono, code, .text-mono {
+  font-family: var(--font-mono) !important;
+}
+
+/* ── Inputs ── */
+.dark-input {
+  background: var(--surface-1) !important;
+  border-color: var(--border) !important;
+}
+
+input, select, textarea {
+  font-family: var(--font-body) !important;
+}
+
+/* ── Status badges — swap garish Tailwind light colours for token-based dark ones ── */
+.bg-emerald-100 { background: rgba(16,185,129,0.12) !important; }
+.text-emerald-800, .text-emerald-700 { color: #34d399 !important; }
+
+.bg-amber-100 { background: rgba(245,158,11,0.12) !important; }
+.text-amber-800 { color: #fbbf24 !important; }
+
+.bg-red-100 { background: rgba(239,68,68,0.12) !important; }
+.text-red-800 { color: #f87171 !important; }
+
+.bg-blue-100 { background: rgba(59,130,246,0.12) !important; }
+.text-blue-800 { color: #60a5fa !important; }
+
+/* ── Accent purple system buttons (override hardcoded bg-purple-700) ── */
+.bg-purple-700 { background: var(--accent) !important; }
+.hover\:bg-purple-600:hover { background: #7c3aed !important; }
+.text-purple-300 { color: #c4b5fd !important; }
+.border-purple-400, .border-purple-500 { border-color: var(--accent) !important; }
+
+/* ── XP bar gradient ── */
