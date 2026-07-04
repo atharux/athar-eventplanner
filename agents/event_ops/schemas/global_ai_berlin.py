@@ -73,6 +73,10 @@ GLOBAL_AI_BERLIN_INPUT = {
         # role may be a string or list; availability "HH:MM-HH:MM" or list.
         "staffing": {
             "volunteer_roster": [
+                # Athar covers both roles (registration + audio) per current
+                # volunteer plan; note the 17:30-19:00 overlap needs a desk
+                # handoff when the audio shift starts.
+                {"name": "Athar",   "role": ["registration_desk", "audio_mic"], "availability": "17:00-21:30"},
                 {"name": "REPLACE", "role": "registration_desk", "availability": "17:00-19:00"},
                 {"name": "REPLACE", "role": "audio_mic",         "availability": "17:30-21:00"},
             ]
@@ -90,6 +94,10 @@ GLOBAL_AI_BERLIN_INPUT = {
                 {"id": "speaker_01", "type": "PA_speaker",
                  "requires": ["cable_02"],
                  "assignments": []},
+                {"id": "stand_01",            "type": "mic_stand",          "requires": [], "assignments": []},
+                {"id": "cable_01",            "type": "xlr_cable",          "requires": [], "assignments": []},
+                {"id": "battery_backup_01",   "type": "aa_battery_set",     "requires": [], "assignments": []},
+                {"id": "cable_02",            "type": "speaker_cable",      "requires": [], "assignments": []},
             ]
         },
     },
