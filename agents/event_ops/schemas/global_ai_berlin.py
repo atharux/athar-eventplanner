@@ -4,6 +4,15 @@ Plugs into the existing deterministic engine (DeterministicTemplate) in
 eventApp-research-etc/ai-ops-landing/deterministic.py WITHOUT modifying it.
 Three constraint domains: budget, staffing/volunteers, AV/equipment.
 
+Constraint figures supplied by the operator (pilot spec, 2026-07-04):
+- budget: 3000 EUR planned ceiling, 3200 EUR absolute hard stop,
+  category ceilings venue/av_equipment/catering/misc
+- staffing: registration_desk x2 (17:00-19:00), audio_mic x1 (17:30-21:00)
+- AV: per-instance gear with instance-level dependency lists; conflict
+  check flags the same item id booked twice in overlapping windows
+
+Fields marked REPLACE are pilot placeholders — fill in before the event.
+
 Run deterministic validation (no AI layer fires):
 
     python3 agents/event_ops/schemas/global_ai_berlin.py
@@ -44,56 +53,43 @@ with warnings.catch_warnings():
 GLOBAL_AI_BERLIN_INPUT = {
     "version": "1.0",
     "data": {
-        "event_id": "GAIB-2026-07",
-        "event_name": "Global AI Berlin — July Community Meetup",
-        "date": "2026-07-24",
+        "event_id": "GAIB-PILOT",
+        "event_name": "Global AI Berlin — Pilot Event",
+        "date": "REPLACE_WITH_ACTUAL_DATE",
         "expected_attendees": 120,
 
         # ---- BUDGET: committed spend so far, per category (EUR) ----
+        # Update these as commitments land; checks re-run deterministically.
         "budget": {
             "committed_spend": {
-                "venue": 0,        # venue sponsored / community space
-                "av": 180,         # wireless mic rental + cabling
-                "catering": 520,   # drinks + snacks for ~120
-                "misc": 75,        # name badges, signage, tape
+                "venue": 0,
+                "av_equipment": 0,
+                "catering": 0,
+                "misc": 0,
             }
         },
 
-        # ---- STAFFING: volunteer roster with roles + availability ----
+        # ---- STAFFING: volunteer roster with role(s) + availability ----
+        # role may be a string or list; availability "HH:MM-HH:MM" or list.
         "staffing": {
             "volunteer_roster": [
-                {"name": "Athar",       "roles": ["registration_desk", "audio_mic"],
-                 "availability": [{"start": "17:00", "end": "22:00"}]},
-                {"name": "Volunteer B", "roles": ["registration_desk"],
-                 "availability": [{"start": "17:30", "end": "19:30"}]},
-                {"name": "Volunteer C", "roles": ["registration_desk"],
-                 "availability": [{"start": "18:30", "end": "22:00"}]},
-                {"name": "Volunteer D", "roles": ["audio_mic"],
-                 "availability": [{"start": "18:00", "end": "20:00"}]},
+                {"name": "REPLACE", "role": "registration_desk", "availability": "17:00-19:00"},
+                {"name": "REPLACE", "role": "audio_mic",         "availability": "17:30-21:00"},
             ]
         },
 
-        # ---- AV / EQUIPMENT: item inventory + session assignments ----
+        # ---- AV / EQUIPMENT: per-instance gear list ----
+        # Each instance is one physical unit. "requires" lists the instance
+        # ids that must also be present. "assignments" (optional) books the
+        # unit into time windows for conflict detection.
         "av_equipment": {
             "items": [
-                {"id": "wireless_mic",    "name": "Wireless handheld mic", "qty": 1,
-                 "assignments": [
-                     {"session": "opening_talk",  "start": "18:30", "end": "19:15"},
-                     {"session": "panel",         "start": "19:00", "end": "20:00"},
-                 ]},
-                {"id": "mic_stand",       "name": "Mic stand",             "qty": 1, "assignments": []},
-                {"id": "xlr_cable",       "name": "XLR cable",             "qty": 2, "assignments": []},
-                {"id": "backup_battery",  "name": "AA backup battery set", "qty": 0, "assignments": []},
-                {"id": "projector",       "name": "Projector",             "qty": 1,
-                 "assignments": [
-                     {"session": "opening_talk",  "start": "18:30", "end": "19:15"},
-                 ]},
-                {"id": "hdmi_cable",      "name": "HDMI cable",            "qty": 1, "assignments": []},
-                {"id": "speaker_pa",      "name": "PA speaker pair",       "qty": 1,
-                 "assignments": [
-                     {"session": "full_event",    "start": "18:00", "end": "21:30"},
-                 ]},
-                {"id": "power_extension", "name": "Power extension strip", "qty": 2, "assignments": []},
+                {"id": "mic_01",     "type": "wireless_mic",
+                 "requires": ["stand_01", "cable_01", "battery_backup_01"],
+                 "assignments": []},
+                {"id": "speaker_01", "type": "PA_speaker",
+                 "requires": ["cable_02"],
+                 "assignments": []},
             ]
         },
     },
@@ -101,34 +97,29 @@ GLOBAL_AI_BERLIN_INPUT = {
     "constraints": {
         # ---- BUDGET RULES ----
         "budget": {
-            "total_ceiling": 1500,
-            "category_ceilings": {"venue": 500, "av": 300, "catering": 500, "misc": 150},
-            # Block further commitments once committed spend crosses this
-            # fraction of the total ceiling.
-            "hard_stop_threshold": 0.90,
+            "total_ceiling": 3000,            # planned ceiling (EUR)
+            "hard_stop_threshold_eur": 3200,  # absolute stop line (EUR)
+            "category_ceilings": {
+                "venue": 1200,
+                "av_equipment": 600,
+                "catering": 800,
+                "misc": 400,
+            },
         },
 
         # ---- STAFFING RULES ----
+        # A volunteer counts toward a shift window only if one availability
+        # window covers that entire shift window.
         "staffing": {
-            "roles_needed": ["registration_desk", "audio_mic"],
-            # Minimum simultaneous volunteers per role across the whole window.
-            "min_coverage": {"registration_desk": 2, "audio_mic": 1},
-            # A volunteer counts toward a role only if one availability window
-            # covers the role's full coverage window.
-            "coverage_windows": {
-                "registration_desk": {"start": "17:30", "end": "19:00"},
-                "audio_mic":         {"start": "18:00", "end": "21:30"},
-            },
+            "roles": [
+                {"role": "registration_desk", "min_coverage": 2, "shift_windows": ["17:00-19:00"]},
+                {"role": "audio_mic",         "min_coverage": 1, "shift_windows": ["17:30-21:00"]},
+            ],
         },
 
         # ---- AV / EQUIPMENT RULES ----
         "av": {
-            # item -> required supporting items (each must exist with qty >= 1)
-            "dependency_chain": {
-                "wireless_mic": ["mic_stand", "xlr_cable", "backup_battery"],
-                "projector":    ["hdmi_cable", "power_extension"],
-                "speaker_pa":   ["xlr_cable", "power_extension"],
-            },
+            "conflict_check": "flag_if_same_item_id_booked_twice_same_window",
         },
     },
 }
@@ -143,12 +134,34 @@ def _mins(hhmm: str) -> int:
     return int(h) * 60 + int(m)
 
 
-def _windows_overlap(a_start, a_end, b_start, b_end) -> bool:
+def _parse_window(w):
+    """Accept 'HH:MM-HH:MM' strings or {'start','end'} dicts."""
+    if isinstance(w, str):
+        start, end = w.split("-")
+        return start.strip(), end.strip()
+    return w["start"], w["end"]
+
+
+def _windows_overlap(a, b) -> bool:
+    a_start, a_end = _parse_window(a)
+    b_start, b_end = _parse_window(b)
     return _mins(a_start) < _mins(b_end) and _mins(b_start) < _mins(a_end)
 
 
-def _window_covers(outer, start, end) -> bool:
-    return _mins(outer["start"]) <= _mins(start) and _mins(outer["end"]) >= _mins(end)
+def _window_covers(outer, inner) -> bool:
+    o_start, o_end = _parse_window(outer)
+    i_start, i_end = _parse_window(inner)
+    return _mins(o_start) <= _mins(i_start) and _mins(o_end) >= _mins(i_end)
+
+
+def _roles_of(volunteer):
+    r = volunteer.get("roles", volunteer.get("role", []))
+    return r if isinstance(r, list) else [r]
+
+
+def _availability_of(volunteer):
+    a = volunteer.get("availability", [])
+    return a if isinstance(a, list) else [a]
 
 
 class GlobalAIBerlinConstraints(DeterministicTemplate):
@@ -166,22 +179,32 @@ class GlobalAIBerlinConstraints(DeterministicTemplate):
         rules = constraints.get("budget", {})
         committed_total = sum(spend.values())
         ceiling = rules.get("total_ceiling", 0)
-        hard_stop_at = ceiling * rules.get("hard_stop_threshold", 1.0)
+        # Absolute hard stop (EUR). Falls back to a fraction-of-ceiling
+        # threshold if only 'hard_stop_threshold' is given.
+        hard_stop_at = rules.get(
+            "hard_stop_threshold_eur",
+            ceiling * rules.get("hard_stop_threshold", 1.0),
+        )
 
         budget_out["committed_total"] = committed_total
         budget_out["total_ceiling"] = ceiling
         budget_out["headroom"] = ceiling - committed_total
         budget_out["hard_stop_at"] = hard_stop_at
-        budget_out["hard_stop_breached"] = committed_total >= hard_stop_at
+        budget_out["hard_stop_breached"] = committed_total > hard_stop_at
 
-        if committed_total > ceiling:
+        if budget_out["hard_stop_breached"]:
             violations.append(
-                f"BUDGET: committed spend {committed_total} EUR exceeds total ceiling {ceiling} EUR"
+                f"BUDGET: committed spend {committed_total} EUR breached the absolute "
+                f"hard stop of {hard_stop_at} EUR — block all further commitments"
             )
-        elif budget_out["hard_stop_breached"]:
+        elif committed_total > ceiling:
             violations.append(
-                f"BUDGET: committed spend {committed_total} EUR crossed hard-stop threshold "
-                f"({hard_stop_at:.0f} EUR = {rules.get('hard_stop_threshold'):.0%} of ceiling) — block new commitments"
+                f"BUDGET: committed spend {committed_total} EUR exceeds planned ceiling "
+                f"{ceiling} EUR (hard stop at {hard_stop_at} EUR)"
+            )
+        elif ceiling > 0 and committed_total >= 0.8 * ceiling:
+            risks.append(
+                f"BUDGET: committed spend {committed_total} EUR at >=80% of planned ceiling {ceiling} EUR"
             )
 
         category_status = {}
@@ -201,58 +224,63 @@ class GlobalAIBerlinConstraints(DeterministicTemplate):
         # ---------------- STAFFING ----------------
         staffing_out = {}
         roster = data.get("staffing", {}).get("volunteer_roster", [])
-        srules = constraints.get("staffing", {})
-        for role in srules.get("roles_needed", []):
-            window = srules.get("coverage_windows", {}).get(role)
-            required = srules.get("min_coverage", {}).get(role, 0)
-            covering = [
-                v["name"] for v in roster
-                if role in v.get("roles", [])
-                and any(_window_covers(w, window["start"], window["end"])
-                        for w in v.get("availability", []))
-            ] if window else []
-            staffing_out[role] = {
-                "required": required,
-                "available_full_window": len(covering),
-                "volunteers": covering,
-                "window": window,
-                "met": len(covering) >= required,
-            }
-            if len(covering) < required:
-                violations.append(
-                    f"STAFFING: role '{role}' needs {required} volunteer(s) for full window "
-                    f"{window['start']}-{window['end']}, only {len(covering)} available ({covering or 'none'})"
-                )
+        for role_spec in constraints.get("staffing", {}).get("roles", []):
+            role = role_spec["role"]
+            required = role_spec.get("min_coverage", 0)
+            windows_out = []
+            for shift in role_spec.get("shift_windows", []):
+                covering = [
+                    v["name"] for v in roster
+                    if role in _roles_of(v)
+                    and any(_window_covers(a, shift) for a in _availability_of(v))
+                ]
+                windows_out.append({
+                    "window": shift,
+                    "required": required,
+                    "available_full_window": len(covering),
+                    "volunteers": covering,
+                    "met": len(covering) >= required,
+                })
+                if len(covering) < required:
+                    violations.append(
+                        f"STAFFING: role '{role}' needs {required} volunteer(s) for full window "
+                        f"{shift}, only {len(covering)} available ({covering or 'none'})"
+                    )
+            staffing_out[role] = windows_out
 
         # ---------------- AV / EQUIPMENT ----------------
         av_out = {"missing_dependencies": {}, "double_booked": []}
         items = {i["id"]: i for i in data.get("av_equipment", {}).get("items", [])}
-        chain = constraints.get("av", {}).get("dependency_chain", {})
 
-        for item_id, deps in chain.items():
-            if item_id not in items:
-                continue
-            missing = [d for d in deps if items.get(d, {}).get("qty", 0) < 1]
+        # Instance-level dependency chains: every required instance id must
+        # itself be present in the item list (with qty >= 1 if qty is used).
+        for item_id, item in items.items():
+            missing = [
+                d for d in item.get("requires", [])
+                if d not in items or items[d].get("qty", 1) < 1
+            ]
             if missing:
                 av_out["missing_dependencies"][item_id] = missing
                 violations.append(
-                    f"AV: '{item_id}' dependency chain broken — missing/zero-stock: {missing}"
+                    f"AV: '{item_id}' ({item.get('type', 'unknown')}) dependency chain broken — "
+                    f"missing from item list: {missing}"
                 )
 
+        # Conflict detection: same item id booked twice in overlapping windows.
         for item_id, item in items.items():
             assigns = item.get("assignments", [])
-            qty = item.get("qty", 0)
+            qty = item.get("qty", 1)
             for i in range(len(assigns)):
                 overlapping = 1 + sum(
-                    1 for j in range(len(assigns)) if j != i and _windows_overlap(
-                        assigns[i]["start"], assigns[i]["end"],
-                        assigns[j]["start"], assigns[j]["end"])
+                    1 for j in range(len(assigns))
+                    if j != i and _windows_overlap(assigns[i], assigns[j])
                 )
                 if overlapping > qty:
+                    w_start, w_end = _parse_window(assigns[i])
                     conflict = {
                         "item": item_id,
-                        "session": assigns[i]["session"],
-                        "window": f"{assigns[i]['start']}-{assigns[i]['end']}",
+                        "session": assigns[i].get("session", "unnamed"),
+                        "window": f"{w_start}-{w_end}",
                         "concurrent_demand": overlapping,
                         "qty_available": qty,
                     }
@@ -260,7 +288,7 @@ class GlobalAIBerlinConstraints(DeterministicTemplate):
                         av_out["double_booked"].append(conflict)
                         violations.append(
                             f"AV: '{item_id}' double-booked — {overlapping} concurrent assignment(s) "
-                            f"({assigns[i]['session']} {conflict['window']}) but qty={qty}"
+                            f"({conflict['session']} {conflict['window']}) but qty={qty}"
                         )
 
         # ---------------- RESULT ----------------
@@ -271,6 +299,7 @@ class GlobalAIBerlinConstraints(DeterministicTemplate):
             validated_data={
                 "event_id": data.get("event_id"),
                 "event_name": data.get("event_name"),
+                "date": data.get("date"),
                 "budget": budget_out,
                 "staffing": staffing_out,
                 "av_equipment": av_out,
