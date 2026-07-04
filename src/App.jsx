@@ -6,6 +6,7 @@ import {
 import { useLocalStorage, checkLimit } from './useStorage';
 import { ProGate } from './ProGate';
 import { PricingModal } from './PricingModal';
+import QuestBoard, { computeQuestXp } from './questBoard';
 import './theme.css';
 
 const NEON_COLOR = 'var(--ef-brand)';
@@ -2120,18 +2121,24 @@ const CreateEventModal = ({ onClose }) => {
             </div>
           </div>
 
-          {/* XP strip */}
-          <div className="panel-glass border border-white/5 rounded-md px-5 py-3 mb-6 flex items-center gap-6">
-            <div className="flex items-center gap-3 flex-1">
-              <div className="text-xs text-slate-400 uppercase tracking-widest">Level</div>
-              <div className="text-lg font-bold text-white">{Math.floor(tasks.filter(t => t.status === 'completed').length / 3) + 1}</div>
-              <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${((tasks.filter(t => t.status === 'completed').length % 3) / 3) * 100}%`, background: 'linear-gradient(90deg, var(--ef-brand-deep), var(--ef-brand-2))' }} />
+          {/* XP strip — XP from completed tasks plus quest rewards */}
+          {(() => {
+            const totalXp = tasks.filter(t => t.status === 'completed').length * 50
+              + computeQuestXp({ events, tasks, conversations, vendors, guests });
+            return (
+              <div className="panel-glass border border-white/5 rounded-md px-5 py-3 mb-6 flex items-center gap-6">
+                <div className="flex items-center gap-3 flex-1">
+                  <div className="text-xs text-slate-400 uppercase tracking-widest">Level</div>
+                  <div className="text-lg font-bold text-white">{Math.floor(totalXp / 150) + 1}</div>
+                  <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${((totalXp % 150) / 150) * 100}%`, background: 'linear-gradient(90deg, var(--ef-brand-deep), var(--ef-brand-2))' }} />
+                  </div>
+                  <div className="text-xs text-slate-400">{totalXp} XP</div>
+                </div>
+                <div className="text-xs text-purple-300 font-semibold">Event Planner</div>
               </div>
-              <div className="text-xs text-slate-400">{tasks.filter(t => t.status === 'completed').length * 50} XP</div>
-            </div>
-            <div className="text-xs text-purple-300 font-semibold">Event Planner</div>
-          </div>
+            );
+          })()}
 
           {/* Content */}
           <div>
@@ -2177,6 +2184,8 @@ const CreateEventModal = ({ onClose }) => {
                   </div>
 
                   <div className="space-y-6">
+                    <QuestBoard events={events} tasks={tasks} conversations={conversations} vendors={vendors} guests={guests} />
+
                     <div className={`${classes.panelBg} ${classes.border} p-6 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                       <h2 className="text-lg font-semibold text-white mb-5">High Priority Tasks</h2>
                       <div className="space-y-2">
