@@ -15,37 +15,30 @@ export function computeQuests(state) {
   return QUEST_DEFS.map(q => ({ ...q, completed: q.done(state) }));
 }
 
-export function computeQuestXp(state) {
-  return computeQuests(state).reduce((sum, q) => sum + (q.completed ? q.xp : 0), 0);
-}
-
-export default function QuestBoard({ events, tasks, conversations, vendors, guests }) {
-  const quests = computeQuests({ events, tasks, conversations, vendors, guests });
+export default function QuestBoard({ quests }) {
   const [rewardFlash, setRewardFlash] = useState(null);
   const prevCompleted = useRef(null);
+  const completedIds = quests.filter(q => q.completed).map(q => q.id);
+  const completedKey = completedIds.join(',');
 
   useEffect(() => {
-    const nowCompleted = quests.filter(q => q.completed).map(q => q.id);
     if (prevCompleted.current !== null) {
       const newlyDone = quests.filter(q => q.completed && !prevCompleted.current.includes(q.id));
       if (newlyDone.length > 0) {
         setRewardFlash(`+${newlyDone.reduce((s, q) => s + q.xp, 0)} XP`);
+        prevCompleted.current = completedIds;
         const t = setTimeout(() => setRewardFlash(null), 1600);
         return () => clearTimeout(t);
       }
     }
-    prevCompleted.current = nowCompleted;
-  }, [quests.map(q => q.completed).join(',')]);
-
-  useEffect(() => {
-    prevCompleted.current = quests.filter(q => q.completed).map(q => q.id);
-  });
+    prevCompleted.current = completedIds;
+  }, [completedKey]);
 
   return (
     <div className="panel-glass glass-border p-6 rounded-md relative" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
       <div className="flex justify-between items-center mb-5">
         <h2 className="text-lg font-semibold text-white">Active Quests</h2>
-        <span className="text-xs text-slate-400">{quests.filter(q => q.completed).length}/{quests.length} completed</span>
+        <span className="text-xs text-slate-400">{completedIds.length}/{quests.length} completed</span>
       </div>
 
       {rewardFlash && (

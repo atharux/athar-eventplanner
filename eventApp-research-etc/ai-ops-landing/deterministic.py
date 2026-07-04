@@ -22,7 +22,7 @@ class ValidationResultSchema(BaseModel):
     is_valid: bool
     reason: str
     validated_data: Dict[str, Any]
-    input_hash: str  # For idempotency verification
+    input_hash: str = ""  # For idempotency verification; set by the pipeline after rules run
 
 class AISuggestionSchema(BaseModel):
     version: str = "1.0"
@@ -204,4 +204,5 @@ if __name__ == "__main__":
     
     result1 = logi.execute(test_input)
     result2 = logi.execute(test_input)  # Identical result
-    print("Idempotent:", result1["audit_log"]["input_hash"] == result2["audit_log"]["input_hash"])
+    # Blocked results carry no audit_log, so compare the full outputs.
+    print("Idempotent:", result1 == result2)
