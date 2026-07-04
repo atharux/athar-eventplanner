@@ -1,12 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import {
   Calendar, Users, MessageSquare, Search, Plus, X, Send, DollarSign, MapPin, Star,
-  Upload, Menu, Home, Settings, Building2, Edit, Paperclip, UserPlus, Zap
+  Upload, Menu, Home, Settings, Building2, Edit, Paperclip, UserPlus, Zap, ShieldCheck
 } from 'lucide-react';
 import { useLocalStorage, checkLimit } from './useStorage';
 import { ProGate } from './ProGate';
 import { PricingModal } from './PricingModal';
 import QuestBoard, { computeQuests } from './questBoard';
+import PreflightPanel from './preflightPanel';
 import './theme.css';
 
 const NEON_COLOR = 'var(--ef-brand)';
@@ -2029,6 +2030,7 @@ const CreateEventModal = ({ onClose }) => {
             </div>
             {[
               { id: 'dashboard', label: 'Dashboard', icon: Home },
+              { id: 'preflight', label: 'Pre-Flight', icon: ShieldCheck },
               { id: 'events', label: 'Events', icon: Calendar },
               { id: 'vendors', label: 'Vendors', icon: Building2 },
               { id: 'venues', label: 'Venues', icon: MapPin },
@@ -2243,6 +2245,9 @@ const CreateEventModal = ({ onClose }) => {
                 </div>
               </div>
             )}
+
+            {/* Pre-Flight constraint report */}
+            {activeTab === 'preflight' && <PreflightPanel />}
 
             {/* Events list */}
             {activeTab === 'events' && (
@@ -2675,6 +2680,29 @@ const CreateEventModal = ({ onClose }) => {
                     {plan === 'pro' && (
                       <span className="text-xs font-bold px-3 py-1.5 rounded" style={{ background: 'var(--accent-dim)', color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>✓ PRO</span>
                     )}
+                  </div>
+                </div>
+
+                {/* Data */}
+                <div className="panel-glass glass-border rounded-lg p-5">
+                  <h2 className="text-sm font-bold mb-4" style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em', color: 'var(--text-2)' }}>DATA</h2>
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>Start clean workspace</div>
+                      <div className="text-xs mt-1" style={{ color: 'var(--text-2)' }}>Remove the demo events, vendors and guests and start empty. Plan and API keys are kept. ("Reset all data" below restores the demo content instead.)</div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (window.confirm('Clear the demo data and start with an empty workspace?')) {
+                          ['ef_events','ef_vendors','ef_venues','ef_convos','ef_tasks','ef_budget','ef_guests','ef_clients'].forEach(k => localStorage.setItem(k, '[]'));
+                          window.location.reload();
+                        }
+                      }}
+                      className="px-4 py-2 rounded-md text-sm font-semibold whitespace-nowrap"
+                      style={{ background: 'var(--surface-3)', color: 'var(--text-1)' }}
+                    >
+                      Start clean
+                    </button>
                   </div>
                 </div>
 

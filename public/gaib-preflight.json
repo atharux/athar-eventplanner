@@ -1,0 +1,77 @@
+{
+  "version": "1.0",
+  "status": "approved",
+  "result": {
+    "version": "1.0",
+    "is_valid": true,
+    "reason": "All constraints satisfied",
+    "validated_data": {
+      "event_id": "GAIB-PILOT",
+      "event_name": "Global AI Berlin \u2014 Pilot Event",
+      "date": "2026-07-18",
+      "budget": {
+        "committed_total": 0,
+        "total_ceiling": 3000,
+        "headroom": 3000,
+        "hard_stop_at": 3200,
+        "hard_stop_breached": false,
+        "categories": {
+          "venue": {
+            "committed": 0,
+            "ceiling": 1200,
+            "over": false
+          },
+          "av_equipment": {
+            "committed": 0,
+            "ceiling": 600,
+            "over": false
+          },
+          "catering": {
+            "committed": 0,
+            "ceiling": 800,
+            "over": false
+          },
+          "misc": {
+            "committed": 0,
+            "ceiling": 400,
+            "over": false
+          }
+        }
+      },
+      "staffing": {
+        "registration_desk": [
+          {
+            "window": "17:00-19:00",
+            "required": 2,
+            "confirmed_full_window": 2,
+            "volunteers": [
+              "Athar",
+              "Cheryl"
+            ],
+            "unfilled_placeholder_slots": 0,
+            "met": true
+          }
+        ],
+        "audio_mic": [
+          {
+            "window": "17:30-21:00",
+            "required": 1,
+            "confirmed_full_window": 1,
+            "volunteers": [
+              "Athar"
+            ],
+            "unfilled_placeholder_slots": 0,
+            "met": true
+          }
+        ]
+      },
+      "av_equipment": {
+        "missing_dependencies": {},
+        "double_booked": []
+      },
+      "violations": [],
+      "risk_flags": []
+    },
+    "input_hash": "22e9771b73f14e55479b31a09993f6f9"
+  }
+}

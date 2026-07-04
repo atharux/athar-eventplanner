@@ -11,7 +11,10 @@ Constraint figures supplied by the operator (pilot spec, 2026-07-04):
 - AV: per-instance gear with instance-level dependency lists; conflict
   check flags the same item id booked twice in overlapping windows
 
-Fields marked REPLACE are pilot placeholders — fill in before the event.
+Roster and date confirmed 2026-07-04: corporate-party pilot on 2026-07-18,
+volunteers Athar (registration + audio) and Cheryl (registration).
+Catering is required — commit spend under budget.committed_spend.catering
+as bookings land.
 
 Run deterministic validation (no AI layer fires):
 
@@ -56,7 +59,8 @@ GLOBAL_AI_BERLIN_INPUT = {
     "data": {
         "event_id": "GAIB-PILOT",
         "event_name": "Global AI Berlin — Pilot Event",
-        "date": "REPLACE_WITH_ACTUAL_DATE",
+        "event_type": "corporate_party",
+        "date": "2026-07-18",
         "expected_attendees": 120,
 
         # ---- BUDGET: committed spend so far, per category (EUR) ----
@@ -74,12 +78,11 @@ GLOBAL_AI_BERLIN_INPUT = {
         # role may be a string or list; availability "HH:MM-HH:MM" or list.
         "staffing": {
             "volunteer_roster": [
-                # Athar covers both roles (registration + audio) per current
-                # volunteer plan; note the 17:30-19:00 overlap needs a desk
-                # handoff when the audio shift starts.
-                {"name": "Athar",   "role": ["registration_desk", "audio_mic"], "availability": "17:00-21:30"},
-                {"name": "REPLACE", "role": "registration_desk", "availability": "17:00-19:00"},
-                {"name": "REPLACE", "role": "audio_mic",         "availability": "17:30-21:00"},
+                # Athar covers both roles (registration + audio); the
+                # 17:30-19:00 overlap needs a desk handoff when the audio
+                # shift starts — Cheryl holds the desk solo in that window.
+                {"name": "Athar",  "role": ["registration_desk", "audio_mic"], "availability": "17:00-21:30"},
+                {"name": "Cheryl", "role": "registration_desk", "availability": "17:00-19:00"},
             ]
         },
 
