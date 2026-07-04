@@ -6,14 +6,19 @@ import {
 import { useLocalStorage, checkLimit } from './useStorage';
 import { ProGate } from './ProGate';
 import { PricingModal } from './PricingModal';
-import QuestBoard, { computeQuestXp } from './questBoard';
+import QuestBoard, { computeQuests } from './questBoard';
 import './theme.css';
 
 const NEON_COLOR = 'var(--ef-brand)';
 const NEON = 'linear-gradient(90deg, var(--ef-brand-deep), var(--ef-brand))';
 const neonBoxShadow = 'var(--glow-md)';
-const GLASS = 'panel-glass';
-const GLASS_BORDER = 'glass-border';
+
+// One-time data migration: clear stale seed data so new defaults load.
+// Runs once at module load, not inside render.
+if (typeof window !== 'undefined' && localStorage.getItem('ef_data_v') !== '3') {
+  ['ef_events','ef_vendors','ef_venues','ef_convos','ef_tasks','ef_budget','ef_guests','ef_clients'].forEach(k => localStorage.removeItem(k));
+  localStorage.setItem('ef_data_v', '3');
+}
 
 function useThemeClasses(theme) {
   const isDark = theme !== 'light';
@@ -65,7 +70,7 @@ function ScheduleTab({ event, setEvents, onAddSchedule }) {
                   <div className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{it.title}</div>
                   <div className="text-xs" style={{ color: 'var(--text-2)' }}>{it.duration} · {it.assigned}</div>
                 </div>
-                <button onClick={() => { setEditingItem({ ...it }); setShowEditModal(true); }} className="p-1 hover:bg-white/5 rounded">
+                <button onClick={() => { setEditingItem({ ...it, _orig: it.title }); setShowEditModal(true); }} className="p-1 hover:bg-white/5 rounded">
                   <Edit size={14} style={{ color: 'var(--text-2)' }} />
                 </button>
               </div>
@@ -96,7 +101,8 @@ function ScheduleTab({ event, setEvents, onAddSchedule }) {
             <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-1)' }}>Edit Schedule Item</h3>
             <form onSubmit={(e) => {
               e.preventDefault();
-              const updated = localSchedule.map(s => s.title === editingItem._orig ? { ...editingItem } : s);
+              const { _orig, ...edited } = editingItem;
+              const updated = localSchedule.map(s => s.title === _orig ? edited : s);
               setLocalSchedule(updated);
               if (event) setEvents(prev => prev.map(ev => ev.id === event.id ? { ...ev, schedule: updated } : ev));
               setShowEditModal(false);
@@ -138,7 +144,7 @@ function EditEventInline({ event, onSave, onClose }) {
           <h3 className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>Edit Event</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-2)' }}><X size={18} /></button>
         </div>
-        <form onSubmit={(e) => { e.preventDefault(); onSave({ id: event.id, ...form, budget: Number(form.budget) || event.budget, guests: Number(form.guests) || event.guests }); }} className="space-y-3">
+        <form onSubmit={(e) => { e.preventDefault(); onSave({ id: event.id, ...form, budget: form.budget === '' ? event.budget : Number(form.budget), guests: form.guests === '' ? event.guests : Number(form.guests) }); }} className="space-y-3">
           {[['Event Name', 'name', 'text'], ['Location', 'location', 'text'], ['Description', 'description', 'text']].map(([label, key, type]) => (
             <div key={key}>
               <label className="block text-xs mb-1" style={{ color: 'var(--text-3)' }}>{label}</label>
@@ -204,12 +210,6 @@ function AddMemberInline({ onAdd, onClose }) {
 }
 
 export default function App() {
-  // One-time data migration: clear stale seed data so new defaults load
-  if (typeof window !== 'undefined' && localStorage.getItem('ef_data_v') !== '3') {
-    ['ef_events','ef_vendors','ef_venues','ef_convos','ef_tasks','ef_budget','ef_guests','ef_clients'].forEach(k => localStorage.removeItem(k));
-    localStorage.setItem('ef_data_v', '3');
-  }
-
   const [theme, setTheme] = useState('dark');
   const classes = useThemeClasses(theme);
 
@@ -764,6 +764,17 @@ const CreateEventModal = ({ onClose }) => {
     };
   }), [events, tasks, guests, budgetItems]);
 
+  /* ── Gamification — quests + XP derived once per data change ── */
+  const quests = useMemo(
+    () => computeQuests({ events, tasks, conversations, vendors, guests }),
+    [events, tasks, conversations, vendors, guests]
+  );
+  const totalXp = useMemo(
+    () => tasks.filter(t => t.status === 'completed').length * 50
+      + quests.reduce((s, q) => s + (q.completed ? q.xp : 0), 0),
+    [tasks, quests]
+  );
+
   /* ── Derived selected records — always reflect latest data ── */
   const selectedEvent = useMemo(
     () => selectedEventId ? enrichedEvents.find(e => e.id === selectedEventId) || null : null,
@@ -980,6 +991,11 @@ const CreateEventModal = ({ onClose }) => {
   /* Event Detail Overlay (inline) */
   const EventDetailView = ({ event, onClose }) => {
     if (!event) return null;
+    const eventBudgetItems = budgetItems.filter(i => i.event === event.name);
+    const eventTasks = tasks.filter(t => t.event === event.name);
+    const eventGuests = guests.filter(g => g.event === event.name);
+    const sortedGuests = [...eventGuests].sort((a, b) => a.name.localeCompare(b.name));
+    const taskPct = event.tasks ? (event.completed / event.tasks) * 100 : 0;
     return (
       <div className="fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
         <div className="min-h-screen app-bg">
@@ -1032,9 +1048,9 @@ const CreateEventModal = ({ onClose }) => {
                       <div>
                         <div className="flex justify-between mb-2 text-sm text-slate-300">
                           <span>Tasks Completion</span>
-                          <span className="text-white font-semibold">{Math.round((event.completed / event.tasks) * 100)}%</span>
+                          <span className="text-white font-semibold">{Math.round(taskPct)}%</span>
                         </div>
-                        <div className="w-full bg-white/5 h-2 rounded"><div className="h-full" style={{ width: `${(event.completed / event.tasks) * 100}%`, background: NEON }} /></div>
+                        <div className="w-full bg-white/5 h-2 rounded"><div className="h-full" style={{ width: `${taskPct}%`, background: NEON }} /></div>
                       </div>
                       <div>
                         <div className="flex justify-between mb-2 text-sm text-slate-300">
@@ -1237,7 +1253,7 @@ const CreateEventModal = ({ onClose }) => {
           </tr>
         </thead>
         <tbody>
-          {budgetItems.filter(item => item.event === event.name).map(item => (
+          {eventBudgetItems.map(item => (
             <tr key={item.id} className="border-b hover:bg-white/5" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
               <td className="py-3 px-4 text-white font-semibold">{item.category}</td>
               <td className="py-3 px-4 text-slate-300">{item.vendor}</td>
@@ -1260,15 +1276,15 @@ const CreateEventModal = ({ onClose }) => {
               </td>
             </tr>
           ))}
-          {budgetItems.filter(item => item.event === event.name).length === 0 && (
+          {eventBudgetItems.length === 0 && (
             <tr><td colSpan={7} className="py-8 text-center text-slate-400 text-sm">No budget items yet — add one above</td></tr>
           )}
         </tbody>
         <tfoot>
           <tr className="border-t-2" style={{ borderColor: 'rgba(255,255,255,0.10)' }}>
             <td colSpan={2} className="py-3 px-4 text-sm font-semibold text-slate-300">Total</td>
-            <td className="py-3 px-4 text-right font-bold text-white">€{budgetItems.filter(i => i.event === event.name).reduce((s, i) => s + i.amount, 0).toLocaleString()}</td>
-            <td className="py-3 px-4 text-right font-bold text-emerald-400">€{budgetItems.filter(i => i.event === event.name).reduce((s, i) => s + i.paid, 0).toLocaleString()}</td>
+            <td className="py-3 px-4 text-right font-bold text-white">€{eventBudgetItems.reduce((s, i) => s + i.amount, 0).toLocaleString()}</td>
+            <td className="py-3 px-4 text-right font-bold text-emerald-400">€{eventBudgetItems.reduce((s, i) => s + i.paid, 0).toLocaleString()}</td>
             <td colSpan={3} />
           </tr>
         </tfoot>
@@ -1355,12 +1371,12 @@ const CreateEventModal = ({ onClose }) => {
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="text-sm font-semibold text-slate-300 uppercase">{status.replace('-', ' ')}</h4>
                           <span className="text-xs bg-white/5 text-slate-300 px-2 py-0.5 rounded font-semibold">
-                            {tasks.filter(t => t.event === event.name && t.status === status).length}
+                            {eventTasks.filter(t => t.status === status).length}
                           </span>
                         </div>
 
                         <div className="space-y-3">
-                          {tasks.filter(t => t.event === event.name && t.status === status).map(task => (
+                          {eventTasks.filter(t => t.status === status).map(task => (
                             <div
                               key={task.id}
                               draggable
@@ -1387,7 +1403,7 @@ const CreateEventModal = ({ onClose }) => {
                             </div>
                           ))}
 
-                          {tasks.filter(t => t.event === event.name && t.status === status).length === 0 && (
+                          {eventTasks.filter(t => t.status === status).length === 0 && (
                             <div className="text-center py-6 text-slate-400 text-sm">No tasks</div>
                           )}
                         </div>
@@ -1436,11 +1452,11 @@ const CreateEventModal = ({ onClose }) => {
                   </div>
                   <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                     <div className="text-sm text-slate-400 mb-1">Pending</div>
-                    <div className="text-2xl font-bold text-amber-400">{guests.filter(g => g.event === event.name && g.rsvp === 'pending').length}</div>
+                    <div className="text-2xl font-bold text-amber-400">{eventGuests.filter(g => g.rsvp === 'pending').length}</div>
                   </div>
                   <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                     <div className="text-sm text-slate-400 mb-1">Declined</div>
-                    <div className="text-2xl font-bold text-red-400">{guests.filter(g => g.event === event.name && g.rsvp === 'declined').length}</div>
+                    <div className="text-2xl font-bold text-red-400">{eventGuests.filter(g => g.rsvp === 'declined').length}</div>
                   </div>
                 </div>
 
@@ -1458,7 +1474,7 @@ const CreateEventModal = ({ onClose }) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {guests.filter(g => g.event === event.name).sort((a, b) => a.name.localeCompare(b.name)).map(guest => (
+                      {sortedGuests.map(guest => (
                         <tr key={guest.id} className="border-b hover:bg-white/5" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                           <td className="py-3 px-4 text-white font-semibold">{guest.name}</td>
                           <td className="py-3 px-4 text-slate-300">{guest.email}</td>
@@ -1483,7 +1499,7 @@ const CreateEventModal = ({ onClose }) => {
                           </td>
                         </tr>
                       ))}
-                      {guests.filter(g => g.event === event.name).length === 0 && (
+                      {eventGuests.length === 0 && (
                         <tr><td colSpan={7} className="py-8 text-center text-slate-400 text-sm">No guests yet — add one above</td></tr>
                       )}
                     </tbody>
@@ -2122,23 +2138,17 @@ const CreateEventModal = ({ onClose }) => {
           </div>
 
           {/* XP strip — XP from completed tasks plus quest rewards */}
-          {(() => {
-            const totalXp = tasks.filter(t => t.status === 'completed').length * 50
-              + computeQuestXp({ events, tasks, conversations, vendors, guests });
-            return (
-              <div className="panel-glass border border-white/5 rounded-md px-5 py-3 mb-6 flex items-center gap-6">
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="text-xs text-slate-400 uppercase tracking-widest">Level</div>
-                  <div className="text-lg font-bold text-white">{Math.floor(totalXp / 150) + 1}</div>
-                  <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${((totalXp % 150) / 150) * 100}%`, background: 'linear-gradient(90deg, var(--ef-brand-deep), var(--ef-brand-2))' }} />
-                  </div>
-                  <div className="text-xs text-slate-400">{totalXp} XP</div>
-                </div>
-                <div className="text-xs text-purple-300 font-semibold">Event Planner</div>
+          <div className="panel-glass border border-white/5 rounded-md px-5 py-3 mb-6 flex items-center gap-6">
+            <div className="flex items-center gap-3 flex-1">
+              <div className="text-xs text-slate-400 uppercase tracking-widest">Level</div>
+              <div className="text-lg font-bold text-white">{Math.floor(totalXp / 150) + 1}</div>
+              <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${((totalXp % 150) / 150) * 100}%`, background: 'linear-gradient(90deg, var(--ef-brand-deep), var(--ef-brand-2))' }} />
               </div>
-            );
-          })()}
+              <div className="text-xs text-slate-400">{totalXp} XP</div>
+            </div>
+            <div className="text-xs text-purple-300 font-semibold">Event Planner</div>
+          </div>
 
           {/* Content */}
           <div>
@@ -2155,9 +2165,7 @@ const CreateEventModal = ({ onClose }) => {
                     <div className="flex justify-between items-center mb-5">
                       <h2 className="text-lg font-semibold text-white">Upcoming Events</h2>
                       {events.length >= 3 && plan === 'free' ? (
-                        <ProGate plan={plan} feature="Unlimited events" onUpgrade={() => setShowPricing(true)}>
-                          <button className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2 shadow-sm"><Zap size={14} />Upgrade</button>
-                        </ProGate>
+                        <ProGate plan={plan} feature="Unlimited events" onUpgrade={() => setShowPricing(true)} />
                       ) : (
                         <button onClick={() => setShowCreateEvent(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2 shadow-sm"><Plus size={14} />New</button>
                       )}
@@ -2176,7 +2184,7 @@ const CreateEventModal = ({ onClose }) => {
                             <span className={`text-xs px-2 py-1 font-semibold ${event.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{event.status}</span>
                           </div>
                           <div className="text-xs text-slate-300 mb-3 font-medium">{new Date(event.date).toLocaleDateString()} • {event.guests} guests</div>
-                          <div className="w-full bg-white/5 h-2 rounded overflow-hidden"><div className="h-full" style={{ width: `${(event.completed/event.tasks)*100}%`, background: NEON }} /></div>
+                          <div className="w-full bg-white/5 h-2 rounded overflow-hidden"><div className="h-full" style={{ width: `${event.tasks ? (event.completed/event.tasks)*100 : 0}%`, background: NEON }} /></div>
                           <div className="text-xs text-slate-300 mt-2 font-medium">{event.completed}/{event.tasks} tasks completed</div>
                         </div>
                       ))}
@@ -2184,7 +2192,7 @@ const CreateEventModal = ({ onClose }) => {
                   </div>
 
                   <div className="space-y-6">
-                    <QuestBoard events={events} tasks={tasks} conversations={conversations} vendors={vendors} guests={guests} />
+                    <QuestBoard quests={quests} />
 
                     <div className={`${classes.panelBg} ${classes.border} p-6 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                       <h2 className="text-lg font-semibold text-white mb-5">High Priority Tasks</h2>
@@ -2242,9 +2250,7 @@ const CreateEventModal = ({ onClose }) => {
                 <div className="flex justify-between items-center">
                   <h1 className="text-2xl font-bold text-white">Events</h1>
                   {events.length >= 3 && plan === 'free' ? (
-                    <ProGate plan={plan} feature="Unlimited events" onUpgrade={() => setShowPricing(true)}>
-                      <button className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2"><Zap size={16} />Upgrade to add more</button>
-                    </ProGate>
+                    <ProGate plan={plan} feature="Unlimited events" onUpgrade={() => setShowPricing(true)} />
                   ) : (
                     <button onClick={() => setShowCreateEvent(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2 text-sm font-semibold rounded flex items-center gap-2"><Plus size={16} />Create Event</button>
                   )}
@@ -2272,8 +2278,8 @@ const CreateEventModal = ({ onClose }) => {
                         <div className="flex items-center gap-2"><DollarSign size={14} />${event.spent.toLocaleString()} / ${event.budget.toLocaleString()}</div>
                       </div>
                       <div className="rounded p-3" style={{ borderColor: 'rgba(255,255,255,0.05)', background: 'var(--surface-2)', border: '2px solid var(--border)' }}>
-                        <div className="flex justify-between text-xs mb-2"><span className="text-slate-300">Progress</span><span className="font-semibold text-white">{Math.round((event.completed/event.tasks)*100)}%</span></div>
-                        <div className="w-full bg-white/5 h-1.5 rounded overflow-hidden"><div className="h-full" style={{ width: `${(event.completed/event.tasks)*100}%`, background: NEON }} /></div>
+                        <div className="flex justify-between text-xs mb-2"><span className="text-slate-300">Progress</span><span className="font-semibold text-white">{event.tasks ? Math.round((event.completed/event.tasks)*100) : 0}%</span></div>
+                        <div className="w-full bg-white/5 h-1.5 rounded overflow-hidden"><div className="h-full" style={{ width: `${event.tasks ? (event.completed/event.tasks)*100 : 0}%`, background: NEON }} /></div>
                       </div>
                     </div>
                   ))}
