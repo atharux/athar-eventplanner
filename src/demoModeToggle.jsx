@@ -24,7 +24,7 @@ export default function DemoModeToggle({ mode, setMode }) {
         style={{
           fontSize: 12,
           padding: '4px 8px',
-          background: mode === 'classic' ? '#7c3aed' : '#020617',
+          background: mode === 'classic' ? 'var(--ef-brand-deep)' : 'var(--ef-toggle-off)',
           color: '#fff',
           borderRadius: 4,
           border: '1px solid #1f2937',
@@ -38,7 +38,7 @@ export default function DemoModeToggle({ mode, setMode }) {
         style={{
           fontSize: 12,
           padding: '4px 8px',
-          background: mode === 'gamified' ? '#7c3aed' : '#020617',
+          background: mode === 'gamified' ? 'var(--ef-brand-deep)' : 'var(--ef-toggle-off)',
           color: '#fff',
           borderRadius: 4,
           border: '1px solid #1f2937',

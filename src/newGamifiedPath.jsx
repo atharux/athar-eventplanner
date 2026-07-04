@@ -25,7 +25,7 @@ const RADIUS =
   "rounded-md";
 
 const NEON =
-  "linear-gradient(90deg, #7c3aed, #a855f7)";
+  "linear-gradient(90deg, var(--ef-brand-deep), var(--ef-brand-2))";
 
 /* =======================
    Data

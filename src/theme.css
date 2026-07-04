@@ -1,29 +1,49 @@
-/* EventFlow — atharux design token system
-   Loaded after index.css. Uses !important where needed to override Tailwind. */
+/* EventFlow — atharux design token system v2
+   Dark: flat glassmorphic, multi-accent, grain texture.
+   Light: WCAG AA compliant (≥4.5:1 body, ≥3:1 UI elements). */
 
+/* ── Dark tokens (default) ── */
 :root {
-  --bg:            #07080c;
-  --surface-1:     #0d1117;
-  --surface-2:     #0f1320;
-  --surface-3:     #141828;
+  --bg:          #07080f;
+  --surface-1:   #0e1019;
+  --surface-2:   #13151f;
+  --surface-3:   #1a1d28;
+  --overlay:     rgba(0,0,0,0.75);
 
-  --accent:        #8b5cf6;          /* EventFlow purple */
+  --accent:        #8b5cf6;
   --accent-dim:    rgba(139,92,246,0.10);
-  --accent-border: rgba(139,92,246,0.24);
+  --accent-border: rgba(139,92,246,0.28);
   --accent-glow:   0 0 28px rgba(139,92,246,0.18);
 
-  --teal:          #06b6d4;          /* atharux global accent */
-  --orange:        #f97316;
+  /* Theme-aware brand for inline-style accents: purple in dark, slate in light */
+  --ef-brand:      #8b5cf6;
+  --ef-brand-2:    #a855f7;
+  --ef-brand-deep: #6d28d9;
+  --ef-brand-rgb:  139, 92, 246;
+  --ef-brand-text: #c4b5fd;
+  --ef-toggle-off: #020617;
+  --ef-grad-discover: linear-gradient(135deg, #A020F0 0%, #8B00FF 100%);
+  --ef-bright-rgb: 160, 32, 240;
 
-  --glow-sm:  0 0 14px rgba(139,92,246,0.10);
-  --glow-md:  0 0 28px rgba(139,92,246,0.18);
+  --color-green: #00e5a0;
+  --color-amber: #f5a623;
+  --color-red:   #ff6b6b;
+  --color-blue:  #4f8cff;
+  --color-cyan:  #00d4ff;
+
+  --glow-sm: 0 0 14px rgba(139,92,246,0.10);
+  --glow-md: 0 0 0 1px rgba(139,92,246,0.20), 0 8px 32px rgba(0,0,0,0.60);
 
   --border:        rgba(255,255,255,0.07);
+  --border-bright: rgba(255,255,255,0.14);
   --border-subtle: rgba(255,255,255,0.04);
 
-  --text-1: #e2e8f0;
-  --text-2: #94a3b8;
-  --text-3: #475569;
+  --text-1: #eceef5;
+  --text-2: #7e8299;
+  --text-3: #3d4058;
+
+  --panel-bg:   rgba(13,17,23,0.90);
+  --panel-blur: blur(12px);
 
   --font-mono: 'Space Mono', 'Courier New', monospace;
   --font-sans: 'Syne', sans-serif;
@@ -31,6 +51,52 @@
 
   --r:    4px;
   --r-lg: 8px;
+  --r-xl: 12px;
+}
+
+/* ── Light tokens (WCAG AA) ── */
+[data-theme="light"] {
+  /* GRAPHITE SYSTEM — neutral white-label light theme (crisp states, graphite accent) */
+  --bg:          #FAFAFA;            /* graphite canvas */
+  --surface-1:   #FFFFFF;            /* surface */
+  --surface-2:   #F5F5F5;            /* surface-2 (nested) */
+  --surface-3:   #E5E7EB;
+  --overlay:     rgba(17,24,39,0.45);
+
+  --accent:        #111827;          /* graphite core — neutral identity (blue reserved for Ops interactive states only) */
+  --accent-dim:    rgba(17,24,39,0.06);
+  --accent-border: rgba(17,24,39,0.18);
+  --accent-glow:   0 0 20px rgba(17,24,39,0.06);
+
+  /* Brand inline-style accents → light slate */
+  --ef-brand:      #475569;
+  --ef-brand-2:    #64748b;
+  --ef-brand-deep: #334155;
+  --ef-brand-rgb:  71, 85, 105;
+  --ef-brand-text: #334155;
+  --ef-toggle-off: #e2e8f0;
+  --ef-grad-discover: linear-gradient(135deg, #334155 0%, #475569 100%);
+  --ef-bright-rgb: 71, 85, 105;
+
+  --color-green: #16A34A;            /* crisp success */
+  --color-amber: #D97706;            /* crisp warning */
+  --color-red:   #DC2626;            /* crisp error */
+  --color-blue:  #1d4ed8;            /* functional info / category */
+  --color-cyan:  #0e7490;            /* functional category */
+
+  --glow-sm: 0 0 14px rgba(17,24,39,0.05);
+  --glow-md: 0 0 0 1px rgba(17,24,39,0.10), 0 4px 16px rgba(0,0,0,0.12);
+
+  --border:        #E5E7EB;
+  --border-bright: #D1D5DB;
+  --border-subtle: rgba(17,24,39,0.05);
+
+  --text-1: #111827;                 /* graphite text */
+  --text-2: #6B7280;                 /* muted */
+  --text-3: #9CA3AF;                 /* subtle */
+
+  --panel-bg:   rgba(255,255,255,0.88);
+  --panel-blur: blur(10px);
 }
 
 /* ── Base ── */
@@ -38,23 +104,68 @@ body {
   background: var(--bg) !important;
   font-family: var(--font-body) !important;
   color: var(--text-1) !important;
+  transition: background 0.25s, color 0.25s;
 }
 
-.app-bg { background: var(--bg) !important; }
+/* ── App surfaces ── */
+.app-bg    { background: var(--bg) !important; }
+.ef-surface  { background: var(--surface-1) !important; }
+.ef-surface2 { background: var(--surface-2) !important; }
+
+/* ── Grain overlay ── */
+.app-root::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.022;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+}
 
 /* ── Panels ── */
 .panel-glass {
-  background: rgba(13,17,23,0.9) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
+  background: var(--panel-bg) !important;
+  backdrop-filter: var(--panel-blur) !important;
+  -webkit-backdrop-filter: var(--panel-blur) !important;
 }
 
 .glass-border { border-color: var(--border) !important; }
 
-/* ── Navigation active state ── */
-.nav-active-bg { background: rgba(139,92,246,0.12) !important; }
+.panel-card {
+  background: var(--surface-2) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--r-lg) !important;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
+}
 
-/* ── Typography overrides ── */
+.panel-card:hover {
+  border-color: var(--accent-border) !important;
+  box-shadow: var(--glow-md) !important;
+}
+
+/* ── Navigation ── */
+.nav-active-bg { background: var(--accent-dim) !important; }
+
+/* ── Inputs ── */
+.dark-input {
+  background: var(--surface-1) !important;
+  color: var(--text-1) !important;
+  border-color: var(--border) !important;
+}
+
+.dark-input:focus {
+  border-color: var(--accent) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px var(--accent-dim) !important;
+}
+
+input, select, textarea {
+  font-family: var(--font-body) !important;
+}
+
+/* ── Typography ── */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-sans) !important;
   letter-spacing: -0.01em;
@@ -64,33 +175,117 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-mono) !important;
 }
 
-/* ── Inputs ── */
-.dark-input {
-  background: var(--surface-1) !important;
-  border-color: var(--border) !important;
+/* ── Status badges — token colours ── */
+.bg-emerald-100              { background: rgba(0,229,160,0.10) !important; }
+.text-emerald-800, .text-emerald-700 { color: var(--color-green) !important; }
+
+.bg-amber-100                { background: rgba(245,166,35,0.10) !important; }
+.text-amber-800, .text-amber-700     { color: var(--color-amber) !important; }
+
+.bg-red-100                  { background: rgba(255,107,107,0.10) !important; }
+.text-red-800, .text-red-700         { color: var(--color-red) !important; }
+
+.bg-blue-100                 { background: rgba(79,140,255,0.10) !important; }
+.text-blue-800, .text-blue-700       { color: var(--color-blue) !important; }
+
+.bg-gray-100, .bg-gray-200   { background: var(--surface-3) !important; }
+.text-gray-700, .text-gray-800       { color: var(--text-2) !important; }
+
+/* ── Accent purple system ── */
+.bg-purple-700           { background: var(--accent) !important; }
+.hover\:bg-purple-600:hover  { filter: brightness(1.15) !important; }
+.text-purple-300         { color: rgba(196,181,253,0.9) !important; }
+.text-purple-400         { color: var(--accent) !important; }
+.border-purple-400,
+.border-purple-500       { border-color: var(--accent) !important; }
+.bg-purple-500           { background: var(--accent) !important; }
+
+/* ── Emerald accents (Booked/Active) ── */
+.text-emerald-400        { color: var(--color-green) !important; }
+.text-amber-400          { color: var(--color-amber) !important; }
+.text-red-400            { color: var(--color-red) !important; }
+.bg-emerald-600          { background: var(--color-green) !important; color: #0d1117 !important; }
+.bg-blue-700             { background: var(--color-blue) !important; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar              { width: 5px; height: 5px; }
+::-webkit-scrollbar-track        { background: transparent; }
+::-webkit-scrollbar-thumb        { background: var(--border-bright); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover  { background: var(--accent-border); }
+
+/* ── Selection & focus ── */
+::selection      { background: var(--accent-dim); color: var(--text-1); }
+:focus-visible   { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r); }
+
+/* ── Light-mode Tailwind overrides ── */
+[data-theme="light"] .bg-slate-900          { background: var(--surface-2) !important; }
+[data-theme="light"] .bg-white\/5           { background: rgba(0,0,0,0.04) !important; }
+[data-theme="light"] .bg-white\/10          { background: rgba(0,0,0,0.07) !important; }
+[data-theme="light"] .hover\:bg-white\/5:hover  { background: rgba(0,0,0,0.04) !important; }
+[data-theme="light"] .hover\:bg-white\/10:hover { background: rgba(0,0,0,0.07) !important; }
+[data-theme="light"] .text-slate-100        { color: var(--text-1) !important; }
+[data-theme="light"] .text-slate-200        { color: var(--text-1) !important; }
+[data-theme="light"] .text-slate-300        { color: var(--text-2) !important; }
+[data-theme="light"] .text-slate-400        { color: var(--text-2) !important; }
+[data-theme="light"] .text-white            { color: var(--text-1) !important; }
+[data-theme="light"] .text-purple-300       { color: var(--accent) !important; }
+[data-theme="light"] .border-b-2            { border-color: var(--border) !important; }
+[data-theme="light"] .border-t-2            { border-color: var(--border) !important; }
+[data-theme="light"] .divide-y-2 > *        { border-color: var(--border) !important; }
+[data-theme="light"] .text-blue-700         { color: var(--color-blue) !important; }
+[data-theme="light"] nav                    { box-shadow: 1px 0 0 0 var(--border) !important; }
+
+/* ── Graphite light overrides: neutralize purple utilities (white-label) ── */
+[data-theme="light"] .bg-purple-400,
+[data-theme="light"] .bg-purple-500,
+[data-theme="light"] .bg-purple-600,
+[data-theme="light"] .bg-purple-700,
+[data-theme="light"] .bg-purple-800              { background-color: var(--accent) !important; color: #FFFFFF !important; }
+[data-theme="light"] .hover\:bg-purple-600:hover { background-color: #374151 !important; }
+
+/* Graphite primary buttons keep light text (override the global .text-white→dark rule) */
+[data-theme="light"] .bg-purple-400 *,
+[data-theme="light"] .bg-purple-500 *,
+[data-theme="light"] .bg-purple-600 *,
+[data-theme="light"] .bg-purple-700 *,
+[data-theme="light"] .bg-purple-800 * { color: #FFFFFF !important; }
+
+[data-theme="light"] .text-purple-100,
+[data-theme="light"] .text-purple-200,
+[data-theme="light"] .text-purple-300,
+[data-theme="light"] .text-purple-400              { color: var(--accent) !important; }
+[data-theme="light"] .hover\:text-purple-200:hover { color: var(--text-1) !important; }
+
+[data-theme="light"] .border-purple-400,
+[data-theme="light"] .border-purple-500,
+[data-theme="light"] .border-purple-600                  { border-color: var(--accent-border) !important; }
+[data-theme="light"] .hover\:border-purple-500:hover,
+[data-theme="light"] .hover\:border-purple-500\/70:hover { border-color: var(--border-bright) !important; }
+
+[data-theme="light"] .focus\:ring-purple-500:focus { --tw-ring-color: var(--accent-border) !important; }
+
+[data-theme="light"] .from-purple-500 {
+  --tw-gradient-from: var(--accent) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to:   rgba(17,24,39,0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
 }
 
-input, select, textarea {
-  font-family: var(--font-body) !important;
-}
+/* ── Dark slate/gray surfaces → light graphite surfaces ──
+   (their white/slate text auto-corrects via the text-* overrides above) */
+[data-theme="light"] .bg-slate-950,
+[data-theme="light"] .bg-gray-900           { background-color: var(--surface-2) !important; }
+[data-theme="light"] .bg-slate-800          { background-color: var(--surface-1) !important; }
+[data-theme="light"] .bg-slate-700,
+[data-theme="light"] .bg-slate-600          { background-color: var(--surface-3) !important; }
+[data-theme="light"] .bg-slate-500\/20      { background-color: rgba(17,24,39,0.06) !important; }
+[data-theme="light"] .hover\:bg-slate-800:hover,
+[data-theme="light"] .hover\:bg-slate-700:hover,
+[data-theme="light"] .hover\:bg-slate-600:hover    { background-color: var(--surface-3) !important; }
+[data-theme="light"] .hover\:bg-slate-800\/60:hover { background-color: rgba(17,24,39,0.05) !important; }
 
-/* ── Status badges — swap garish Tailwind light colours for token-based dark ones ── */
-.bg-emerald-100 { background: rgba(16,185,129,0.12) !important; }
-.text-emerald-800, .text-emerald-700 { color: #34d399 !important; }
-
-.bg-amber-100 { background: rgba(245,158,11,0.12) !important; }
-.text-amber-800 { color: #fbbf24 !important; }
-
-.bg-red-100 { background: rgba(239,68,68,0.12) !important; }
-.text-red-800 { color: #f87171 !important; }
-
-.bg-blue-100 { background: rgba(59,130,246,0.12) !important; }
-.text-blue-800 { color: #60a5fa !important; }
-
-/* ── Accent purple system buttons (override hardcoded bg-purple-700) ── */
-.bg-purple-700 { background: var(--accent) !important; }
-.hover\:bg-purple-600:hover { background: #7c3aed !important; }
-.text-purple-300 { color: #c4b5fd !important; }
-.border-purple-400, .border-purple-500 { border-color: var(--accent) !important; }
-
-/* ── XP bar gradient ── */
+/* ── Blue action buttons: keep blue bg, force legible white text ── */
+[data-theme="light"] .bg-blue-600,
+[data-theme="light"] .bg-blue-700              { color: #FFFFFF !important; }
+[data-theme="light"] .bg-blue-600 *,
+[data-theme="light"] .bg-blue-700 *            { color: #FFFFFF !important; }
+[data-theme="light"] .hover\:bg-blue-700:hover { background-color: #1D4ED8 !important; }

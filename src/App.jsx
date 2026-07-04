@@ -3,41 +3,212 @@ import {
   Calendar, Users, MessageSquare, Search, Plus, X, Send, DollarSign, MapPin, Star,
   Upload, Menu, Home, Settings, Building2, Edit, Paperclip, UserPlus, Zap
 } from 'lucide-react';
-import { useLocalStorage, checkLimit } from '../useStorage';
+import { useLocalStorage, checkLimit } from './useStorage';
 import { ProGate } from './ProGate';
 import { PricingModal } from './PricingModal';
-import '../theme.css';
+import './theme.css';
 
-/**
- * Single-file Event Planner App
- * - Dark base theme by default
- * - Theme toggle in Settings (dark <-> light)
- * - 80% dark backdrop for modals + blur
- * - Neon purple glow (#A020F0) for modals and key elements
- * - 2px borders, bolder fonts, higher contrast
- *
- * Copy-paste into /src/App.jsx (Vite + React). Keep lucide-react installed.
- */
-
-const NEON_COLOR = '#8b5cf6';
-const NEON = 'linear-gradient(90deg, #7c3aed, #8b5cf6)';
-const neonBoxShadow = '0 0 0 1px rgba(139,92,246,0.2), 0 8px 40px rgba(0,0,0,0.7)';
+const NEON_COLOR = 'var(--ef-brand)';
+const NEON = 'linear-gradient(90deg, var(--ef-brand-deep), var(--ef-brand))';
+const neonBoxShadow = 'var(--glow-md)';
 const GLASS = 'panel-glass';
 const GLASS_BORDER = 'glass-border';
 
-/* Small helper to apply dark / light tokenized classes */
 function useThemeClasses(theme) {
+  const isDark = theme !== 'light';
   return {
-    appBg: 'app-bg text-slate-200',
-    panelBg: 'panel-glass',
-    subtleBg: 'bg-slate-900',
-    border: 'glass-border',
-    mutedText: 'text-slate-400',
-    strongText: 'text-slate-100',
+    appBg:      'app-bg',
+    panelBg:    'panel-glass',
+    subtleBg:   isDark ? 'bg-slate-900' : 'ef-surface2',
+    border:     'glass-border',
+    mutedText:  isDark ? 'text-slate-400' : 'text-gray-500',
+    strongText: isDark ? 'text-slate-100' : 'text-gray-900',
   };
 }
 
+/* ScheduleTab — extracted as proper component to satisfy Rules of Hooks */
+function ScheduleTab({ event, setEvents, onAddSchedule }) {
+  const [localSchedule, setLocalSchedule] = React.useState(event?.schedule || []);
+  const [showEditModal, setShowEditModal] = React.useState(false);
+  const [editingItem, setEditingItem] = React.useState(null);
+
+  React.useEffect(() => {
+    setLocalSchedule(event?.schedule || []);
+  }, [event]);
+
+  const data = localSchedule.length ? localSchedule : [
+    { time: '09:00 AM', title: 'Venue Setup', duration: '2 hours', assigned: 'Setup Crew', category: 'Setup' },
+    { time: '05:00 PM', title: 'Guest Arrival', duration: '1 hour', assigned: 'Reception Team', category: 'Reception' },
+    { time: '06:00 PM', title: 'Cocktail Hour', duration: '1 hour', assigned: 'Catering Staff', category: 'Catering' },
+    { time: '07:00 PM', title: 'Dinner Service', duration: '2 hours', assigned: 'Elegant Catering', category: 'Catering' },
+    { time: '09:00 PM', title: 'Entertainment Begins', duration: '3 hours', assigned: 'Harmony DJ', category: 'Entertainment' },
+    { time: '12:00 AM', title: 'Event Wrap-up', duration: '1 hour', assigned: 'Full Team', category: 'Wrap-up' },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold" style={{ color: 'var(--text-1)' }}>Run Sheet / Schedule</h2>
+        <button onClick={onAddSchedule} className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm">
+          <Plus size={14} /> Add Item
+        </button>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="w-full md:w-1/3 space-y-2">
+          {data.map((it, idx) => (
+            <div key={idx} className="panel-glass glass-border p-3 rounded-md transition-all">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-purple-300 font-bold text-sm">{it.time}</div>
+                  <div className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{it.title}</div>
+                  <div className="text-xs" style={{ color: 'var(--text-2)' }}>{it.duration} · {it.assigned}</div>
+                </div>
+                <button onClick={() => { setEditingItem({ ...it }); setShowEditModal(true); }} className="p-1 hover:bg-white/5 rounded">
+                  <Edit size={14} style={{ color: 'var(--text-2)' }} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex-1 overflow-x-auto relative h-64 rounded-lg" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+          <div className="absolute top-0 left-0 w-full flex justify-between text-xs p-2" style={{ color: 'var(--text-2)' }}>
+            {['09 AM', '12 PM', '03 PM', '06 PM', '09 PM', '12 AM'].map(t => <span key={t}>{t}</span>)}
+          </div>
+          <div className="absolute inset-0 mt-6 space-y-3 p-4">
+            {data.map((it, idx) => (
+              <div key={idx} className="relative group" title={`${it.title} — ${it.duration}`}>
+                <div className="h-6 rounded-md cursor-pointer" style={{ width: `${Math.min((parseInt(it.duration) || 1) * 20, 95)}%`, background: 'var(--accent-dim)', border: '1px solid var(--accent-border)' }} />
+                <div className="absolute hidden group-hover:flex top-7 left-0 text-xs px-2 py-1 rounded z-10 whitespace-nowrap" style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', color: 'var(--text-1)' }}>
+                  <span className="font-semibold mr-2">{it.title}</span><span style={{ color: 'var(--text-2)' }}>{it.time} · {it.duration}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {showEditModal && editingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'var(--overlay)', backdropFilter: 'blur(8px)' }}>
+          <div className="panel-glass glass-border rounded-xl p-6 w-full max-w-md" style={{ boxShadow: 'var(--glow-md)' }}>
+            <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-1)' }}>Edit Schedule Item</h3>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const updated = localSchedule.map(s => s.title === editingItem._orig ? { ...editingItem } : s);
+              setLocalSchedule(updated);
+              if (event) setEvents(prev => prev.map(ev => ev.id === event.id ? { ...ev, schedule: updated } : ev));
+              setShowEditModal(false);
+            }} className="space-y-3">
+              {[['Title','title'],['Assigned To','assigned'],['Start Time','time'],['Duration','duration']].map(([label, key]) => (
+                <div key={key}>
+                  <label className="block text-sm mb-1" style={{ color: 'var(--text-2)' }}>{label}</label>
+                  <input type="text" value={editingItem[key] || ''} onChange={e => setEditingItem(p => ({ ...p, [key]: e.target.value }))} className="w-full dark-input rounded px-3 py-2" />
+                </div>
+              ))}
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setShowEditModal(false)} className="px-4 py-2 rounded text-sm" style={{ background: 'var(--surface-3)', color: 'var(--text-1)' }}>Cancel</button>
+                <button type="submit" className="px-4 py-2 rounded bg-purple-700 text-white text-sm">Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EditEventInline({ event, onSave, onClose }) {
+  const [form, setForm] = React.useState({
+    name: event.name || '',
+    date: event.date || '',
+    type: event.type || 'Corporate',
+    location: event.location || '',
+    description: event.description || '',
+    budget: event.budget || '',
+    guests: event.guests || '',
+  });
+  const handle = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const EVENT_TYPES = ['Corporate', 'Wedding', 'Conference', 'Birthday', 'Fundraiser', 'Other'];
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ background: 'var(--overlay)', backdropFilter: 'blur(8px)' }}>
+      <div className="panel-glass glass-border rounded-xl p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto" style={{ boxShadow: 'var(--glow-md)' }}>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>Edit Event</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-2)' }}><X size={18} /></button>
+        </div>
+        <form onSubmit={(e) => { e.preventDefault(); onSave({ id: event.id, ...form, budget: Number(form.budget) || event.budget, guests: Number(form.guests) || event.guests }); }} className="space-y-3">
+          {[['Event Name', 'name', 'text'], ['Location', 'location', 'text'], ['Description', 'description', 'text']].map(([label, key, type]) => (
+            <div key={key}>
+              <label className="block text-xs mb-1" style={{ color: 'var(--text-3)' }}>{label}</label>
+              <input type={type} value={form[key]} onChange={e => handle(key, e.target.value)} className="w-full dark-input rounded px-3 py-2 text-sm" />
+            </div>
+          ))}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs mb-1" style={{ color: 'var(--text-3)' }}>Date</label>
+              <input type="date" value={form.date} onChange={e => handle('date', e.target.value)} className="w-full dark-input rounded px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs mb-1" style={{ color: 'var(--text-3)' }}>Type</label>
+              <select value={form.type} onChange={e => handle('type', e.target.value)} className="w-full dark-input rounded px-3 py-2 text-sm">
+                {EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs mb-1" style={{ color: 'var(--text-3)' }}>Budget (€)</label>
+              <input type="number" value={form.budget} onChange={e => handle('budget', e.target.value)} className="w-full dark-input rounded px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs mb-1" style={{ color: 'var(--text-3)' }}>Guest Count</label>
+              <input type="number" value={form.guests} onChange={e => handle('guests', e.target.value)} className="w-full dark-input rounded px-3 py-2 text-sm" />
+            </div>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button type="submit" className="flex-1 py-2 rounded text-sm font-semibold bg-purple-700 text-white hover:bg-purple-600">Save Changes</button>
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded text-sm" style={{ background: 'var(--surface-3)', color: 'var(--text-1)' }}>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function AddMemberInline({ onAdd, onClose }) {
+  const [form, setForm] = React.useState({ name: '', role: '', email: '' });
+  const handle = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const submit = (e) => {
+    e.preventDefault();
+    if (!form.name || !form.role) return;
+    onAdd({ ...form, avatar: form.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) });
+  };
+  return (
+    <form onSubmit={submit} className="panel-glass glass-border rounded-lg p-4 space-y-3">
+      <p className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>New team member</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        {[['Name', 'name', 'text'], ['Role', 'role', 'text'], ['Email', 'email', 'email']].map(([label, key, type]) => (
+          <div key={key}>
+            <label className="block text-xs mb-1" style={{ color: 'var(--text-3)' }}>{label}</label>
+            <input type={type} value={form[key]} onChange={e => handle(key, e.target.value)}
+              className="w-full dark-input rounded px-3 py-2 text-sm" placeholder={label} />
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <button type="submit" className="px-4 py-1.5 rounded text-xs font-semibold bg-purple-700 text-white hover:bg-purple-600">Add</button>
+        <button type="button" onClick={onClose} className="px-4 py-1.5 rounded text-xs" style={{ background: 'var(--surface-3)', color: 'var(--text-2)' }}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
 export default function App() {
+  // One-time data migration: clear stale seed data so new defaults load
+  if (typeof window !== 'undefined' && localStorage.getItem('ef_data_v') !== '3') {
+    ['ef_events','ef_vendors','ef_venues','ef_convos','ef_tasks','ef_budget','ef_guests','ef_clients'].forEach(k => localStorage.removeItem(k));
+    localStorage.setItem('ef_data_v', '3');
+  }
+
   const [theme, setTheme] = useState('dark');
   const classes = useThemeClasses(theme);
 
@@ -53,8 +224,8 @@ export default function App() {
   const [showEventDetail, setShowEventDetail] = useState(false);
   const [showTaskDetail, setShowTaskDetail] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState(null);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [selectedTask, setSelectedTask] = useState(null);
+  const [selectedEventId, setSelectedEventId] = useState(null);
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   const [messageInput, setMessageInput] = useState('');
@@ -79,6 +250,10 @@ export default function App() {
 
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [showAIOutput, setShowAIOutput] = useState(false);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [showAddVendorToEvent, setShowAddVendorToEvent] = useState(false);
+  const [showNewConversation, setShowNewConversation] = useState(false);
+  const [showEditEvent, setShowEditEvent] = useState(false);
   const [newEventForm, setNewEventForm] = useState({
   name: '',
   date: '',
@@ -209,11 +384,11 @@ const CreateEventModal = ({ onClose }) => {
         <div className="space-y-4">
           {/* AI PROMPT SECTION - SURGICAL ADDITION */}
           <div className="p-5 rounded-xl mb-6" style={{ 
-            background: 'linear-gradient(135deg, rgba(160, 32, 240, 0.1) 0%, rgba(160, 32, 240, 0.2) 100%)',
-            border: '2px solid rgba(160, 32, 240, 0.5)'
+            background: 'linear-gradient(135deg, rgba(var(--ef-bright-rgb), 0.1) 0%, rgba(var(--ef-bright-rgb), 0.2) 100%)',
+            border: '2px solid rgba(var(--ef-bright-rgb), 0.5)'
           }}>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-3" style={{
-              background: 'linear-gradient(135deg, #A020F0 0%, #8B00FF 100%)',
+              background: 'var(--ef-grad-discover)',
               color: 'white'
             }}>
               <span>✨</span>
@@ -225,17 +400,12 @@ const CreateEventModal = ({ onClose }) => {
                 Describe your event in natural language
               </span>
               <textarea
-                className="w-full border-2 rounded-lg px-3 py-2.5 mt-2 transition-all resize-none"
-                style={{ 
-                  backgroundColor: '#06080f',
-                  borderColor: 'rgba(255,255,255,0.08)',
-                  color: '#e2e8f0'
-                }}
+                className="dark-input w-full rounded-lg px-3 py-2.5 mt-2 transition-all resize-none"
                 rows="3"
                 placeholder="Example: Corporate tech conference for 500 attendees on June 15th at the Convention Center. Budget around €75,000 for venue, catering, speakers, and AV equipment."
                 value={aiPrompt}
                 onChange={(e) => setAiPrompt(e.target.value)}
-                onFocus={(e) => e.target.style.borderColor = '#A020F0'}
+                onFocus={(e) => e.target.style.borderColor = 'var(--ef-brand)'}
                 onBlur={(e) => e.target.style.borderColor = '#2b2b2b'}
               />
             </label>
@@ -250,18 +420,18 @@ const CreateEventModal = ({ onClose }) => {
               disabled={!aiPrompt.trim() || isGenerating}
               className="px-4 py-2 rounded-lg text-white font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
-                background: isGenerating ? '#6B7280' : 'linear-gradient(135deg, #A020F0 0%, #8B00FF 100%)',
-                boxShadow: !isGenerating ? '0 4px 12px rgba(160, 32, 240, 0.4)' : 'none'
+                background: isGenerating ? '#6B7280' : 'var(--ef-grad-discover)',
+                boxShadow: !isGenerating ? '0 4px 12px rgba(var(--ef-bright-rgb), 0.4)' : 'none'
               }}
               onMouseEnter={(e) => {
                 if (!isGenerating && aiPrompt.trim()) {
                   e.target.style.transform = 'translateY(-2px)';
-                  e.target.style.boxShadow = '0 6px 16px rgba(160, 32, 240, 0.6)';
+                  e.target.style.boxShadow = '0 6px 16px rgba(var(--ef-bright-rgb), 0.6)';
                 }
               }}
               onMouseLeave={(e) => {
                 e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 4px 12px rgba(160, 32, 240, 0.4)';
+                e.target.style.boxShadow = '0 4px 12px rgba(var(--ef-bright-rgb), 0.4)';
               }}
             >
               {isGenerating ? (
@@ -296,52 +466,34 @@ const CreateEventModal = ({ onClose }) => {
                 <p className="text-sm text-slate-300 mt-1">Operational summary based on your event description</p>
               </div>
 
-              {/* Summary Cards */}
+              {/* Summary */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div className="p-4 rounded-xl" style={{ background: 'rgba(10, 15, 30, 0.6)' }}>
-                  <div className="text-xs text-slate-400 mb-2">Total Estimated Cost</div>
-                  <div className="text-2xl font-semibold text-white mb-2">€11,360</div>
-                  <span className="text-xs px-2 py-1 rounded bg-emerald-500/20 text-emerald-300">Within Budget</span>
+                  <div className="text-xs text-slate-400 mb-2">Event Name</div>
+                  <div className="text-lg font-semibold text-white">{newEventForm.name || '—'}</div>
+                  <div className="text-xs text-slate-400 mt-1">{newEventForm.type} · {newEventForm.date || 'date TBD'}</div>
                 </div>
-
                 <div className="p-4 rounded-xl" style={{ background: 'rgba(10, 15, 30, 0.6)' }}>
-                  <div className="text-xs text-slate-400 mb-2">Risk Assessment</div>
-                  <div className="text-2xl font-semibold text-white mb-2">No Risks Detected</div>
-                  <span className="text-xs px-2 py-1 rounded bg-slate-500/20 text-slate-300">All clear</span>
+                  <div className="text-xs text-slate-400 mb-2">Budget / Guests</div>
+                  <div className="text-lg font-semibold text-white">€{newEventForm.budget || '0'}</div>
+                  <div className="text-xs text-slate-400 mt-1">{newEventForm.guests || '0'} expected guests</div>
                 </div>
               </div>
 
-              {/* Recommended Vendors */}
-              <div className="mb-6">
-                <h4 className="text-sm font-semibold text-white mb-3">Recommended Vendors</h4>
-                <div className="space-y-2">
-                  {[
-                    { type: 'Venue', tier: 'Standard', cost: '€3,600' },
-                    { type: 'Catering', tier: 'Mid', cost: '€4,800' },
-                    { type: 'DJ', tier: 'Standard', cost: '€2,000' },
-                    { type: 'Security', tier: 'Standard', cost: '€960' }
-                  ].map((vendor, idx) => (
-                    <div key={idx} className="grid grid-cols-3 gap-4 py-2 px-3 rounded" style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <span className="text-sm text-slate-200">{vendor.type}</span>
-                      <span className="text-sm text-slate-400">{vendor.tier}</span>
-                      <span className="text-sm text-purple-300 text-right font-semibold">{vendor.cost}</span>
-                    </div>
-                  ))}
+              {/* Location & description */}
+              {(newEventForm.location || newEventForm.description) && (
+                <div className="mb-6 p-4 rounded-xl text-sm" style={{ background: 'rgba(10, 15, 30, 0.6)' }}>
+                  {newEventForm.location && <div className="text-slate-300 mb-1"><span className="text-slate-400">Location: </span>{newEventForm.location}</div>}
+                  {newEventForm.description && <div className="text-slate-300"><span className="text-slate-400">Description: </span>{newEventForm.description}</div>}
                 </div>
-              </div>
+              )}
 
               {/* Next Actions */}
               <div>
                 <h4 className="text-sm font-semibold text-white mb-3">Next Actions</h4>
                 <ul className="space-y-2 text-sm text-slate-300">
-                  <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
-                    Proceed to vendor outreach
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
-                    Confirm availability
-                  </li>
+                  <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>Review the pre-filled fields below and adjust as needed</li>
+                  <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>Click Create Event to save and start planning</li>
                 </ul>
               </div>
             </div>
@@ -363,7 +515,6 @@ const CreateEventModal = ({ onClose }) => {
                 onChange={e => setNewEventForm(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Summer Gala 2025"
                 className="w-full p-3 rounded-md border-2"
-                style={{ backgroundColor: '#06080f', borderColor: 'rgba(255,255,255,0.08)', color: '#e2e8f0' }}
               />
             </div>
 
@@ -373,8 +524,7 @@ const CreateEventModal = ({ onClose }) => {
                 type="date"
                 value={newEventForm.date}
                 onChange={e => setNewEventForm(prev => ({ ...prev, date: e.target.value }))}
-                className="w-full p-3 rounded-md border-2"
-                style={{ backgroundColor: '#06080f', borderColor: 'rgba(255,255,255,0.08)', color: '#e2e8f0' }}
+                className="dark-input w-full p-3 rounded-md border-2"
               />
             </div>
           </div>
@@ -385,8 +535,7 @@ const CreateEventModal = ({ onClose }) => {
               <select
                 value={newEventForm.type}
                 onChange={e => setNewEventForm(prev => ({ ...prev, type: e.target.value }))}
-                className="w-full p-3 rounded-md border-2"
-                style={{ backgroundColor: '#06080f', borderColor: 'rgba(255,255,255,0.08)', color: '#e2e8f0' }}
+                className="dark-input w-full p-3 rounded-md"
               >
                 <option>Corporate</option>
                 <option>Wedding</option>
@@ -403,8 +552,7 @@ const CreateEventModal = ({ onClose }) => {
                 value={newEventForm.location}
                 onChange={e => setNewEventForm(prev => ({ ...prev, location: e.target.value }))}
                 placeholder="Grand Ballroom, Downtown"
-                className="w-full p-3 rounded-md border-2"
-                style={{ backgroundColor: '#06080f', borderColor: 'rgba(255,255,255,0.08)', color: '#e2e8f0' }}
+                className="dark-input w-full p-3 rounded-md border-2"
               />
             </div>
           </div>
@@ -417,8 +565,7 @@ const CreateEventModal = ({ onClose }) => {
                 value={newEventForm.budget}
                 onChange={e => setNewEventForm(prev => ({ ...prev, budget: e.target.value }))}
                 placeholder="50000"
-                className="w-full p-3 rounded-md border-2"
-                style={{ backgroundColor: '#06080f', borderColor: 'rgba(255,255,255,0.08)', color: '#e2e8f0' }}
+                className="dark-input w-full p-3 rounded-md border-2"
               />
             </div>
 
@@ -429,8 +576,7 @@ const CreateEventModal = ({ onClose }) => {
                 value={newEventForm.guests}
                 onChange={e => setNewEventForm(prev => ({ ...prev, guests: e.target.value }))}
                 placeholder="250"
-                className="w-full p-3 rounded-md border-2"
-                style={{ backgroundColor: '#06080f', borderColor: 'rgba(255,255,255,0.08)', color: '#e2e8f0' }}
+                className="dark-input w-full p-3 rounded-md border-2"
               />
             </div>
           </div>
@@ -442,8 +588,7 @@ const CreateEventModal = ({ onClose }) => {
               value={newEventForm.description}
               onChange={e => setNewEventForm(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Describe the event, theme, special requirements..."
-              className="w-full p-3 rounded-md border-2"
-              style={{ backgroundColor: '#06080f', borderColor: 'rgba(255,255,255,0.08)', color: '#e2e8f0' }}
+              className="dark-input w-full p-3 rounded-md border-2"
             />
           </div>
 
@@ -469,7 +614,7 @@ const CreateEventModal = ({ onClose }) => {
   /* ── Persisted data ── */
   const [events, setEvents] = useLocalStorage('ef_events', [
     {
-      id: 1, name: 'Summer Gala 2025', date: '2025-06-15', budget: 50000, spent: 32000,
+      id: 1, name: 'Summer Gala 2025', date: '2026-09-15', budget: 50000, spent: 32000,
       guests: 250, confirmed: 180, status: 'active', vendors: 8, tasks: 24, completed: 18,
       type: 'Corporate', location: 'Grand Ballroom, Downtown',
       description: 'Annual corporate gala celebrating company achievements and milestones.',
@@ -480,14 +625,14 @@ const CreateEventModal = ({ onClose }) => {
       ]
     },
     {
-      id: 2, name: 'Thompson Wedding', date: '2025-07-22', budget: 75000, spent: 45000,
+      id: 2, name: 'Thompson Wedding', date: '2026-10-22', budget: 75000, spent: 45000,
       guests: 180, confirmed: 150, status: 'active', vendors: 12, tasks: 31, completed: 22,
       type: 'Wedding', location: 'Crystal Palace, Waterfront',
       description: 'Elegant waterfront wedding celebration.',
       team: [{ id: 1, name: 'Sarah Mitchell', role: 'Lead Planner', email: 'sarah@eventflow.com', avatar: 'SM' }]
     },
     {
-      id: 3, name: 'Tech Conference 2025', date: '2025-08-10', budget: 120000, spent: 15000,
+      id: 3, name: 'Tech Conference 2025', date: '2026-11-10', budget: 120000, spent: 15000,
       guests: 500, confirmed: 320, status: 'planning', vendors: 5, tasks: 42, completed: 8,
       type: 'Conference', location: 'Convention Center',
       description: 'Three-day technology conference.',
@@ -526,7 +671,7 @@ const CreateEventModal = ({ onClose }) => {
 
   const [tasks, setTasks] = useLocalStorage('ef_tasks', [
     {
-      id: 1, title: 'Finalize menu with caterer', event: 'Summer Gala 2025', dueDate: '2025-05-01',
+      id: 1, title: 'Finalize menu with caterer', event: 'Summer Gala 2025', dueDate: '2026-07-15',
       status: 'in-progress', priority: 'high', assignedTo: 'James Cooper', createdBy: 'Sarah Mitchell',
       description: 'Review and approve final menu selections for the gala. Ensure dietary restrictions are accommodated.',
       subtasks: [
@@ -542,7 +687,7 @@ const CreateEventModal = ({ onClose }) => {
       attachments: ['menu-options.pdf', 'dietary-requirements.xlsx']
     },
     {
-      id: 2, title: 'Send venue contract', event: 'Thompson Wedding', dueDate: '2025-04-28',
+      id: 2, title: 'Send venue contract', event: 'Thompson Wedding', dueDate: '2026-06-28',
       status: 'completed', priority: 'high', assignedTo: 'Sarah Mitchell', createdBy: 'Sarah Mitchell',
       description: 'Prepare and send signed venue contract to Grand Ballroom.',
       subtasks: [
@@ -555,7 +700,7 @@ const CreateEventModal = ({ onClose }) => {
       attachments: ['venue-contract-signed.pdf']
     },
     {
-      id: 3, title: 'Confirm DJ setup requirements', event: 'Summer Gala 2025', dueDate: '2025-05-10',
+      id: 3, title: 'Confirm DJ setup requirements', event: 'Summer Gala 2025', dueDate: '2026-07-20',
       status: 'pending', priority: 'medium', assignedTo: 'Emily Rodriguez', createdBy: 'James Cooper',
       description: 'Coordinate with DJ to confirm equipment needs, power requirements, and setup timing.',
       subtasks: [
@@ -568,7 +713,7 @@ const CreateEventModal = ({ onClose }) => {
       attachments: []
     },
     {
-      id: 4, title: 'Review floral samples', event: 'Thompson Wedding', dueDate: '2025-04-30',
+      id: 4, title: 'Review floral samples', event: 'Thompson Wedding', dueDate: '2026-07-30',
       status: 'in-progress', priority: 'high', assignedTo: 'Sarah Mitchell', createdBy: 'Sarah Mitchell',
       description: 'Meet with florist to review centerpiece and bouquet samples.',
       subtasks: [
@@ -585,9 +730,9 @@ const CreateEventModal = ({ onClose }) => {
   ]);
 
   const [budgetItems, setBudgetItems] = useLocalStorage('ef_budget', [
-    { id: 1, category: 'Venue', vendor: 'Grand Ballroom', amount: 12000, paid: 12000, status: 'paid', event: 'Summer Gala 2025', dueDate: '2025-03-01' },
-    { id: 2, category: 'Catering', vendor: 'Elegant Catering', amount: 15000, paid: 7500, status: 'partial', event: 'Summer Gala 2025', dueDate: '2025-06-01' },
-    { id: 3, category: 'Entertainment', vendor: 'Harmony DJ', amount: 2500, paid: 0, status: 'pending', event: 'Summer Gala 2025', dueDate: '2025-06-10' }
+    { id: 1, category: 'Venue', vendor: 'Grand Ballroom', amount: 12000, paid: 12000, status: 'paid', event: 'Summer Gala 2025', dueDate: '2026-08-01' },
+    { id: 2, category: 'Catering', vendor: 'Elegant Catering', amount: 15000, paid: 7500, status: 'partial', event: 'Summer Gala 2025', dueDate: '2026-09-01' },
+    { id: 3, category: 'Entertainment', vendor: 'Harmony DJ', amount: 2500, paid: 0, status: 'pending', event: 'Summer Gala 2025', dueDate: '2026-09-10' }
   ]);
 
   const [guests, setGuests] = useLocalStorage('ef_guests', [
@@ -597,12 +742,37 @@ const CreateEventModal = ({ onClose }) => {
   ]);
 
   const [clients, setClients] = useLocalStorage('ef_clients', [
-    { id: 1, company: 'Acme Corp', contact: 'Laura Peters', email: 'laura@acme.com', phone: '+49 30 1234567', status: 'active', events: 3, clientSince: '2022-03-12', notes: 'Prefers waterfront venues' },
-    { id: 2, company: 'The Thompson Family', contact: 'James Thompson', email: 'james@thompson.com', phone: '+49 30 9876543', status: 'active', events: 1, clientSince: '2025-01-05', notes: 'Wedding client' },
-    { id: 3, company: 'NextGen Tech', contact: 'Rita Gomez', email: 'rita@nextgen.com', phone: '+49 30 5551212', status: 'prospect', events: 0, clientSince: '2024-11-01', notes: 'Interested in conference packages' }
+    { id: 1, company: 'Acme Corp', contact: 'Laura Peters', email: 'laura@acme.com', phone: '+49 30 1234567', status: 'active', events: 3, clientSince: '2022-03-12', notes: 'Prefers waterfront venues', linkedEvents: [] },
+    { id: 2, company: 'The Thompson Family', contact: 'James Thompson', email: 'james@thompson.com', phone: '+49 30 9876543', status: 'active', events: 1, clientSince: '2025-01-05', notes: 'Wedding client', linkedEvents: [] },
+    { id: 3, company: 'NextGen Tech', contact: 'Rita Gomez', email: 'rita@nextgen.com', phone: '+49 30 5551212', status: 'prospect', events: 0, clientSince: '2024-11-01', notes: 'Interested in conference packages', linkedEvents: [] }
   ]);
 
   /* -------------------- Venue discovery -------------------- */
+  /* ── Live-computed events — always in sync with tasks/guests/budget ── */
+  const enrichedEvents = useMemo(() => events.map(ev => {
+    const evTasks  = tasks.filter(t => t.event === ev.name);
+    const evGuests = guests.filter(g => g.event === ev.name);
+    const evBudget = budgetItems.filter(b => b.event === ev.name);
+    return {
+      ...ev,
+      tasks:     evTasks.length  > 0 ? evTasks.length  : ev.tasks,
+      completed: evTasks.filter(t => t.status === 'completed').length,
+      guests:    evGuests.length > 0 ? evGuests.length : ev.guests,
+      confirmed: evGuests.filter(g => g.rsvp === 'confirmed').length,
+      spent:     evBudget.length > 0 ? evBudget.reduce((s, i) => s + i.paid, 0) : ev.spent,
+    };
+  }), [events, tasks, guests, budgetItems]);
+
+  /* ── Derived selected records — always reflect latest data ── */
+  const selectedEvent = useMemo(
+    () => selectedEventId ? enrichedEvents.find(e => e.id === selectedEventId) || null : null,
+    [enrichedEvents, selectedEventId]
+  );
+  const selectedTask = useMemo(
+    () => selectedTaskId ? tasks.find(t => t.id === selectedTaskId) || null : null,
+    [tasks, selectedTaskId]
+  );
+
   const DISCOVER_CATEGORIES = [
     'event space', 'wedding venue', 'nightclub', 'hotel', 'boutique hotel',
     'resort', 'restaurant', 'bar', 'coworking', 'live music venue',
@@ -651,7 +821,7 @@ const CreateEventModal = ({ onClose }) => {
       lat: v.lat,
       lng: v.lng,
     };
-    // venues is a useMemo so we need a separate discovered list; merge into display
+    setVenues(prev => [...prev, next]);
     setDiscoverResults(prev => prev.filter(r => r.osm_id !== v.osm_id));
   }
 
@@ -707,7 +877,7 @@ const CreateEventModal = ({ onClose }) => {
             <div className="md:col-span-2 space-y-6">
               <div>
                 <label className="text-sm font-semibold text-slate-300 mb-2 block">Description</label>
-                <textarea rows="3" defaultValue={task.description} className="w-full p-3 rounded-md" style={{ backgroundColor: '#06080f', color: '#e2e8f0' }} />
+                <textarea rows="3" defaultValue={task.description} className="dark-input w-full p-3 rounded-md" />
               </div>
 
               <div>
@@ -717,8 +887,13 @@ const CreateEventModal = ({ onClose }) => {
                 </div>
                 <div className="space-y-2">
                   {task.subtasks.map(s => (
-                    <div key={s.id} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-md">
-                      <input type="checkbox" checked={s.completed} readOnly className="w-4 h-4" />
+                    <div key={s.id} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-md cursor-pointer" onClick={() => {
+                      setTasks(prev => prev.map(t => t.id === task.id
+                        ? { ...t, subtasks: t.subtasks.map(sub => sub.id === s.id ? { ...sub, completed: !sub.completed } : sub) }
+                        : t
+                      ));
+                    }}>
+                      <input type="checkbox" checked={s.completed} onChange={() => {}} className="w-4 h-4 cursor-pointer" style={{ accentColor: 'var(--accent)' }} />
                       <span className={`text-sm ${s.completed ? 'line-through text-slate-400' : 'text-slate-200'}`}>{s.title}</span>
                     </div>
                   ))}
@@ -745,7 +920,7 @@ const CreateEventModal = ({ onClose }) => {
                   ))}
                   <div className="flex gap-3 mt-4">
                     <div className="w-8 h-8 bg-slate-600 flex items-center justify-center rounded text-slate-200">You</div>
-                    <input type="text" placeholder="Add a comment..." className="flex-1 p-2 rounded-md" style={{ backgroundColor: '#06080f', color: '#e2e8f0' }} />
+                    <input type="text" placeholder="Add a comment..." className="dark-input flex-1 p-2 rounded-md" />
                   </div>
                 </div>
               </div>
@@ -814,11 +989,15 @@ const CreateEventModal = ({ onClose }) => {
                   <X size={18} /> Back to Events
                 </button>
                 <div className="flex gap-2">
-                  <button className="bg-white/5 hover:bg-white/10 text-white px-4 py-2 text-sm font-semibold rounded-md flex items-center gap-2">
+                  <button onClick={() => setShowEditEvent(true)} className="bg-white/5 hover:bg-white/10 text-white px-4 py-2 text-sm font-semibold rounded-md flex items-center gap-2">
                     <Edit size={14} /> Edit
                   </button>
                 </div>
               </div>
+
+              {showEditEvent && (
+                <EditEventInline event={event} onSave={(updated) => { setEvents(prev => prev.map(ev => ev.id === updated.id ? { ...ev, ...updated } : ev)); setShowEditEvent(false); }} onClose={() => setShowEditEvent(false)} />
+              )}
 
               <h1 className="text-2xl font-bold text-white mb-2">{event.name}</h1>
               <div className="flex flex-wrap gap-4 text-sm text-slate-300 mb-4">
@@ -827,9 +1006,9 @@ const CreateEventModal = ({ onClose }) => {
                 <span className={`px-2 py-0.5 text-xs font-semibold ${event.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{event.status}</span>
               </div>
 
-              <div className="flex gap-2 border-b-2 pb-4" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+              <div className="flex gap-1 border-b-2 pb-4 overflow-x-auto" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                 {['overview', 'team', 'vendors', 'tasks', 'budget', 'guests', 'schedule'].map(tab => (
-                  <button key={tab} onClick={() => setActiveEventTab(tab)} className={`pb-2 px-3 text-sm font-semibold ${activeEventTab === tab ? 'text-purple-300 border-b-2 border-purple-400' : 'text-slate-300 hover:text-white'}`}>
+                  <button key={tab} onClick={() => setActiveEventTab(tab)} className={`pb-2 px-3 text-sm font-semibold whitespace-nowrap ${activeEventTab === tab ? 'text-purple-300 border-b-2 border-purple-400' : 'text-slate-300 hover:text-white'}`}>
                     {tab}
                   </button>
                 ))}
@@ -895,14 +1074,92 @@ const CreateEventModal = ({ onClose }) => {
                 </div>
               </div>
             )}
+            {activeEventTab === 'team' && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-semibold" style={{ color: 'var(--text-1)' }}>Team</h2>
+                  <button onClick={() => setShowAddMemberModal(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm">
+                    <UserPlus size={14} /> Add Member
+                  </button>
+                </div>
+                {showAddMemberModal && (
+                  <AddMemberInline
+                    onAdd={(member) => {
+                      setEvents(prev => prev.map(ev => ev.id === event.id ? { ...ev, team: [...ev.team, { id: Date.now(), ...member }] } : ev));
+                      setShowAddMemberModal(false);
+                    }}
+                    onClose={() => setShowAddMemberModal(false)}
+                  />
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {event.team.length === 0 && (
+                    <div className="col-span-3 text-center py-8" style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>No team members yet. Add one above.</div>
+                  )}
+                  {event.team.map(member => (
+                    <div key={member.id} className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderTop: '2px solid var(--accent)' }}>
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-12 h-12 bg-purple-700 flex items-center justify-center rounded-lg font-bold text-white text-sm">{member.avatar || member.name?.split(' ').map(n=>n[0]).join('').toUpperCase()}</div>
+                        <div>
+                          <p className="font-semibold" style={{ color: 'var(--text-1)' }}>{member.name}</p>
+                          <p className="text-xs text-purple-300 mt-0.5">{member.role}</p>
+                        </div>
+                      </div>
+                      <div className="text-xs space-y-1 mb-4" style={{ color: 'var(--text-2)' }}>
+                        <div>{member.email}</div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            const idx = conversations.findIndex(c => c.vendor === member.name);
+                            if (idx >= 0) { setSelectedConversation(idx); setActiveTab('messages'); }
+                            else {
+                              setConversations(prev => [...prev, { id: Date.now(), vendor: member.name, lastMessage: '', time: 'now', unread: false, messages: [] }]);
+                              setSelectedConversation(conversations.length);
+                              setActiveTab('messages');
+                            }
+                          }}
+                          className="flex-1 py-1.5 rounded text-xs font-semibold transition-colors" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>Message</button>
+                        <button
+                          onClick={() => { if (window.confirm(`Remove ${member.name} from team?`)) setEvents(prev => prev.map(ev => ev.id === event.id ? { ...ev, team: ev.team.filter(m => m.id !== member.id) } : ev)); }}
+                          className="flex-1 py-1.5 rounded text-xs font-semibold transition-colors" style={{ background: 'var(--surface-3)', color: 'var(--text-2)' }}>Remove</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {activeEventTab === 'vendors' && (
   <div className="space-y-4">
     <div className="flex justify-between items-center">
       <h2 className="text-xl font-semibold text-white">Event Vendors</h2>
-      <button className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm">
+      <button onClick={() => setShowAddVendorToEvent(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm">
         <Plus size={14} /> Add Vendor
       </button>
     </div>
+
+    {showAddVendorToEvent && (
+      <div className="panel-glass glass-border rounded-lg p-4">
+        <p className="text-sm font-semibold mb-3" style={{ color: 'var(--text-1)' }}>Select a vendor to book for this event:</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+          {vendors.filter(v => !v.booked).map(v => (
+            <button key={v.id} onClick={() => { setVendors(prev => prev.map(vv => vv.id === v.id ? { ...vv, booked: true } : vv)); setShowAddVendorToEvent(false); }}
+              className="flex items-center gap-3 p-3 rounded-md text-left transition-all"
+              style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent-border)'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+            >
+              <div>
+                <div className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>{v.name}</div>
+                <div className="text-xs" style={{ color: 'var(--text-3)' }}>{v.category} · {v.price}</div>
+              </div>
+            </button>
+          ))}
+          {vendors.filter(v => !v.booked).length === 0 && <p className="text-sm col-span-2" style={{ color: 'var(--text-3)' }}>All vendors are already booked.</p>}
+        </div>
+        <button onClick={() => setShowAddVendorToEvent(false)} className="text-xs" style={{ color: 'var(--text-3)' }}>Cancel</button>
+      </div>
+    )}
 
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {vendors.filter(v => v.booked).map(vendor => (
@@ -965,8 +1222,8 @@ const CreateEventModal = ({ onClose }) => {
       </div>
     </div>
 
-    <div className={`${classes.panelBg} ${classes.border} rounded-md overflow-hidden`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-      <table className="w-full text-sm">
+    <div className={`${classes.panelBg} ${classes.border} rounded-md overflow-x-auto`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+      <table className="w-full text-sm min-w-[640px]">
         <thead className="bg-slate-900">
           <tr>
             <th className="text-left py-3 px-4 text-slate-300 font-semibold">Category</th>
@@ -975,6 +1232,7 @@ const CreateEventModal = ({ onClose }) => {
             <th className="text-right py-3 px-4 text-slate-300 font-semibold">Paid</th>
             <th className="text-center py-3 px-4 text-slate-300 font-semibold">Status</th>
             <th className="text-center py-3 px-4 text-slate-300 font-semibold">Due Date</th>
+            <th className="w-8" />
           </tr>
         </thead>
         <tbody>
@@ -982,8 +1240,8 @@ const CreateEventModal = ({ onClose }) => {
             <tr key={item.id} className="border-b hover:bg-white/5" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
               <td className="py-3 px-4 text-white font-semibold">{item.category}</td>
               <td className="py-3 px-4 text-slate-300">{item.vendor}</td>
-              <td className="py-3 px-4 text-right text-white font-semibold">${item.amount.toLocaleString()}</td>
-              <td className="py-3 px-4 text-right text-emerald-400">${item.paid.toLocaleString()}</td>
+              <td className="py-3 px-4 text-right text-white font-semibold">€{item.amount.toLocaleString()}</td>
+              <td className="py-3 px-4 text-right text-emerald-400">€{item.paid.toLocaleString()}</td>
               <td className="py-3 px-4 text-center">
                 <span className={`px-2 py-1 text-xs font-semibold rounded ${
                   item.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
@@ -996,9 +1254,23 @@ const CreateEventModal = ({ onClose }) => {
               <td className="py-3 px-4 text-center text-slate-300">
                 {new Date(item.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </td>
+              <td className="py-3 px-2 text-center">
+                <button onClick={() => { if (window.confirm('Delete this budget item?')) setBudgetItems(prev => prev.filter(i => i.id !== item.id)); }} className="text-slate-500 hover:text-red-400 transition-colors p-1" title="Delete">×</button>
+              </td>
             </tr>
           ))}
+          {budgetItems.filter(item => item.event === event.name).length === 0 && (
+            <tr><td colSpan={7} className="py-8 text-center text-slate-400 text-sm">No budget items yet — add one above</td></tr>
+          )}
         </tbody>
+        <tfoot>
+          <tr className="border-t-2" style={{ borderColor: 'rgba(255,255,255,0.10)' }}>
+            <td colSpan={2} className="py-3 px-4 text-sm font-semibold text-slate-300">Total</td>
+            <td className="py-3 px-4 text-right font-bold text-white">€{budgetItems.filter(i => i.event === event.name).reduce((s, i) => s + i.amount, 0).toLocaleString()}</td>
+            <td className="py-3 px-4 text-right font-bold text-emerald-400">€{budgetItems.filter(i => i.event === event.name).reduce((s, i) => s + i.paid, 0).toLocaleString()}</td>
+            <td colSpan={3} />
+          </tr>
+        </tfoot>
       </table>
     </div>
   </div>
@@ -1030,10 +1302,18 @@ const CreateEventModal = ({ onClose }) => {
                         </tr>
                       </thead>
                       <tbody>
-                        {tasks.filter(t => t.event === event.name).map(task => (
-                          <tr key={task.id} onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }} className="border-b hover:bg-white/5 cursor-pointer" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                        {tasks.filter(t => t.event === event.name).length === 0 && (
+                          <tr><td colSpan={5} className="py-10 text-center text-sm" style={{ color: 'var(--text-3)' }}>No tasks yet. Add a task to get started.</td></tr>
+                        )}
+                        {tasks.filter(t => t.event === event.name).map(task => {
+                          const overdue = task.status !== 'completed' && new Date(task.dueDate) < new Date();
+                          return (
+                          <tr key={task.id} onClick={() => { setSelectedTaskId(task.id); setShowTaskDetail(true); }} className="border-b hover:bg-white/5 cursor-pointer" style={{ borderColor: 'rgba(255,255,255,0.05)', background: overdue ? 'rgba(255,107,107,0.04)' : undefined }}>
                             <td className="py-3 px-4">
-                              <div className="font-semibold text-white">{task.title}</div>
+                              <div className="font-semibold text-white flex items-center gap-2">
+                                {task.title}
+                                {overdue && <span className="text-xs px-1.5 py-0.5 rounded bg-red-900/40 text-red-400 font-bold">OVERDUE</span>}
+                              </div>
                               <div className="text-xs text-slate-400 mt-0.5">{task.subtasks.filter(s => s.completed).length}/{task.subtasks.length} subtasks</div>
                             </td>
                             <td className="py-3 px-4 text-slate-300">{task.assignedTo}</td>
@@ -1043,9 +1323,10 @@ const CreateEventModal = ({ onClose }) => {
                             <td className="py-3 px-4 text-center">
                               <span className={`px-2 py-0.5 text-xs font-semibold rounded ${task.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : task.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-white/5 text-slate-200'}`}>{task.status}</span>
                             </td>
-                            <td className="py-3 px-4 text-center text-slate-300">{new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
+                            <td className={`py-3 px-4 text-center ${overdue ? 'text-red-400 font-semibold' : 'text-slate-300'}`}>{new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -1087,7 +1368,7 @@ const CreateEventModal = ({ onClose }) => {
                                 // optional: set drag image or effect
                                 e.dataTransfer.effectAllowed = 'move';
                               }}
-                              onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }}
+                              onClick={() => { setSelectedTaskId(task.id); setShowTaskDetail(true); }}
                               className="bg-slate-900 p-3 rounded-md cursor-pointer hover:border-purple-500 transition-all border-2"
                               style={{ borderColor: 'rgba(255,255,255,0.05)' }}
                             >
@@ -1120,7 +1401,21 @@ const CreateEventModal = ({ onClose }) => {
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-semibold text-white">Guest List</h2>
                   <div className="flex gap-2">
-                    <button className="bg-white/5 hover:bg-white/10 text-white px-3 py-2 rounded text-sm">
+                    <button
+                      onClick={() => {
+                        const rows = [['Name','Email','RSVP','+1','Table','Dietary']];
+                        guests.filter(g => g.event === event.name).forEach(g => {
+                          rows.push([g.name, g.email, g.rsvp, g.plusOne ? 'Yes' : 'No', g.table, g.dietaryRestrictions]);
+                        });
+                        const csv = rows.map(r => r.map(c => `"${(c||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
+                        const blob = new Blob([csv], { type: 'text/csv' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url; a.download = `${event.name.replace(/\s+/g,'-')}-guests.csv`; a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                      className="bg-white/5 hover:bg-white/10 text-white px-3 py-2 rounded text-sm"
+                    >
                       Export CSV
                     </button>
                     <button onClick={() => setShowAddGuestModal(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm">
@@ -1148,8 +1443,8 @@ const CreateEventModal = ({ onClose }) => {
                   </div>
                 </div>
 
-                <div className={`${classes.panelBg} ${classes.border} rounded-md overflow-hidden`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-                  <table className="w-full text-sm">
+                <div className={`${classes.panelBg} ${classes.border} rounded-md overflow-x-auto`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                  <table className="w-full text-sm min-w-[640px]">
                     <thead className="bg-slate-900">
                       <tr>
                         <th className="text-left py-3 px-4 text-slate-300 font-semibold">Name</th>
@@ -1158,283 +1453,50 @@ const CreateEventModal = ({ onClose }) => {
                         <th className="text-center py-3 px-4 text-slate-300 font-semibold">+1</th>
                         <th className="text-center py-3 px-4 text-slate-300 font-semibold">Table</th>
                         <th className="text-left py-3 px-4 text-slate-300 font-semibold">Dietary</th>
+                        <th className="w-8" />
                       </tr>
                     </thead>
                     <tbody>
-                      {guests.filter(g => g.event === event.name).map(guest => (
+                      {guests.filter(g => g.event === event.name).sort((a, b) => a.name.localeCompare(b.name)).map(guest => (
                         <tr key={guest.id} className="border-b hover:bg-white/5" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                           <td className="py-3 px-4 text-white font-semibold">{guest.name}</td>
                           <td className="py-3 px-4 text-slate-300">{guest.email}</td>
                           <td className="py-3 px-4 text-center">
-                            <span className={`px-2 py-1 text-xs font-semibold rounded ${
-                              guest.rsvp === 'confirmed' ? 'bg-emerald-100 text-emerald-700' :
-                              guest.rsvp === 'pending' ? 'bg-amber-100 text-amber-700' :
-                              'bg-red-100 text-red-700'
-                            }`}>
-                              {guest.rsvp}
-                            </span>
+                            <select
+                              value={guest.rsvp}
+                              onClick={e => e.stopPropagation()}
+                              onChange={e => setGuests(prev => prev.map(g => g.id === guest.id ? { ...g, rsvp: e.target.value } : g))}
+                              className="text-xs font-semibold rounded px-2 py-1 cursor-pointer"
+                              style={{ background: guest.rsvp === 'confirmed' ? 'rgba(0,229,160,0.12)' : guest.rsvp === 'pending' ? 'rgba(245,166,35,0.12)' : 'rgba(255,107,107,0.12)', color: guest.rsvp === 'confirmed' ? 'var(--color-green)' : guest.rsvp === 'pending' ? 'var(--color-amber)' : 'var(--color-red)', border: 'none' }}
+                            >
+                              <option value="confirmed">confirmed</option>
+                              <option value="pending">pending</option>
+                              <option value="declined">declined</option>
+                            </select>
                           </td>
                           <td className="py-3 px-4 text-center text-slate-300">{guest.plusOne ? 'Yes' : 'No'}</td>
                           <td className="py-3 px-4 text-center text-slate-300">{guest.table}</td>
                           <td className="py-3 px-4 text-slate-300">{guest.dietaryRestrictions}</td>
+                          <td className="py-3 px-2 text-center">
+                            <button onClick={e => { e.stopPropagation(); if (window.confirm('Remove this guest?')) setGuests(prev => prev.filter(g => g.id !== guest.id)); }} className="text-slate-500 hover:text-red-400 transition-colors p-1" title="Remove">×</button>
+                          </td>
                         </tr>
                       ))}
+                      {guests.filter(g => g.event === event.name).length === 0 && (
+                        <tr><td colSpan={7} className="py-8 text-center text-slate-400 text-sm">No guests yet — add one above</td></tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
               </div>
             )}
 
-{/* -------------------- Gantt / Run Sheet View -------------------- */}
 {activeEventTab === 'schedule' && selectedEvent != null && (
-  (() => {
-    try {
-      // Local schedule state
-      const [localSchedule, setLocalSchedule] = React.useState([]);
-      const [showGanttEditModal, setShowGanttEditModal] = React.useState(false);
-      const [editingItem, setEditingItem] = React.useState(null);
-
-      // Initialize from selectedEvent safely
-      React.useEffect(() => {
-        if (selectedEvent?.schedule?.length) {
-          setLocalSchedule(selectedEvent.schedule);
-        } else {
-          setLocalSchedule([]);
-        }
-      }, [selectedEvent]);
-
-      // Neon helpers (already declared in parent scope)
-      const NEON = '#A020F0';
-      const neonBoxShadow = `0 6px 30px -6px ${NEON}, 0 0 20px 2px ${NEON}55`;
-
-      // Sample data fallback
-      const data = localSchedule?.length
-        ? localSchedule
-        : [
-            { time: '09:00 AM', title: 'Venue Setup', duration: '2 hours', assigned: 'Setup Crew', category: 'Setup' },
-            { time: '05:00 PM', title: 'Guest Arrival', duration: '1 hour', assigned: 'Reception Team', category: 'Reception' },
-            { time: '06:00 PM', title: 'Cocktail Hour', duration: '1 hour', assigned: 'Catering Staff', category: 'Catering' },
-            { time: '07:00 PM', title: 'Dinner Service', duration: '2 hours', assigned: 'Elegant Catering', category: 'Catering' },
-            { time: '09:00 PM', title: 'Entertainment Begins', duration: '3 hours', assigned: 'Harmony DJ', category: 'Entertainment' },
-            { time: '12:00 AM', title: 'Event Wrap-up', duration: '1 hour', assigned: 'Full Team', category: 'Wrap-up' }
-          ];
-
-      return (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-white">Gantt Chart / Run Sheet</h2>
-            <button
-              onClick={() => setShowAddScheduleModal(true)}
-              className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm"
-              title="Add new schedule item"
-            >
-              <Plus size={14} /> Add Item
-            </button>
-          </div>
-
-          {/* Dual-panel layout */}
-          <div className="flex flex-col md:flex-row gap-4">
-            {/* Left list */}
-            <div className="w-full md:w-1/3 space-y-2">
-              {data.map((it, idx) => (
-                <div
-                  key={idx}
-                  className={`${classes.panelBg} ${classes.border} p-3 rounded-md transition-all hover:shadow-lg`}
-                  style={{ borderColor: 'rgba(255,255,255,0.08)' }}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="text-purple-300 font-bold">{it.time}</div>
-                      <div className="text-white font-semibold">{it.title}</div>
-                      <div className="text-slate-400 text-xs">
-                        {it.duration} • {it.assigned}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setEditingItem(it);
-                        setShowGanttEditModal(true);
-                      }}
-                      className="p-1 hover:bg-white/5 rounded"
-                      title="Edit this item"
-                    >
-                      <Edit size={14} className="text-slate-300" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Right time-based chart */}
-            <div className="flex-1 overflow-x-auto relative h-64 bg-slate-900 rounded-lg border border-white/5">
-              {/* Time ruler */}
-              <div className="absolute top-0 left-0 w-full flex justify-between text-xs text-slate-400 p-2">
-                {['09 AM', '12 PM', '03 PM', '06 PM', '09 PM', '12 AM'].map((t) => (
-                  <span key={t}>{t}</span>
-                ))}
-              </div>
-
-              {/* Activity bars */}
-              <div className="absolute inset-0 mt-5 space-y-3 p-4">
-                {data.map((it, idx) => (
-                  <div
-                    key={idx}
-                    className="relative group"
-                    title={`${it.title} — ${it.duration}`}
-                  >
-                    <div
-                      className="h-6 rounded-md cursor-pointer transition-all duration-200"
-                      style={{
-                        width: `${Math.min(parseInt(it.duration) * 20 || 40, 100)}%`,
-                        backgroundColor: '#A020F0aa',
-                        boxShadow: neonBoxShadow
-                      }}
-                    />
-                    <div className="absolute hidden group-hover:flex top-7 left-0 app-bg text-white text-xs px-2 py-1 rounded shadow-lg glass-border z-10 whitespace-nowrap">
-                      <div className="flex flex-col">
-                        <span className="font-semibold">{it.title}</span>
-                        <span>{it.time} • {it.duration}</span>
-                        <span className="text-slate-400">{it.assigned}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Edit Modal */}
-          {showGanttEditModal && editingItem && (
-            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center">
-              <div
-                className={`${classes.panelBg} ${classes.border} rounded-xl p-6 w-[95%] max-w-md`}
-                style={{ boxShadow: neonBoxShadow, borderColor: 'rgba(255,255,255,0.08)' }}
-              >
-                <h3 className="text-lg font-semibold text-white mb-4">Edit Schedule Item</h3>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (!editingItem) return;
-                    setLocalSchedule((prev) =>
-                      prev.map((s) =>
-                        s.title === editingItem.title ? { ...editingItem } : s
-                      )
-                    );
-                    // Optional sync to global event
-                    if (selectedEvent) {
-                      setEvents((prev) =>
-                        prev.map((ev) =>
-                          ev.id === selectedEvent.id
-                            ? { ...ev, schedule: localSchedule }
-                            : ev
-                        )
-                      );
-                    }
-                    setShowGanttEditModal(false);
-                  }}
-                  className="space-y-4"
-                >
-                  {/* Title */}
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-1">Title</label>
-                    <input
-                      type="text"
-                      value={editingItem.title || ''}
-                      onChange={(e) =>
-                        setEditingItem((prev) => ({ ...prev, title: e.target.value }))
-                      }
-                      className="w-full dark-input glass-border rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-
-                  {/* Assigned */}
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-1">Assigned To</label>
-                    <input
-                      type="text"
-                      value={editingItem.assigned || ''}
-                      onChange={(e) =>
-                        setEditingItem((prev) => ({ ...prev, assigned: e.target.value }))
-                      }
-                      className="w-full dark-input glass-border rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-
-                  {/* Start Time */}
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-1">Start Time</label>
-                    <input
-                      type="text"
-                      value={editingItem.time || ''}
-                      onChange={(e) =>
-                        setEditingItem((prev) => ({ ...prev, time: e.target.value }))
-                      }
-                      className="w-full dark-input glass-border rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-
-                  {/* Duration */}
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-1">Duration</label>
-                    <input
-                      type="text"
-                      value={editingItem.duration || ''}
-                      onChange={(e) =>
-                        setEditingItem((prev) => ({ ...prev, duration: e.target.value }))
-                      }
-                      className="w-full dark-input glass-border rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-
-                  {/* Category */}
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-1">Category</label>
-                    <select
-                      value={editingItem.category || 'Setup'}
-                      onChange={(e) =>
-                        setEditingItem((prev) => ({ ...prev, category: e.target.value }))
-                      }
-                      className="w-full dark-input glass-border rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    >
-                      <option>Setup</option>
-                      <option>Reception</option>
-                      <option>Catering</option>
-                      <option>Entertainment</option>
-                      <option>Wrap-up</option>
-                    </select>
-                  </div>
-
-                  {/* Buttons */}
-                  <div className="flex justify-end gap-3 pt-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowGanttEditModal(false)}
-                      className="px-4 py-2 rounded bg-white/5 hover:bg-white/10 text-slate-200 text-sm"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 rounded bg-purple-700 hover:bg-purple-600 text-white text-sm shadow-lg"
-                    >
-                      Save Changes
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    } catch (err) {
-      console.error('Schedule render error:', err);
-      return (
-        <div className="text-red-400 text-sm p-6">
-          Error rendering schedule. Check console for details.
-        </div>
-      );
-    }
-  })()
+  <ScheduleTab
+    event={selectedEvent}
+    setEvents={setEvents}
+    onAddSchedule={() => setShowAddScheduleModal(true)}
+  />
 )}
 
 
@@ -1480,7 +1542,7 @@ const CreateEventModal = ({ onClose }) => {
           <div className="space-y-3">
             <div>
               <label className="text-xs text-slate-300">Category</label>
-              <select value={category} onChange={e => setCategory(e.target.value)} className="w-full p-2 rounded-md">
+              <select value={category} onChange={e => setCategory(e.target.value)} className="w-full dark-input p-2 rounded-md">
                 <option>Venue</option>
                 <option>Catering</option>
                 <option>Entertainment</option>
@@ -1490,21 +1552,21 @@ const CreateEventModal = ({ onClose }) => {
             </div>
             <div>
               <label className="text-xs text-slate-300">Vendor</label>
-              <input value={vendorName} onChange={e => setVendorName(e.target.value)} className="w-full p-2 rounded-md" />
+              <input value={vendorName} onChange={e => setVendorName(e.target.value)} className="w-full dark-input p-2 rounded-md" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-slate-300">Amount</label>
-                <input value={amount} onChange={e => setAmount(e.target.value)} className="w-full p-2 rounded-md" />
+                <input value={amount} onChange={e => setAmount(e.target.value)} className="w-full dark-input p-2 rounded-md" />
               </div>
               <div>
                 <label className="text-xs text-slate-300">Paid</label>
-                <input value={paid} onChange={e => setPaid(e.target.value)} className="w-full p-2 rounded-md" />
+                <input value={paid} onChange={e => setPaid(e.target.value)} className="w-full dark-input p-2 rounded-md" />
               </div>
             </div>
             <div>
               <label className="text-xs text-slate-300">Due Date</label>
-              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full p-2 rounded-md" />
+              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full dark-input p-2 rounded-md" />
             </div>
 
             <div className="flex justify-end gap-2 mt-3">
@@ -1525,9 +1587,10 @@ const CreateEventModal = ({ onClose }) => {
     const [plusOne, setPlusOne] = useState(false);
 
     const handleAdd = () => {
+      if (!name.trim()) { alert('Guest name is required'); return; }
       const newGuest = {
         id: Math.max(0, ...guests.map(g => g.id)) + 1,
-        name, email, rsvp: 'pending', plusOne, event: eventName, table, dietaryRestrictions: dietary
+        name: name.trim(), email: email.trim(), rsvp: 'pending', plusOne, event: eventName, table, dietaryRestrictions: dietary
       };
       setGuests(prev => [...prev, newGuest]);
       onClose();
@@ -1535,7 +1598,7 @@ const CreateEventModal = ({ onClose }) => {
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-md p-6`} style={{ boxShadow: neonBoxShadow, borderColor: 'rgba(255,255,255,0.08)' }}>
+        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-md p-6 max-h-[85vh] overflow-y-auto`} style={{ boxShadow: neonBoxShadow, borderColor: 'rgba(255,255,255,0.08)' }}>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-white">Add Guest</h3>
             <button onClick={onClose}><X size={18} className="text-slate-300" /></button>
@@ -1544,19 +1607,19 @@ const CreateEventModal = ({ onClose }) => {
           <div className="space-y-3">
             <div>
               <label className="text-xs text-slate-300">Name</label>
-              <input value={name} onChange={e => setName(e.target.value)} className="w-full p-2 rounded-md" />
+              <input value={name} onChange={e => setName(e.target.value)} className="w-full dark-input p-2 rounded-md" />
             </div>
             <div>
               <label className="text-xs text-slate-300">Email</label>
-              <input value={email} onChange={e => setEmail(e.target.value)} className="w-full p-2 rounded-md" />
+              <input value={email} onChange={e => setEmail(e.target.value)} className="w-full dark-input p-2 rounded-md" />
             </div>
             <div>
               <label className="text-xs text-slate-300">Table Assignment</label>
-              <input value={table} onChange={e => setTable(e.target.value)} className="w-full p-2 rounded-md" />
+              <input value={table} onChange={e => setTable(e.target.value)} className="w-full dark-input p-2 rounded-md" />
             </div>
             <div>
               <label className="text-xs text-slate-300">Dietary Restrictions</label>
-              <input value={dietary} onChange={e => setDietary(e.target.value)} className="w-full p-2 rounded-md" />
+              <input value={dietary} onChange={e => setDietary(e.target.value)} className="w-full dark-input p-2 rounded-md" />
             </div>
             <div className="flex items-center gap-2">
               <input type="checkbox" checked={plusOne} onChange={e => setPlusOne(e.target.checked)} />
@@ -1609,19 +1672,19 @@ const CreateEventModal = ({ onClose }) => {
           <div className="space-y-3">
             <div>
               <label className="text-xs text-slate-300">Time</label>
-              <input value={time} onChange={e => setTime(e.target.value)} placeholder="09:00 AM" className="w-full p-2 rounded-md" />
+              <input value={time} onChange={e => setTime(e.target.value)} placeholder="09:00 AM" className="w-full dark-input p-2 rounded-md" />
             </div>
             <div>
               <label className="text-xs text-slate-300">Title</label>
-              <input value={title} onChange={e => setTitle(e.target.value)} className="w-full p-2 rounded-md" />
+              <input value={title} onChange={e => setTitle(e.target.value)} className="w-full dark-input p-2 rounded-md" />
             </div>
             <div>
               <label className="text-xs text-slate-300">Duration</label>
-              <input value={duration} onChange={e => setDuration(e.target.value)} placeholder="1 hour" className="w-full p-2 rounded-md" />
+              <input value={duration} onChange={e => setDuration(e.target.value)} placeholder="1 hour" className="w-full dark-input p-2 rounded-md" />
             </div>
             <div>
               <label className="text-xs text-slate-300">Assigned Person</label>
-              <input value={assigned} onChange={e => setAssigned(e.target.value)} className="w-full p-2 rounded-md" />
+              <input value={assigned} onChange={e => setAssigned(e.target.value)} className="w-full dark-input p-2 rounded-md" />
             </div>
 
             <div className="flex justify-end gap-2 mt-3">
@@ -1638,40 +1701,89 @@ const CreateEventModal = ({ onClose }) => {
 
   const ClientDetailModal = ({ client, onClose }) => {
     if (!client) return null;
+    const [draft, setDraft] = React.useState({ ...client });
+    const [dirty, setDirty] = React.useState(false);
+    const update = (field, val) => { setDraft(p => ({ ...p, [field]: val })); setDirty(true); };
+    const save = () => {
+      setClients(prev => prev.map(c => c.id === client.id ? { ...draft } : c));
+      setDirty(false);
+    };
+    const clientEvents = events.filter(e => e.name && draft.linkedEvents?.includes(e.id));
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-2xl p-6`} style={{ boxShadow: neonBoxShadow, borderColor: 'rgba(255,255,255,0.08)' }}>
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-white">{client.company}</h3>
-            <button onClick={onClose}><X size={18} className="text-slate-300" /></button>
+        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto`} style={{ boxShadow: neonBoxShadow, borderColor: 'rgba(255,255,255,0.08)' }}>
+          <div className="flex justify-between items-center mb-5">
+            <div>
+              <h3 className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>{draft.company || 'Client'}</h3>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-3)' }}>Client since {new Date(draft.clientSince).toLocaleDateString()}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {dirty && <button onClick={save} className="px-3 py-1.5 rounded text-xs font-bold text-white bg-purple-700 hover:bg-purple-600">Save</button>}
+              <button onClick={onClose}><X size={18} style={{ color: 'var(--text-2)' }} /></button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <div className="text-sm text-slate-400">Contact</div>
-              <div className="text-white font-semibold">{client.contact}</div>
-              <div className="mt-2 text-sm text-slate-400">Email</div>
-              <div className="text-slate-200">{client.email}</div>
-              <div className="mt-2 text-sm text-slate-400">Phone</div>
-              <div className="text-slate-200">{client.phone}</div>
-            </div>
-            <div>
-              <div className="text-sm text-slate-400">Status</div>
-              <div className="mt-1">
-                <span className={`px-2 py-1 text-xs font-semibold rounded ${client.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{client.status}</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            {[
+              ['Company', 'company'], ['Contact Person', 'contact'], ['Email', 'email'], ['Phone', 'phone'],
+            ].map(([label, field]) => (
+              <div key={field}>
+                <label className="text-xs mb-1 block" style={{ color: 'var(--text-3)' }}>{label.toUpperCase()}</label>
+                <input value={draft[field] || ''} onChange={e => update(field, e.target.value)} className="dark-input w-full p-2 rounded-md text-sm" />
               </div>
-
-              <div className="mt-4 text-sm text-slate-400">Number of Events</div>
-              <div className="text-white font-semibold">{client.events}</div>
-
-              <div className="mt-4 text-sm text-slate-400">Client Since</div>
-              <div className="text-slate-200">{new Date(client.clientSince).toLocaleDateString()}</div>
+            ))}
+            <div>
+              <label className="text-xs mb-1 block" style={{ color: 'var(--text-3)' }}>STATUS</label>
+              <select value={draft.status} onChange={e => update('status', e.target.value)} className="dark-input w-full p-2 rounded-md text-sm">
+                <option value="prospect">Prospect</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs mb-1 block" style={{ color: 'var(--text-3)' }}>LINKED EVENT</label>
+              <select
+                value=""
+                onChange={e => {
+                  const id = Number(e.target.value);
+                  if (!id) return;
+                  const linked = draft.linkedEvents || [];
+                  if (!linked.includes(id)) update('linkedEvents', [...linked, id]);
+                }}
+                className="dark-input w-full p-2 rounded-md text-sm"
+              >
+                <option value="">Link an event...</option>
+                {events.map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+              </select>
+              {(draft.linkedEvents || []).length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {(draft.linkedEvents || []).map(id => {
+                    const ev = events.find(e => e.id === id);
+                    return ev ? (
+                      <span key={id} className="flex items-center gap-1 text-xs px-2 py-0.5 rounded" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
+                        {ev.name}
+                        <button onClick={() => update('linkedEvents', (draft.linkedEvents || []).filter(i => i !== id))} className="hover:text-red-400 ml-1">×</button>
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="mt-6">
-            <div className="text-sm text-slate-400">Notes</div>
-            <div className="mt-2 text-slate-200">{client.notes}</div>
+          <div>
+            <label className="text-xs mb-1 block" style={{ color: 'var(--text-3)' }}>NOTES</label>
+            <textarea rows={3} value={draft.notes || ''} onChange={e => update('notes', e.target.value)} className="dark-input w-full p-2 rounded-md text-sm" placeholder="Client preferences, important details..." />
+          </div>
+
+          <div className="flex justify-between items-center mt-5 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+            <button
+              onClick={() => { if (window.confirm('Delete this client? This cannot be undone.')) { setClients(prev => prev.filter(c => c.id !== client.id)); onClose(); } }}
+              className="text-xs text-red-400 hover:text-red-300 transition-colors"
+            >
+              Delete client
+            </button>
+            {dirty && <button onClick={save} className="px-4 py-2 rounded text-sm font-semibold text-white bg-purple-700 hover:bg-purple-600">Save changes</button>}
           </div>
         </div>
       </div>
@@ -1705,23 +1817,23 @@ const CreateEventModal = ({ onClose }) => {
           <div className="space-y-3">
             <div>
               <label className="text-xs text-slate-300">Company</label>
-              <input value={company} onChange={e => setCompany(e.target.value)} className="w-full p-2 rounded-md" />
+              <input value={company} onChange={e => setCompany(e.target.value)} className="w-full dark-input p-2 rounded-md" />
             </div>
             <div>
               <label className="text-xs text-slate-300">Contact Person</label>
-              <input value={contact} onChange={e => setContact(e.target.value)} className="w-full p-2 rounded-md" />
+              <input value={contact} onChange={e => setContact(e.target.value)} className="w-full dark-input p-2 rounded-md" />
             </div>
             <div>
               <label className="text-xs text-slate-300">Email</label>
-              <input value={email} onChange={e => setEmail(e.target.value)} className="w-full p-2 rounded-md" />
+              <input value={email} onChange={e => setEmail(e.target.value)} className="w-full dark-input p-2 rounded-md" />
             </div>
             <div>
               <label className="text-xs text-slate-300">Phone</label>
-              <input value={phone} onChange={e => setPhone(e.target.value)} className="w-full p-2 rounded-md" />
+              <input value={phone} onChange={e => setPhone(e.target.value)} className="w-full dark-input p-2 rounded-md" />
             </div>
             <div>
               <label className="text-xs text-slate-300">Status</label>
-              <select value={status} onChange={e => setStatus(e.target.value)} className="w-full p-2 rounded-md">
+              <select value={status} onChange={e => setStatus(e.target.value)} className="w-full dark-input p-2 rounded-md">
                 <option value="prospect">Prospect</option>
                 <option value="active">Active</option>
               </select>
@@ -1806,7 +1918,7 @@ const CreateEventModal = ({ onClose }) => {
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-md p-6`} style={{ boxShadow: neonBoxShadow, borderColor: 'rgba(255,255,255,0.08)' }}>
+        <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-md p-6 max-h-[85vh] overflow-y-auto`} style={{ boxShadow: neonBoxShadow, borderColor: 'rgba(255,255,255,0.08)' }}>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-white">Add Task</h3>
             <button onClick={onClose}><X size={18} className="text-slate-300" /></button>
@@ -1815,27 +1927,27 @@ const CreateEventModal = ({ onClose }) => {
           <div className="space-y-3">
             <div>
               <label className="text-xs text-slate-300">Title</label>
-              <input value={title} onChange={e => setTitle(e.target.value)} className="w-full p-2 rounded-md" />
+              <input value={title} onChange={e => setTitle(e.target.value)} className="w-full dark-input p-2 rounded-md" />
             </div>
 
             <div>
               <label className="text-xs text-slate-300">Description</label>
-              <textarea rows={3} value={description} onChange={e => setDescription(e.target.value)} className="w-full p-2 rounded-md" />
+              <textarea rows={3} value={description} onChange={e => setDescription(e.target.value)} className="w-full dark-input p-2 rounded-md" />
             </div>
 
             <div>
               <label className="text-xs text-slate-300">Assigned Person</label>
-              <input value={assignedTo} onChange={e => setAssignedTo(e.target.value)} className="w-full p-2 rounded-md" />
+              <input value={assignedTo} onChange={e => setAssignedTo(e.target.value)} className="w-full dark-input p-2 rounded-md" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-slate-300">Due Date</label>
-                <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full p-2 rounded-md" />
+                <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full dark-input p-2 rounded-md" />
               </div>
               <div>
                 <label className="text-xs text-slate-300">Status</label>
-                <select value={status} onChange={e => setStatus(e.target.value)} className="w-full p-2 rounded-md">
+                <select value={status} onChange={e => setStatus(e.target.value)} className="w-full dark-input p-2 rounded-md">
                   <option value="pending">To Do</option>
                   <option value="in-progress">In Progress</option>
                   <option value="completed">Done</option>
@@ -1845,7 +1957,7 @@ const CreateEventModal = ({ onClose }) => {
 
             <div>
               <label className="text-xs text-slate-300">Priority</label>
-              <select value={priority} onChange={e => setPriority(e.target.value)} className="w-full p-2 rounded-md">
+              <select value={priority} onChange={e => setPriority(e.target.value)} className="w-full dark-input p-2 rounded-md">
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
@@ -1865,7 +1977,7 @@ const CreateEventModal = ({ onClose }) => {
   /* -------------------- Main App JSX -------------------- */
 
   return (
-    <div className={`min-h-screen ${classes.appBg} font-sans`}>
+    <div data-theme={theme} className={`app-root min-h-screen ${classes.appBg} font-sans`}>
       {/* Top mobile header */}
       <div className="md:hidden app-bg border-b-2" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
         <div className="p-4 flex justify-between items-center">
@@ -1877,35 +1989,81 @@ const CreateEventModal = ({ onClose }) => {
       </div>
 
       <div className="flex flex-col md:flex-row">
+        {/* Mobile sidebar backdrop */}
+        {mobileMenuOpen && (
+          <div className="md:hidden fixed inset-0 z-20" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setMobileMenuOpen(false)} />
+        )}
         {/* Sidebar */}
-        <nav className={`${mobileMenuOpen ? 'block' : 'hidden'} md:block w-full md:w-64 ${classes.panelBg} ${classes.border} md:h-screen overflow-y-auto`}
+        <nav className={`${mobileMenuOpen ? 'block fixed inset-y-0 left-0 z-30' : 'hidden'} md:relative md:block w-72 md:w-64 ${classes.panelBg} ${classes.border} md:h-screen overflow-y-auto`}
              style={{ borderColor: 'rgba(255,255,255,0.08)', boxShadow: '0 0 30px rgba(0,0,0,0.8)' }}>
-          <div className="hidden md:block p-6 border-b-2" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-            <h1 className="text-xl font-bold text-white">EventFlow</h1>
-            <p className="text-xs text-slate-300 mt-1">Event planning platform</p>
+          <div className="hidden md:flex items-center gap-3 p-5 border-b-2" style={{ borderColor: 'var(--border)' }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: 'var(--accent)' }}>EF</div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base font-bold" style={{ color: 'var(--text-1)', fontFamily: 'var(--font-sans)' }}>EventFlow</h1>
+              <p className="text-xs" style={{ color: 'var(--text-3)' }}>Event planning CRM</p>
+            </div>
+            <span className="text-xs px-1.5 py-0.5 rounded font-bold" style={{ background: 'rgba(245,166,35,0.15)', color: 'var(--color-amber)', fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.06em' }}>DEMO</span>
           </div>
-          <div className="p-4 space-y-2">
+
+          <div className="p-4 space-y-1">
+            {/* OPERATIONS */}
+            <div className="px-3 pt-3 pb-1">
+              <span className="text-xs font-bold tracking-widest" style={{ color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>OPERATIONS</span>
+            </div>
             {[
               { id: 'dashboard', label: 'Dashboard', icon: Home },
               { id: 'events', label: 'Events', icon: Calendar },
               { id: 'vendors', label: 'Vendors', icon: Building2 },
               { id: 'venues', label: 'Venues', icon: MapPin },
-              { id: 'clients', label: 'Clients', icon: Users },
-              { id: 'messages', label: 'Messages', icon: MessageSquare },
-              { id: 'settings', label: 'Settings', icon: Settings },
             ].map(item => {
               const Icon = item.icon;
               return (
-                <button
-                  key={item.id}
-                  onClick={() => { setActiveTab(item.id); setMobileMenuOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded ${activeTab === item.id ? 'nav-active-bg text-purple-300 font-semibold border-l-2 border-purple-500' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
+                <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileMenuOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded transition-colors ${activeTab === item.id ? 'nav-active-bg text-purple-300 font-semibold border-l-2 border-purple-500' : 'hover:bg-white/5'}`}
+                  style={{ color: activeTab === item.id ? 'var(--accent)' : 'var(--text-2)' }}
                 >
-                  <Icon size={18} className="text-slate-300" />
+                  <Icon size={16} />
                   <span className="font-semibold">{item.label}</span>
                 </button>
               );
             })}
+
+            {/* MANAGEMENT */}
+            <div className="px-3 pt-4 pb-1">
+              <span className="text-xs font-bold tracking-widest" style={{ color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>MANAGEMENT</span>
+            </div>
+            {[
+              { id: 'clients', label: 'Clients', icon: Users },
+              { id: 'messages', label: 'Messages', icon: MessageSquare },
+            ].map(item => {
+              const Icon = item.icon;
+              return (
+                <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileMenuOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded transition-colors ${activeTab === item.id ? 'nav-active-bg text-purple-300 font-semibold border-l-2 border-purple-500' : 'hover:bg-white/5'}`}
+                  style={{ color: activeTab === item.id ? 'var(--accent)' : 'var(--text-2)' }}
+                >
+                  <Icon size={16} />
+                  <span className="font-semibold">{item.label}</span>
+                  {item.id === 'messages' && conversations.filter(c => c.unread).length > 0 && (
+                    <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full font-bold" style={{ background: 'var(--accent)', color: '#fff' }}>
+                      {conversations.filter(c => c.unread).length}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+
+            {/* SYSTEM */}
+            <div className="px-3 pt-4 pb-1">
+              <span className="text-xs font-bold tracking-widest" style={{ color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>SYSTEM</span>
+            </div>
+            <button onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded transition-colors ${activeTab === 'settings' ? 'nav-active-bg text-purple-300 font-semibold border-l-2 border-purple-500' : 'hover:bg-white/5'}`}
+              style={{ color: activeTab === 'settings' ? 'var(--accent)' : 'var(--text-2)' }}
+            >
+              <Settings size={16} />
+              <span className="font-semibold">Settings</span>
+            </button>
           </div>
 
           {/* Pro upgrade CTA in sidebar */}
@@ -1913,7 +2071,7 @@ const CreateEventModal = ({ onClose }) => {
             <div className="p-4 mt-auto">
               <button
                 onClick={() => setShowPricing(true)}
-                style={{ width: '100%', padding: '0.65rem', background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 6, color: '#c4b5fd', fontFamily: 'Space Mono, monospace', fontSize: '0.65rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, letterSpacing: '0.06em' }}
+                style={{ width: '100%', padding: '0.65rem', background: 'rgba(var(--ef-brand-rgb),0.12)', border: '1px solid rgba(var(--ef-brand-rgb),0.3)', borderRadius: 6, color: 'var(--ef-brand-text)', fontFamily: 'Space Mono, monospace', fontSize: '0.65rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, letterSpacing: '0.06em' }}
               >
                 <Zap size={13} /> UPGRADE TO PRO
               </button>
@@ -1923,7 +2081,7 @@ const CreateEventModal = ({ onClose }) => {
             </div>
           )}
           {plan === 'pro' && (
-            <div style={{ padding: '0.75rem 1rem', margin: '0 0.5rem 0.5rem', background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 4, fontFamily: 'Space Mono, monospace', fontSize: '0.6rem', color: '#c4b5fd', textAlign: 'center' }}>
+            <div style={{ padding: '0.75rem 1rem', margin: '0 0.5rem 0.5rem', background: 'rgba(var(--ef-brand-rgb),0.08)', border: '1px solid rgba(var(--ef-brand-rgb),0.2)', borderRadius: 4, fontFamily: 'Space Mono, monospace', fontSize: '0.6rem', color: 'var(--ef-brand-text)', textAlign: 'center' }}>
               ✓ PRO PLAN ACTIVE
             </div>
           )}
@@ -1951,11 +2109,11 @@ const CreateEventModal = ({ onClose }) => {
             <div className="flex items-center gap-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
-                <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} type="text" placeholder="Search..." className="pl-9 pr-4 py-2 rounded-md text-sm" style={{ backgroundColor: '#06080f', color: '#e2e8f0' }} />
+                <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} type="text" placeholder="Search..." className="dark-input pl-9 pr-4 py-2 rounded-md text-sm" />
               </div>
               <button
                 onClick={() => setShowPricing(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '0.4rem 0.75rem', background: plan === 'pro' ? 'rgba(139,92,246,0.12)' : 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 4, color: '#c4b5fd', fontFamily: 'Space Mono, monospace', fontSize: '0.62rem', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '0.4rem 0.75rem', background: plan === 'pro' ? 'rgba(var(--ef-brand-rgb),0.12)' : 'rgba(var(--ef-brand-rgb),0.15)', border: '1px solid rgba(var(--ef-brand-rgb),0.3)', borderRadius: 4, color: 'var(--ef-brand-text)', fontFamily: 'Space Mono, monospace', fontSize: '0.62rem', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}
               >
                 <Zap size={11} /> {plan === 'pro' ? 'PRO' : 'UPGRADE'}
               </button>
@@ -1968,7 +2126,7 @@ const CreateEventModal = ({ onClose }) => {
               <div className="text-xs text-slate-400 uppercase tracking-widest">Level</div>
               <div className="text-lg font-bold text-white">{Math.floor(tasks.filter(t => t.status === 'completed').length / 3) + 1}</div>
               <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${((tasks.filter(t => t.status === 'completed').length % 3) / 3) * 100}%`, background: 'linear-gradient(90deg, #7c3aed, #a855f7)' }} />
+                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${((tasks.filter(t => t.status === 'completed').length % 3) / 3) * 100}%`, background: 'linear-gradient(90deg, var(--ef-brand-deep), var(--ef-brand-2))' }} />
               </div>
               <div className="text-xs text-slate-400">{tasks.filter(t => t.status === 'completed').length * 50} XP</div>
             </div>
@@ -1998,8 +2156,14 @@ const CreateEventModal = ({ onClose }) => {
                       )}
                     </div>
                     <div className="space-y-3">
-                      {events.map(event => (
-                        <div key={event.id} onClick={() => { setSelectedEvent(event); setShowEventDetail(true); }} className="border-2 rounded-md p-4 hover:shadow-md cursor-pointer transition-all" style={{ borderColor: 'rgba(255,255,255,0.05)', background: '#06080f' }}>
+                      {enrichedEvents.length === 0 && (
+                        <div className="text-center py-10">
+                          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>No events yet.</p>
+                          <button onClick={() => setShowCreateEvent(true)} className="mt-3 px-4 py-2 rounded text-sm font-semibold text-white bg-purple-700 hover:bg-purple-600">Create your first event</button>
+                        </div>
+                      )}
+                      {enrichedEvents.map(event => (
+                        <div key={event.id} onClick={() => { setSelectedEventId(event.id); setShowEventDetail(true); }} className="border-2 rounded-md p-4 hover:shadow-md cursor-pointer transition-all" style={{ borderColor: 'rgba(255,255,255,0.05)', background: 'var(--surface-2)' }}>
                           <div className="flex justify-between items-start mb-2">
                             <h3 className="font-semibold text-white text-sm">{event.name}</h3>
                             <span className={`text-xs px-2 py-1 font-semibold ${event.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{event.status}</span>
@@ -2017,7 +2181,7 @@ const CreateEventModal = ({ onClose }) => {
                       <h2 className="text-lg font-semibold text-white mb-5">High Priority Tasks</h2>
                       <div className="space-y-2">
                         {tasks.filter(t => t.priority === 'high' && t.status !== 'completed').map(task => (
-                          <div key={task.id} onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }} className="border-2 rounded-md p-4 hover:shadow-md cursor-pointer transition-all" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                          <div key={task.id} onClick={() => { setSelectedTaskId(task.id); setShowTaskDetail(true); }} className="border-2 rounded-md p-4 hover:shadow-md cursor-pointer transition-all" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                             <div className="flex items-start gap-3">
                               <div className="w-2 h-2 bg-red-600 mt-2 flex-shrink-0"></div>
                               <div className="flex-1">
@@ -2034,27 +2198,28 @@ const CreateEventModal = ({ onClose }) => {
                     <div className={`${classes.panelBg} ${classes.border} p-6 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                       <h2 className="text-lg font-semibold text-white mb-5">Recent Activity</h2>
                       <div className="space-y-4">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 bg-purple-700 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">EC</div>
-                          <div className="flex-1">
-                            <p className="text-sm text-white font-semibold">Elegant Catering sent menu proposal</p>
-                            <p className="text-xs text-slate-300 mt-1">10:30 AM</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 bg-emerald-600 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">✓</div>
-                          <div className="flex-1">
-                            <p className="text-sm text-white font-semibold">Venue contract completed</p>
-                            <p className="text-xs text-slate-300 mt-1">Yesterday</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 bg-blue-700 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">SM</div>
-                          <div className="flex-1">
-                            <p className="text-sm text-white font-semibold">Sarah Mitchell joined team</p>
-                            <p className="text-xs text-slate-300 mt-1">2 days ago</p>
-                          </div>
-                        </div>
+                        {(() => {
+                          const items = [];
+                          conversations.slice(0, 2).forEach(conv => {
+                            if (conv.lastMessage) items.push({ avatar: conv.vendor.substring(0,2).toUpperCase(), color: 'bg-purple-700', text: `${conv.vendor}: ${conv.lastMessage}`, time: conv.time });
+                          });
+                          tasks.filter(t => t.status === 'completed').slice(0, 2).forEach(t => {
+                            items.push({ avatar: '✓', color: 'bg-emerald-600', text: `Task completed: ${t.title}`, time: t.dueDate });
+                          });
+                          tasks.filter(t => t.status !== 'completed').slice(0, 1).forEach(t => {
+                            items.push({ avatar: t.assignedTo?.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2) || '??', color: 'bg-blue-700', text: `${t.title} — ${t.status}`, time: t.dueDate });
+                          });
+                          if (items.length === 0) return <p className="text-sm" style={{ color: 'var(--text-3)' }}>No recent activity. Create events and tasks to see updates here.</p>;
+                          return items.slice(0, 4).map((item, i) => (
+                            <div key={i} className="flex items-start gap-3">
+                              <div className={`w-10 h-10 ${item.color} flex items-center justify-center text-xs font-bold text-white flex-shrink-0 rounded`}>{item.avatar}</div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-white font-semibold truncate">{item.text}</p>
+                                <p className="text-xs text-slate-300 mt-1">{item.time}</p>
+                              </div>
+                            </div>
+                          ));
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -2077,8 +2242,14 @@ const CreateEventModal = ({ onClose }) => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {events.map(event => (
-                    <div key={event.id} onClick={() => { setSelectedEvent(event); setShowEventDetail(true); }} className={`${classes.panelBg} ${classes.border} p-5 rounded-md cursor-pointer hover:shadow-lg`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                  {enrichedEvents.length === 0 && (
+                    <div className="col-span-3 text-center py-16">
+                      <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>No events yet.</p>
+                      <button onClick={() => setShowCreateEvent(true)} className="mt-3 px-5 py-2 rounded text-sm font-semibold text-white bg-purple-700 hover:bg-purple-600">Create your first event</button>
+                    </div>
+                  )}
+                  {enrichedEvents.map(event => (
+                    <div key={event.id} onClick={() => { setSelectedEventId(event.id); setShowEventDetail(true); }} className={`${classes.panelBg} ${classes.border} p-5 rounded-md cursor-pointer hover:shadow-lg`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <h3 className="text-lg font-semibold text-white mb-1">{event.name}</h3>
@@ -2091,7 +2262,7 @@ const CreateEventModal = ({ onClose }) => {
                         <div className="flex items-center gap-2"><Users size={14} />{event.guests} guests</div>
                         <div className="flex items-center gap-2"><DollarSign size={14} />${event.spent.toLocaleString()} / ${event.budget.toLocaleString()}</div>
                       </div>
-                      <div className="bg-slate-900 border-2 rounded p-3" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                      <div className="rounded p-3" style={{ borderColor: 'rgba(255,255,255,0.05)', background: 'var(--surface-2)', border: '2px solid var(--border)' }}>
                         <div className="flex justify-between text-xs mb-2"><span className="text-slate-300">Progress</span><span className="font-semibold text-white">{Math.round((event.completed/event.tasks)*100)}%</span></div>
                         <div className="w-full bg-white/5 h-1.5 rounded overflow-hidden"><div className="h-full" style={{ width: `${(event.completed/event.tasks)*100}%`, background: NEON }} /></div>
                       </div>
@@ -2107,8 +2278,8 @@ const CreateEventModal = ({ onClose }) => {
                 <h1 className="text-2xl font-bold text-white">Vendors</h1>
                 <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                   <div className="flex gap-3 mb-5">
-                    <input type="text" placeholder="Search vendors..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="flex-1 p-3 rounded-md" style={{ backgroundColor: '#06080f', color: '#e2e8f0' }} />
-                    <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="p-3 rounded-md" style={{ backgroundColor: '#06080f', color: '#e2e8f0' }}>
+                    <input type="text" placeholder="Search vendors..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="dark-input flex-1 p-3 rounded-md" />
+                    <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="dark-input p-3 rounded-md">
                       <option>All</option>
                       <option>Catering</option>
                       <option>Entertainment</option>
@@ -2147,7 +2318,7 @@ const CreateEventModal = ({ onClose }) => {
                 {/* Live discovery panel */}
                 <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)', boxShadow: neonBoxShadow }}>
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold" style={{ background: 'linear-gradient(135deg, #A020F0 0%, #8B00FF 100%)', color: 'white' }}>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold" style={{ background: 'var(--ef-grad-discover)', color: 'white' }}>
                       <Search size={12} /> Discover
                     </div>
                     <span className="text-sm text-slate-300">Find real venues anywhere via OpenStreetMap — free, no API key</span>
@@ -2160,14 +2331,12 @@ const CreateEventModal = ({ onClose }) => {
                       value={discoverCity}
                       onChange={e => setDiscoverCity(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleDiscover()}
-                      className="flex-1 p-3 rounded-md border-2 text-sm"
-                      style={{ backgroundColor: '#06080f', borderColor: 'rgba(255,255,255,0.08)', color: '#e2e8f0' }}
+                      className="dark-input flex-1 p-3 rounded-md"
                     />
                     <select
                       value={discoverCategory}
                       onChange={e => setDiscoverCategory(e.target.value)}
-                      className="p-3 rounded-md border-2 text-sm"
-                      style={{ backgroundColor: '#06080f', borderColor: 'rgba(255,255,255,0.08)', color: '#e2e8f0' }}
+                      className="dark-input p-3 rounded-md"
                     >
                       {DISCOVER_CATEGORIES.map(c => (
                         <option key={c} value={c}>{c.replace(/\b\w/g, l => l.toUpperCase())}</option>
@@ -2177,7 +2346,7 @@ const CreateEventModal = ({ onClose }) => {
                       onClick={handleDiscover}
                       disabled={isDiscovering || !discoverCity.trim()}
                       className="px-5 py-3 rounded-md font-semibold text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                      style={{ background: 'linear-gradient(135deg, #A020F0 0%, #8B00FF 100%)' }}
+                      style={{ background: 'var(--ef-grad-discover)' }}
                     >
                       {isDiscovering ? (
                         <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
@@ -2214,7 +2383,7 @@ const CreateEventModal = ({ onClose }) => {
                             <button
                               onClick={() => saveDiscoveredVenue(v)}
                               className="w-full text-xs py-1.5 rounded font-semibold text-white"
-                              style={{ background: '#A020F0' }}
+                              style={{ background: 'var(--ef-brand)' }}
                             >
                               + Save Venue
                             </button>
@@ -2229,29 +2398,48 @@ const CreateEventModal = ({ onClose }) => {
                 <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                   <div className="flex items-center justify-between mb-5">
                     <h2 className="text-base font-semibold text-white">Saved Venues</h2>
-                    <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="p-2 rounded-md text-sm" style={{ backgroundColor: '#06080f', color: '#e2e8f0' }} />
+                    <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="dark-input p-2 rounded-md text-sm" />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredVenues.map(venue => (
-                      <div key={venue.id} className={`${classes.panelBg} ${classes.border} p-4 rounded-md cursor-pointer`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                      <div key={venue.id} className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex items-center gap-1 bg-slate-900 px-2 py-1 rounded text-slate-300">
                             <Star size={12} />
-                            <span className="text-xs font-semibold">{venue.rating}</span>
+                            <span className="text-xs font-semibold">{venue.rating || '—'}</span>
                           </div>
-                          {venue.booked && <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 font-semibold rounded">Booked</span>}
+                          <div className="flex items-center gap-2">
+                            {venue.booked && <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 font-semibold rounded">Booked</span>}
+                            <button onClick={() => { if (window.confirm('Remove this saved venue?')) setVenues(prev => prev.filter(v => v.id !== venue.id)); }} className="text-slate-500 hover:text-red-400 transition-colors text-xs" title="Remove">×</button>
+                          </div>
                         </div>
                         <h3 className="text-base font-semibold text-white mb-1">{venue.name}</h3>
                         <p className="text-xs text-slate-300 mb-3 flex items-center gap-1"><MapPin size={12} />{venue.location}</p>
                         <div className="flex justify-between text-xs mb-3">
-                          <span className="text-slate-300">Capacity: {venue.capacity}</span>
+                          <span className="text-slate-300">Cap: {venue.capacity || 'TBD'}</span>
                           <span className="text-emerald-400 font-semibold">{venue.price}</span>
                         </div>
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1 mb-3">
                           {venue.amenities.slice(0, 2).map((amenity, idx) => (
                             <span key={idx} className="text-xs bg-white/5 text-slate-300 px-2 py-0.5 rounded">{amenity}</span>
                           ))}
                         </div>
+                        <select
+                          defaultValue=""
+                          onChange={e => {
+                            const eventName = e.target.value;
+                            if (!eventName) return;
+                            setVenues(prev => prev.map(v => v.id === venue.id ? { ...v, assignedEvent: eventName, booked: true } : v));
+                            e.target.value = '';
+                          }}
+                          className="w-full text-xs dark-input rounded px-2 py-1.5"
+                        >
+                          <option value="">Assign to event...</option>
+                          {events.map(ev => <option key={ev.id} value={ev.name}>{ev.name}</option>)}
+                        </select>
+                        {venue.assignedEvent && (
+                          <p className="text-xs mt-1.5" style={{ color: 'var(--color-green)' }}>✓ {venue.assignedEvent}</p>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -2268,9 +2456,32 @@ const CreateEventModal = ({ onClose }) => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   {/* Conversation List */}
                   <div className={`${classes.panelBg} ${classes.border} rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-                    <div className="p-4 border-b-2" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                    <div className="p-4 border-b-2 flex justify-between items-center" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                       <h2 className="font-semibold text-white">Conversations</h2>
+                      <button onClick={() => setShowNewConversation(true)} className="p-1.5 rounded hover:bg-white/10 transition-colors" title="New conversation">
+                        <Plus size={16} style={{ color: 'var(--accent)' }} />
+                      </button>
                     </div>
+                    {showNewConversation && (
+                      <div className="p-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                        <p className="text-xs mb-2" style={{ color: 'var(--text-3)' }}>Start conversation with:</p>
+                        <div className="space-y-1 max-h-40 overflow-y-auto">
+                          {vendors.filter(v => !conversations.some(c => c.vendor === v.name)).map(v => (
+                            <button key={v.id} onClick={() => {
+                              setConversations(prev => [...prev, { id: Date.now(), vendor: v.name, lastMessage: '', time: 'now', unread: false, messages: [] }]);
+                              setSelectedConversation(conversations.length);
+                              setShowNewConversation(false);
+                            }} className="w-full text-left px-3 py-2 rounded text-sm transition-colors hover:bg-white/5" style={{ color: 'var(--text-1)' }}>
+                              {v.name} <span className="text-xs" style={{ color: 'var(--text-3)' }}>· {v.category}</span>
+                            </button>
+                          ))}
+                          {vendors.filter(v => !conversations.some(c => c.vendor === v.name)).length === 0 && (
+                            <p className="text-xs px-3 py-2" style={{ color: 'var(--text-3)' }}>All vendors have conversations.</p>
+                          )}
+                        </div>
+                        <button onClick={() => setShowNewConversation(false)} className="mt-2 text-xs" style={{ color: 'var(--text-3)' }}>Cancel</button>
+                      </div>
+                    )}
                     <div className="divide-y-2" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                       {conversations.map((conv, idx) => (
                         <div
@@ -2338,22 +2549,16 @@ const CreateEventModal = ({ onClose }) => {
                           value={messageInput}
                           onChange={(e) => setMessageInput(e.target.value)}
                           placeholder="Type your message..."
-                          className="flex-1 p-2 rounded-md"
-                          style={{ backgroundColor: '#06080f', color: '#e2e8f0' }}
+                          className="dark-input flex-1 p-2 rounded-md"
                         />
                         <button
                           onClick={() => {
                             if (messageInput.trim()) {
-                              const updatedConversations = [...conversations];
-                              updatedConversations[selectedConversation].messages.push({
-                                sender: 'me',
-                                text: messageInput,
-                                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                                attachments: []
-                              });
-                              updatedConversations[selectedConversation].lastMessage = messageInput;
-                              updatedConversations[selectedConversation].unread = false;
-                              setConversations(updatedConversations);
+                              const newMsg = { sender: 'me', text: messageInput, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), attachments: [] };
+                              setConversations(prev => prev.map((c, i) => i === selectedConversation
+                                ? { ...c, messages: [...c.messages, newMsg], lastMessage: messageInput, unread: false }
+                                : c
+                              ));
                               setMessageInput('');
                             }
                           }}
@@ -2375,13 +2580,100 @@ const CreateEventModal = ({ onClose }) => {
 
             {/* Settings */}
             {activeTab === 'settings' && (
-              <div>
-                <h1 className="text-2xl font-bold text-white">Settings</h1>
-                <div className="mt-4">
-                  <label className="text-sm text-slate-300">Theme</label>
-                  <div className="mt-2 flex gap-2">
-                    <button onClick={() => setTheme('dark')} className={`px-4 py-2 rounded ${theme === 'dark' ? 'bg-white/10 text-white' : 'bg-slate-200 text-slate-800'}`}>Dark</button>
-                    <button onClick={() => setTheme('light')} className={`px-4 py-2 rounded ${theme === 'light' ? 'bg-white/10 text-white' : 'bg-slate-200 text-slate-800'}`}>Light</button>
+              <div className="space-y-6 max-w-2xl">
+                <h1 className="text-2xl font-bold" style={{ color: 'var(--text-1)' }}>Settings</h1>
+
+                {/* Appearance */}
+                <div className="panel-glass glass-border rounded-lg p-5" style={{ borderTop: '2px solid var(--accent)' }}>
+                  <h2 className="text-sm font-bold mb-4" style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em', color: 'var(--text-2)' }}>APPEARANCE</h2>
+                  <div className="flex gap-3">
+                    {['dark','light'].map(t => (
+                      <button
+                        key={t}
+                        onClick={() => setTheme(t)}
+                        className="px-5 py-2 rounded-md text-sm font-semibold transition-all"
+                        style={{
+                          background: theme === t ? 'var(--accent)' : 'var(--surface-3)',
+                          color: theme === t ? '#fff' : 'var(--text-2)',
+                          border: `1px solid ${theme === t ? 'var(--accent)' : 'var(--border)'}`,
+                        }}
+                      >
+                        {t.charAt(0).toUpperCase() + t.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* AI / API Keys */}
+                <div className="panel-glass glass-border rounded-lg p-5">
+                  <h2 className="text-sm font-bold mb-1" style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em', color: 'var(--text-2)' }}>AI / API KEYS</h2>
+                  <p className="text-xs mb-4" style={{ color: 'var(--text-3)' }}>Used for AI event generation. Keys are stored locally in your browser only.</p>
+                  <div className="space-y-4">
+                    {[
+                      { label: 'Groq API Key', key: 'groq_api_key', placeholder: 'gsk_...', hint: 'Free at console.groq.com' },
+                      { label: 'OpenRouter API Key', key: 'openrouter_api_key', placeholder: 'sk-or-...', hint: 'Free models available at openrouter.ai' },
+                    ].map(({ label, key, placeholder, hint }) => {
+                      const val = localStorage.getItem(key) || '';
+                      return (
+                        <div key={key}>
+                          <label className="block text-sm font-semibold mb-1" style={{ color: 'var(--text-1)' }}>{label}</label>
+                          <p className="text-xs mb-2" style={{ color: 'var(--text-3)' }}>{hint}</p>
+                          <div className="flex gap-2">
+                            <input
+                              type="password"
+                              defaultValue={val}
+                              placeholder={placeholder}
+                              id={`setting-${key}`}
+                              className="flex-1 dark-input rounded-md px-3 py-2 text-sm"
+                            />
+                            <button
+                              onClick={() => {
+                                const v = document.getElementById(`setting-${key}`)?.value || '';
+                                if (v) { localStorage.setItem(key, v); alert(`${label} saved.`); }
+                                else { localStorage.removeItem(key); alert(`${label} cleared.`); }
+                              }}
+                              className="px-3 py-2 rounded-md text-sm font-semibold"
+                              style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--accent-border)' }}
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Plan */}
+                <div className="panel-glass glass-border rounded-lg p-5">
+                  <h2 className="text-sm font-bold mb-4" style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em', color: 'var(--text-2)' }}>PLAN</h2>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{plan === 'pro' ? 'Solo Plan' : 'Free Plan'}</div>
+                      <div className="text-xs mt-1" style={{ color: 'var(--text-2)' }}>{plan === 'pro' ? 'All features unlocked.' : '3 events, 3 clients, 50 guests — upgrade to remove limits.'}</div>
+                    </div>
+                    {plan === 'free' && (
+                      <button onClick={() => setShowPricing(true)} className="px-4 py-2 rounded-md text-sm font-semibold text-white bg-purple-700 hover:bg-purple-600 flex items-center gap-2">
+                        <Zap size={14} /> Upgrade
+                      </button>
+                    )}
+                    {plan === 'pro' && (
+                      <span className="text-xs font-bold px-3 py-1.5 rounded" style={{ background: 'var(--accent-dim)', color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>✓ PRO</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* App Info */}
+                <div className="panel-glass glass-border rounded-lg p-5">
+                  <h2 className="text-sm font-bold mb-3" style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em', color: 'var(--text-2)' }}>APP INFO</h2>
+                  <div className="text-xs space-y-1" style={{ color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>
+                    <div>EventFlow CRM — atharux</div>
+                    <div>Data stored locally in browser</div>
+                    <div>
+                      <button onClick={() => { if (window.confirm('Reset all data? This cannot be undone.')) { localStorage.clear(); window.location.reload(); } }} className="text-red-400 hover:text-red-300 mt-2">
+                        Reset all data
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2395,21 +2687,43 @@ const CreateEventModal = ({ onClose }) => {
       {showTaskDetail && <TaskDetailModal task={selectedTask} onClose={() => setShowTaskDetail(false)} />}
       {showEventDetail && <EventDetailView event={selectedEvent} onClose={() => setShowEventDetail(false)} />}
 
-      {/* Vendor modal placeholder */}
+      {/* Vendor modal */}
       {showVendorModal && selectedVendor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-          <div className={`${classes.panelBg} ${classes.border} rounded-2xl w-full max-w-lg p-6`} style={{ boxShadow: neonBoxShadow, borderColor: 'rgba(255,255,255,0.08)' }}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-white">{selectedVendor.name}</h3>
-              <button onClick={() => setShowVendorModal(false)}><X size={18} className="text-slate-300" /></button>
-            </div>
-            <div className="text-sm text-slate-300">
-              <div className="mb-2"><strong>Category:</strong> {selectedVendor.category}</div>
-              <div className="mb-2"><strong>Location:</strong> {selectedVendor.location}</div>
-              <div className="mb-2"><strong>Rating:</strong> {selectedVendor.rating}</div>
-              <div className="mt-4">
-                <button onClick={() => setShowVendorModal(false)} className="px-4 py-2 rounded-md bg-purple-700 text-white">Close</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'var(--overlay)', backdropFilter: 'blur(8px)' }}>
+          <div className="panel-glass glass-border rounded-2xl w-full max-w-lg p-6" style={{ boxShadow: 'var(--glow-md)', borderTop: '2px solid var(--accent)' }}>
+            <div className="flex justify-between items-center mb-5">
+              <div>
+                <h3 className="text-lg font-semibold" style={{ color: 'var(--text-1)' }}>{selectedVendor.name}</h3>
+                <p className="text-xs mt-0.5 text-purple-300">{selectedVendor.category}</p>
               </div>
+              <button onClick={() => setShowVendorModal(false)}><X size={18} style={{ color: 'var(--text-2)' }} /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-5 text-sm">
+              {[
+                ['Location', selectedVendor.location],
+                ['Rating', `${selectedVendor.rating} / 5`],
+                ['Price Range', selectedVendor.price],
+                ['Reviews', `${selectedVendor.reviews} reviews`],
+                ['Status', selectedVendor.booked ? 'Booked' : 'Available'],
+                ['Last Contact', selectedVendor.lastContact],
+              ].map(([label, value]) => (
+                <div key={label} className="p-3 rounded-md" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+                  <div className="text-xs mb-1" style={{ color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{label.toUpperCase()}</div>
+                  <div className="font-semibold" style={{ color: 'var(--text-1)' }}>{value}</div>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setVendors(prev => prev.map(v => v.id === selectedVendor.id ? { ...v, booked: !v.booked } : v));
+                  setShowVendorModal(false);
+                }}
+                className="flex-1 py-2 rounded-md text-sm font-semibold text-white bg-purple-700 hover:bg-purple-600"
+              >
+                {selectedVendor.booked ? 'Mark Available' : 'Mark as Booked'}
+              </button>
+              <button onClick={() => setShowVendorModal(false)} className="px-4 py-2 rounded-md text-sm font-semibold" style={{ background: 'var(--surface-3)', color: 'var(--text-2)' }}>Close</button>
             </div>
           </div>
         </div>
