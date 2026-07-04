@@ -41,6 +41,7 @@ with warnings.catch_warnings():
         DeterministicTemplate,
         OperationInputSchema,
         ValidationResultSchema,
+        log_stage,
     )
 
 # =============================================================================
@@ -162,6 +163,11 @@ def _window_covers(outer, inner) -> bool:
     return _mins(o_start) <= _mins(i_start) and _mins(o_end) >= _mins(i_end)
 
 
+def _is_placeholder(name) -> bool:
+    """Roster slots that still need a real person (name left as REPLACE)."""
+    return str(name).strip().upper().startswith("REPLACE")
+
+
 def _roles_of(volunteer):
     r = volunteer.get("roles", volunteer.get("role", []))
     return r if isinstance(r, list) else [r]
@@ -198,7 +204,9 @@ class GlobalAIBerlinConstraints(DeterministicTemplate):
         budget_out["total_ceiling"] = ceiling
         budget_out["headroom"] = ceiling - committed_total
         budget_out["hard_stop_at"] = hard_stop_at
-        budget_out["hard_stop_breached"] = committed_total > hard_stop_at
+        # Reaching the stop line counts as breached; a zero/unset threshold
+        # means no hard stop is configured.
+        budget_out["hard_stop_breached"] = hard_stop_at > 0 and committed_total >= hard_stop_at
 
         if budget_out["hard_stop_breached"]:
             violations.append(
@@ -237,22 +245,33 @@ class GlobalAIBerlinConstraints(DeterministicTemplate):
             required = role_spec.get("min_coverage", 0)
             windows_out = []
             for shift in role_spec.get("shift_windows", []):
-                covering = [
+                available = [
                     v["name"] for v in roster
                     if role in _roles_of(v)
                     and any(_window_covers(a, shift) for a in _availability_of(v))
                 ]
+                # Placeholder (REPLACE) slots are unfilled positions, not
+                # people — they never count toward confirmed coverage.
+                covering = [n for n in available if not _is_placeholder(n)]
+                unfilled = len(available) - len(covering)
                 windows_out.append({
                     "window": shift,
                     "required": required,
-                    "available_full_window": len(covering),
+                    "confirmed_full_window": len(covering),
                     "volunteers": covering,
+                    "unfilled_placeholder_slots": unfilled,
                     "met": len(covering) >= required,
                 })
                 if len(covering) < required:
                     violations.append(
-                        f"STAFFING: role '{role}' needs {required} volunteer(s) for full window "
-                        f"{shift}, only {len(covering)} available ({covering or 'none'})"
+                        f"STAFFING: role '{role}' needs {required} confirmed volunteer(s) for full "
+                        f"window {shift}, only {len(covering)} confirmed ({covering or 'none'})"
+                        + (f"; {unfilled} unfilled REPLACE slot(s) on the roster" if unfilled else "")
+                    )
+                elif unfilled:
+                    risks.append(
+                        f"STAFFING: role '{role}' window {shift} coverage met, but roster still "
+                        f"carries {unfilled} unfilled REPLACE slot(s)"
                     )
             staffing_out[role] = windows_out
 
@@ -284,10 +303,12 @@ class GlobalAIBerlinConstraints(DeterministicTemplate):
                     if j != i and _windows_overlap(assigns[i], assigns[j])
                 )
                 if overlapping > qty:
-                    w_start, w_end = _parse_window(assigns[i])
+                    booking = assigns[i]
+                    w_start, w_end = _parse_window(booking)
+                    session = booking.get("session", "unnamed") if isinstance(booking, dict) else "unnamed"
                     conflict = {
                         "item": item_id,
-                        "session": assigns[i].get("session", "unnamed"),
+                        "session": session,
                         "window": f"{w_start}-{w_end}",
                         "concurrent_demand": overlapping,
                         "qty_available": qty,
@@ -326,18 +347,30 @@ class GlobalAIBerlinConstraints(DeterministicTemplate):
         )
 
     # Deterministic stages only (schema validation -> rules). The AI advisory
-    # stage in execute() is intentionally never reached from here.
+    # stage in execute() is intentionally never reached from here, but the
+    # framework's stage logging and idempotency cache still apply.
     def run_deterministic(self, raw_input):
         input_schema = OperationInputSchema(**raw_input)
         input_hash = self._compute_input_hash(input_schema)
+        # Namespaced so cached deterministic results never collide with
+        # full execute() results sharing the same input.
+        cache_key = f"deterministic:{input_hash}"
+        if cache_key in self._input_cache:
+            return self._input_cache[cache_key]
+
+        log_stage("INPUT_SCHEMA", raw_input, input_schema.dict())
         validated = self._apply_graceful_rules(input_schema)
         result = self.apply_rules(validated)
         result.input_hash = input_hash
-        return {
+        log_stage("RULES_ENGINE", input_schema.dict(), result.dict())
+
+        output = {
             "version": "1.0",
             "status": "approved" if result.is_valid else "blocked",
             "result": result.dict(),
         }
+        self._input_cache[cache_key] = output
+        return output
 
 
 if __name__ == "__main__":
