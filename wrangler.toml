@@ -5,4 +5,4 @@ compatibility_date = "2024-11-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "rt-network"
-database_id = "REPLACE_AFTER_wrangler_d1_create"
+database_id = "55f7dc75-09c5-4116-9a9c-fb53e97a4c88"
