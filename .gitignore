@@ -26,3 +26,6 @@ venv/
 
 # wrangler local state
 .wrangler/
+
+# Local credentials
+*.local.txt
