@@ -15,3 +15,8 @@ dist-ssr
 # Python
 __pycache__/
 *.pyc
+
+# Python virtualenvs
+ai-ops-env/
+venv/
+.venv/
