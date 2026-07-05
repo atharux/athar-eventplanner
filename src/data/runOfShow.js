@@ -13,7 +13,7 @@ export function buildRunOfShow({ eventType = 'party', hours = 5, guests = 0, sel
   const start = START_BY_TYPE[eventType] ?? 19 * 60;
   const end = start + hours * 60;
   const rows = [];
-  const add = (t, title, owner) => rows.push({ time: hhmm(t), title, owner });
+  const add = (t, title, owner) => rows.push({ t, title, owner });
 
   add(start - 120, `Crew call — setup & load-in at ${venueName}`, selections.staff ? `Event crew (×${staffCount})` : 'Organizer');
   if (selections.dj_av) add(start - 90, 'Sound & light check', 'DJ / AV');
@@ -40,5 +40,7 @@ export function buildRunOfShow({ eventType = 'party', hours = 5, guests = 0, sel
   add(end, 'Event ends — guest farewell', 'Registration / door');
   add(end + 60, 'Breakdown & load-out complete', selections.staff ? `Event crew (×${staffCount})` : 'Organizer');
 
-  return rows.sort((a, b) => a.time.localeCompare(b.time));
+  // Sort on absolute minutes so schedules crossing midnight stay in
+  // chronological order (01:00 load-out sorts after 20:00 doors).
+  return rows.sort((a, b) => a.t - b.t).map(({ t, title, owner }) => ({ time: hhmm(t), title, owner }));
 }
