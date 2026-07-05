@@ -70,6 +70,7 @@
         "double_booked": []
       },
       "violations": [],
+      "recommended_actions": [],
       "risk_flags": []
     },
     "input_hash": "345a58280d28fed9189b4012e6e51935"

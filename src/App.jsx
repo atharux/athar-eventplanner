@@ -958,11 +958,9 @@ export default function App() {
   ];
 
   async function handleDiscover() {
-    const scraperUrl = import.meta.env.VITE_SCRAPER_URL;
-    if (!scraperUrl) {
-      setDiscoverError('Live venue discovery is not enabled in this deployment yet — you can still add venues manually.');
-      return;
-    }
+    // Shared venue-scraper Worker (venue-outreach-db repo) — Overpass/OSM, free.
+    // Its CORS allowlist includes this app's origin; override via VITE_SCRAPER_URL.
+    const scraperUrl = import.meta.env.VITE_SCRAPER_URL || 'https://venue-scraper.athar-hafiz.workers.dev';
     if (!discoverCity.trim()) return;
     setIsDiscovering(true);
     setDiscoverError('');
