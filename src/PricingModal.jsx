@@ -73,7 +73,7 @@ export function PricingModal({ onClose, onUpgrade }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', letterSpacing: '0.1em', color: 'var(--accent)', marginBottom: '0.35rem', fontWeight: 700 }}>
-                EVENTFLOW PRO
+                RT NETWORK PRO
               </div>
               <h2 style={{ fontFamily: 'var(--font-sans)', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
                 Unlock everything

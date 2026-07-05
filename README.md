@@ -1,8 +1,10 @@
-# EventFlow
+# RT Network
 
-**Gamified event operations with a deterministic constraint engine.**
+**Rising Tide Collective's event booking layer — gamified operations with a deterministic constraint engine.**
 
-EventFlow is an event-planning CRM (events, tasks, guests, budgets, vendors, run-sheets) with one unusual property: before event day, your plan is validated by a **deterministic pre-flight engine** that catches the failures that actually ruin events — budget hard-stop breaches, understaffed shifts, and AV gear with broken dependency chains or double-bookings. Same input, same verdict, every time. No AI in the decision path.
+> *A rising tide lifts all boats.*
+
+RT Network is an event-planning CRM and booking platform (events, tasks, guests, budgets, vendors, run-sheets) with one unusual property: before event day, your plan is validated by a **deterministic pre-flight engine** that catches the failures that actually ruin events — budget hard-stop breaches, understaffed shifts, and AV gear with broken dependency chains or double-bookings. Same input, same verdict, every time. No AI in the decision path.
 
 Currently piloting with real Berlin events (Global AI Berlin) and venues (Lilium.berlin).
 

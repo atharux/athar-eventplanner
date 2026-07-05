@@ -1,0 +1,91 @@
+/* RT Network — Rising Tide Collective light theme.
+   Fully self-contained under .rt-light: never relies on :root tokens,
+   because the dark CRM's theme.css may or may not be loaded. */
+
+.rt-light {
+  --rt-teal: #0d9488;
+  --rt-ink: #0a0a0a;
+  --rt-bg: #ffffff;
+  --rt-surface: #f5f5f5;
+  --rt-muted: #666666;
+  --rt-border: #e8e8e8;
+  --rt-red: #b91c1c;
+  --rt-amber: #b45309;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  background: var(--rt-bg);
+  color: var(--rt-ink);
+  min-height: 100vh;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.rt-light .rt-wrap { max-width: 720px; margin: 0 auto; padding: 0 20px 120px; }
+
+.rt-light .rt-display { font-family: 'Nunito', system-ui, sans-serif; font-weight: 800; letter-spacing: -0.5px; }
+
+.rt-light .rt-kicker {
+  color: var(--rt-teal); text-transform: uppercase; letter-spacing: 3px;
+  font-size: 11px; margin-bottom: 10px;
+}
+
+.rt-light .rt-h1 { font-family: 'Nunito', sans-serif; font-size: 34px; font-weight: 900; line-height: 1.1; margin-bottom: 8px; }
+.rt-light .rt-lead { color: var(--rt-muted); font-size: 14px; margin-bottom: 24px; }
+
+.rt-light .rt-card {
+  background: var(--rt-bg); border: 1.5px solid var(--rt-border);
+  border-radius: 8px; padding: 18px; transition: border-color .15s;
+}
+.rt-light .rt-card.selectable { cursor: pointer; }
+.rt-light .rt-card.selectable:hover { border-color: var(--rt-ink); }
+.rt-light .rt-card.selected { border-color: var(--rt-teal); box-shadow: 0 0 0 1px var(--rt-teal); }
+.rt-light .rt-card.disabled { opacity: 0.45; cursor: not-allowed; }
+
+.rt-light label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--rt-muted); display: block; margin-bottom: 6px; }
+.rt-light input, .rt-light select, .rt-light textarea {
+  width: 100%; padding: 13px 16px; background: var(--rt-bg);
+  border: 1.5px solid var(--rt-border); border-radius: 6px; color: var(--rt-ink);
+  font-family: 'IBM Plex Mono', monospace; font-size: 15px; min-height: 44px;
+}
+.rt-light input:focus, .rt-light select:focus, .rt-light textarea:focus { outline: none; border-color: var(--rt-ink); }
+
+.rt-light .rt-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--rt-ink); color: #ffffff; padding: 13px 26px; border-radius: 6px;
+  font-weight: 700; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase;
+  border: 2px solid var(--rt-ink); cursor: pointer; font-family: 'IBM Plex Mono', monospace;
+  transition: .15s; min-height: 44px; text-decoration: none;
+}
+.rt-light .rt-btn:hover:not(:disabled) { background: #333333; border-color: #333333; }
+.rt-light .rt-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.rt-light .rt-btn.out { background: transparent; color: var(--rt-ink); }
+.rt-light .rt-btn.out:hover:not(:disabled) { background: var(--rt-ink); color: #ffffff; }
+.rt-light .rt-btn.teal { background: var(--rt-teal); border-color: var(--rt-teal); }
+.rt-light .rt-btn.teal:hover:not(:disabled) { background: #0f766e; border-color: #0f766e; }
+
+.rt-light .rt-pill {
+  display: inline-block; border: 1.5px solid var(--rt-border); color: var(--rt-muted);
+  padding: 4px 12px; border-radius: 50px; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+}
+.rt-light .rt-pill.teal { border-color: var(--rt-teal); color: var(--rt-teal); }
+.rt-light .rt-pill.amber { border-color: var(--rt-amber); color: var(--rt-amber); }
+.rt-light .rt-pill.red { border-color: var(--rt-red); color: var(--rt-red); }
+
+.rt-light .rt-total-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+  background: rgba(255,255,255,0.97); backdrop-filter: blur(10px);
+  border-top: 1.5px solid var(--rt-border); padding: 14px 20px;
+}
+.rt-light .rt-total-bar .rt-wrap-bar { max-width: 720px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+
+.rt-light .rt-steps { display: flex; gap: 6px; margin: 18px 0 26px; }
+.rt-light .rt-step-dot { height: 4px; flex: 1; border-radius: 2px; background: var(--rt-border); }
+.rt-light .rt-step-dot.done { background: var(--rt-teal); }
+
+.rt-light .rt-line { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--rt-border); font-size: 14px; }
+.rt-light .rt-line:last-child { border-bottom: none; }
+
+.rt-light .rt-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; border-bottom: 1px solid var(--rt-border); margin-bottom: 26px; }
+.rt-light .rt-logo { height: 34px; display: block; filter: invert(1); }
+
+.rt-light .rt-error { color: var(--rt-red); font-size: 13px; }
+.rt-light .rt-note { color: var(--rt-muted); font-size: 12px; }

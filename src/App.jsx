@@ -1,13 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import {
   Calendar, Users, MessageSquare, Search, Plus, X, Send, Euro, MapPin, Star,
-  Upload, Menu, Home, Settings, Building2, Edit, Paperclip, UserPlus, Zap, ShieldCheck
+  Upload, Menu, Home, Settings, Building2, Edit, Paperclip, UserPlus, Zap, ShieldCheck, Inbox
 } from 'lucide-react';
 import { useLocalStorage, checkLimit } from './useStorage';
 import { ProGate } from './ProGate';
 import { PricingModal } from './PricingModal';
 import QuestBoard, { computeQuests } from './questBoard';
 import PreflightPanel from './preflightPanel';
+import QuotesPanel from './quotesPanel';
 import './theme.css';
 
 const NEON_COLOR = 'var(--ef-brand)';
@@ -2047,8 +2048,8 @@ export default function App() {
       {showFirstRun && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)' }}>
           <div className="panel-glass glass-border rounded-2xl p-8 w-full max-w-md text-center" style={{ boxShadow: 'var(--glow-md)' }}>
-            <div className="w-12 h-12 rounded-xl mx-auto mb-4 flex items-center justify-center text-white font-bold" style={{ background: 'var(--accent)' }}>EF</div>
-            <h2 className="text-xl font-bold text-white mb-2">Welcome to EventFlow</h2>
+            <div className="w-12 h-12 rounded-xl mx-auto mb-4 flex items-center justify-center text-white font-bold" style={{ background: 'var(--accent)' }}>RT</div>
+            <h2 className="text-xl font-bold text-white mb-2">Welcome to RT Network</h2>
             <p className="text-sm mb-6" style={{ color: 'var(--text-2)' }}>How do you want to start?</p>
             <div className="space-y-3">
               <button
@@ -2071,7 +2072,7 @@ export default function App() {
       <div className="md:hidden app-bg border-b-2" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
         <div className="p-4 flex justify-between items-center">
           <div className="text-lg font-bold text-white flex items-center gap-2">
-            EventFlow
+            RT Network
             {demoWorkspace && <span className="text-xs px-1.5 py-0.5 rounded font-bold" style={{ background: 'rgba(245,166,35,0.15)', color: 'var(--color-amber)', fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.06em' }}>DEMO</span>}
           </div>
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2">
@@ -2089,9 +2090,9 @@ export default function App() {
         <nav className={`${mobileMenuOpen ? 'block fixed inset-y-0 left-0 z-30' : 'hidden'} md:relative md:block w-72 md:w-64 ${classes.panelBg} ${classes.border} md:h-screen overflow-y-auto`}
              style={{ borderColor: 'rgba(255,255,255,0.08)', boxShadow: '0 0 30px rgba(0,0,0,0.8)' }}>
           <div className="hidden md:flex items-center gap-3 p-5 border-b-2" style={{ borderColor: 'var(--border)' }}>
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: 'var(--accent)' }}>EF</div>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: 'var(--accent)' }}>RT</div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-base font-bold" style={{ color: 'var(--text-1)', fontFamily: 'var(--font-sans)' }}>EventFlow</h1>
+              <h1 className="text-base font-bold" style={{ color: 'var(--text-1)', fontFamily: 'var(--font-sans)' }}>RT Network</h1>
               <p className="text-xs" style={{ color: 'var(--text-3)' }}>Event planning CRM</p>
             </div>
             {demoWorkspace && <span className="text-xs px-1.5 py-0.5 rounded font-bold" style={{ background: 'rgba(245,166,35,0.15)', color: 'var(--color-amber)', fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.06em' }}>DEMO</span>}
@@ -2104,6 +2105,7 @@ export default function App() {
             </div>
             {[
               { id: 'dashboard', label: 'Dashboard', icon: Home },
+              { id: 'quotes', label: 'Quotes', icon: Inbox },
               { id: 'preflight', label: 'Pre-Flight', icon: ShieldCheck },
               { id: 'events', label: 'Events', icon: Calendar },
               { id: 'vendors', label: 'Vendors', icon: Building2 },
@@ -2318,6 +2320,28 @@ export default function App() {
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* Client quotes from the RT Network builder */}
+            {activeTab === 'quotes' && (
+              <QuotesPanel classes={classes} onConvert={(q) => {
+                const limit = checkLimit(plan, 'events', events.length);
+                if (!limit.allowed) { alert(limit.reason); return; }
+                setEvents(prev => [...prev, {
+                  id: Math.max(0, ...prev.map(e => e.id)) + 1,
+                  name: `${q.client_name} — ${q.event_type} (${q.ref})`,
+                  date: q.event_date || new Date().toISOString().slice(0, 10),
+                  type: q.event_type === 'wedding' ? 'Wedding' : q.event_type === 'corporate' ? 'Corporate' : 'Other',
+                  location: 'TBD',
+                  description: `Client quote ${q.ref} — ${q.client_email}${q.client_phone ? ` · ${q.client_phone}` : ''}`,
+                  budget: q.budget || q.items.reduce((s, i) => s + i.amount_eur, 0),
+                  spent: 0,
+                  guests: q.guests, confirmed: 0, status: 'planning',
+                  vendors: q.items.length, tasks: 0, completed: 0,
+                  team: [], schedule: [],
+                }]);
+                alert(`Quote ${q.ref} converted — see the Events tab.`);
+              }} />
             )}
 
             {/* Pre-Flight constraint report */}
@@ -2706,6 +2730,7 @@ export default function App() {
                     {[
                       { label: 'Groq API Key', key: 'groq_api_key', placeholder: 'gsk_...', hint: 'Free at console.groq.com' },
                       { label: 'OpenRouter API Key', key: 'openrouter_api_key', placeholder: 'sk-or-...', hint: 'Free models available at openrouter.ai' },
+                      { label: 'RT Admin API Token', key: 'rt_admin_token', placeholder: 'hex…', hint: 'Matches the ADMIN_TOKEN Pages secret — enables the Quotes tab' },
                     ].map(({ label, key, placeholder, hint }) => {
                       const val = localStorage.getItem(key) || '';
                       return (
@@ -2785,7 +2810,7 @@ export default function App() {
                 <div className="panel-glass glass-border rounded-lg p-5">
                   <h2 className="text-sm font-bold mb-3" style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em', color: 'var(--text-2)' }}>APP INFO</h2>
                   <div className="text-xs space-y-1" style={{ color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>
-                    <div>EventFlow CRM — atharux</div>
+                    <div>RT Network CRM — Rising Tide Collective</div>
                     <div>Data stored locally in browser</div>
                     <div>
                       <button onClick={() => { if (window.confirm('Reset all data? This cannot be undone.')) { localStorage.clear(); window.location.reload(); } }} className="text-red-400 hover:text-red-300 mt-2">
