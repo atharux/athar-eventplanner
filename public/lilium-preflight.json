@@ -73,6 +73,10 @@
         "STAFFING: role 'door_registration' needs 2 confirmed volunteer(s) for full window 18:00-20:00, only 0 confirmed (none); 2 unfilled REPLACE slot(s) on the roster",
         "STAFFING: role 'audio_mic' needs 1 confirmed volunteer(s) for full window 18:30-22:00, only 0 confirmed (none); 1 unfilled REPLACE slot(s) on the roster"
       ],
+      "recommended_actions": [
+        "Recruit 2 more volunteer(s) for 'door_registration' covering 18:00-20:00 \u2014 start by filling the REPLACE slot(s) already on the roster",
+        "Recruit 1 more volunteer(s) for 'audio_mic' covering 18:30-22:00 \u2014 start by filling the REPLACE slot(s) already on the roster"
+      ],
       "risk_flags": [
         "CAPACITY: expected attendees 150 at >=90% of venue maximum 150"
       ]

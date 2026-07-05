@@ -88,10 +88,17 @@ export default function PreflightPanel() {
       {/* Violations & risks */}
       {(d.violations.length > 0 || d.risk_flags.length > 0) && (
         <Card title="FINDINGS">
-          <div className="space-y-2">
+          <div className="space-y-3">
             {d.violations.map((v, i) => (
-              <div key={`v${i}`} className="flex items-start gap-2 text-sm text-red-300">
-                <ShieldAlert size={15} className="mt-0.5 flex-shrink-0" /> {v}
+              <div key={`v${i}`}>
+                <div className="flex items-start gap-2 text-sm text-red-300">
+                  <ShieldAlert size={15} className="mt-0.5 flex-shrink-0" /> {v}
+                </div>
+                {d.recommended_actions?.[i] && (
+                  <div className="text-xs text-emerald-300 mt-1 ml-6">
+                    To fix → {d.recommended_actions[i]}
+                  </div>
+                )}
               </div>
             ))}
             {d.risk_flags.map((r, i) => (

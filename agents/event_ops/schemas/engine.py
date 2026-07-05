@@ -83,6 +83,7 @@ class EventConstraintEngine(DeterministicTemplate):
         data = input_data["data"]
         constraints = input_data["constraints"]
         violations = []
+        actions = []  # one deterministic, templated next step per violation
         risks = []
 
         # ---------------- BUDGET ----------------
@@ -111,10 +112,17 @@ class EventConstraintEngine(DeterministicTemplate):
                 f"BUDGET: committed spend {committed_total} EUR breached the absolute "
                 f"hard stop of {hard_stop_at} EUR — block all further commitments"
             )
+            actions.append(
+                f"Freeze all new commitments now; bring committed spend back under "
+                f"{hard_stop_at} EUR or renegotiate the hard stop"
+            )
         elif committed_total > ceiling:
             violations.append(
                 f"BUDGET: committed spend {committed_total} EUR exceeds planned ceiling "
                 f"{ceiling} EUR (hard stop at {hard_stop_at} EUR)"
+            )
+            actions.append(
+                f"Reduce committed spend by {committed_total - ceiling} EUR or raise the planned ceiling"
             )
         elif ceiling > 0 and committed_total >= 0.8 * ceiling:
             risks.append(
@@ -128,6 +136,9 @@ class EventConstraintEngine(DeterministicTemplate):
             if spent > cap:
                 violations.append(
                     f"BUDGET: category '{cat}' committed {spent} EUR exceeds category ceiling {cap} EUR"
+                )
+                actions.append(
+                    f"Cut '{cat}' spend by {spent - cap} EUR or raise its ceiling by the same amount"
                 )
             elif cap > 0 and spent >= 0.8 * cap:
                 risks.append(
@@ -149,6 +160,9 @@ class EventConstraintEngine(DeterministicTemplate):
             if capacity_out["over"]:
                 violations.append(
                     f"CAPACITY: expected attendees {attendees} exceed venue maximum {max_att}"
+                )
+                actions.append(
+                    f"Reduce the guest list to {max_att} or book a larger space"
                 )
             elif max_att > 0 and attendees >= 0.9 * max_att:
                 risks.append(
@@ -186,6 +200,10 @@ class EventConstraintEngine(DeterministicTemplate):
                         f"window {shift}, only {len(covering)} confirmed ({covering or 'none'})"
                         + (f"; {unfilled} unfilled REPLACE slot(s) on the roster" if unfilled else "")
                     )
+                    actions.append(
+                        f"Recruit {required - len(covering)} more volunteer(s) for '{role}' covering {shift}"
+                        + (" — start by filling the REPLACE slot(s) already on the roster" if unfilled else "")
+                    )
                 elif unfilled:
                     risks.append(
                         f"STAFFING: role '{role}' window {shift} coverage met, but roster still "
@@ -209,6 +227,9 @@ class EventConstraintEngine(DeterministicTemplate):
                 violations.append(
                     f"AV: '{item_id}' ({item.get('type', 'unknown')}) dependency chain broken — "
                     f"missing from item list: {missing}"
+                )
+                actions.append(
+                    f"Procure and add to the gear list before the event: {', '.join(missing)}"
                 )
 
         # Conflict detection: same item id booked twice in overlapping windows.
@@ -237,6 +258,9 @@ class EventConstraintEngine(DeterministicTemplate):
                             f"AV: '{item_id}' double-booked — {overlapping} concurrent assignment(s) "
                             f"({conflict['session']} {conflict['window']}) but qty={qty}"
                         )
+                        actions.append(
+                            f"Add another '{item_id}' unit or move one booking out of {conflict['window']}"
+                        )
 
         # ---------------- RESULT ----------------
         validated = {
@@ -253,6 +277,7 @@ class EventConstraintEngine(DeterministicTemplate):
             "staffing": staffing_out,
             "av_equipment": av_out,
             "violations": violations,
+            "recommended_actions": actions,  # aligned 1:1 with violations
             "risk_flags": risks,
         })
         return ValidationResultSchema(
