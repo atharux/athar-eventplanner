@@ -46,7 +46,7 @@
             "confirmed_full_window": 2,
             "volunteers": [
               "Athar",
-              "Cheryl"
+              "Cherry"
             ],
             "unfilled_placeholder_slots": 0,
             "met": true
@@ -72,6 +72,6 @@
       "violations": [],
       "risk_flags": []
     },
-    "input_hash": "22e9771b73f14e55479b31a09993f6f9"
+    "input_hash": "345a58280d28fed9189b4012e6e51935"
   }
 }

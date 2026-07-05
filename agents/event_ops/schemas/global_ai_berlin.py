@@ -11,7 +11,7 @@ Constraint figures supplied by the operator (pilot spec, 2026-07-04):
   check flags the same item id booked twice in overlapping windows
 
 Roster and date confirmed 2026-07-04: corporate-party pilot on 2026-07-18,
-volunteers Athar (registration + audio) and Cheryl (registration).
+volunteers Athar (registration + audio) and Cherry (registration).
 Catering is required — commit spend under budget.committed_spend.catering
 as bookings land.
 
@@ -55,9 +55,9 @@ GLOBAL_AI_BERLIN_INPUT = {
             "volunteer_roster": [
                 # Athar covers both roles (registration + audio); the
                 # 17:30-19:00 overlap needs a desk handoff when the audio
-                # shift starts — Cheryl holds the desk solo in that window.
+                # shift starts — Cherry holds the desk solo in that window.
                 {"name": "Athar",  "role": ["registration_desk", "audio_mic"], "availability": "17:00-21:30"},
-                {"name": "Cheryl", "role": "registration_desk", "availability": "17:00-19:00"},
+                {"name": "Cherry", "role": "registration_desk", "availability": "17:00-19:00"},
             ]
         },
 

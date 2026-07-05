@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
-  Calendar, Users, MessageSquare, Search, Plus, X, Send, DollarSign, MapPin, Star,
+  Calendar, Users, MessageSquare, Search, Plus, X, Send, Euro, MapPin, Star,
   Upload, Menu, Home, Settings, Building2, Edit, Paperclip, UserPlus, Zap, ShieldCheck
 } from 'lucide-react';
 import { useLocalStorage, checkLimit } from './useStorage';
@@ -210,68 +210,16 @@ function AddMemberInline({ onAdd, onClose }) {
   );
 }
 
-export default function App() {
-  const [theme, setTheme] = useState('dark');
-  const classes = useThemeClasses(theme);
+/* -------------------- Enhanced Create Event Modal with AI Prompt -------------------- */
 
-  // Plan state — stored in localStorage; 'free' | 'pro'
-  const [plan, setPlan] = useLocalStorage('ef_plan', 'free');
-  const [showPricing, setShowPricing] = useState(false);
-
-  // UI state
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showCreateEvent, setShowCreateEvent] = useState(false);
-  const [showVendorModal, setShowVendorModal] = useState(false);
-  const [showEventDetail, setShowEventDetail] = useState(false);
-  const [showTaskDetail, setShowTaskDetail] = useState(false);
-  const [selectedVendor, setSelectedVendor] = useState(null);
-  const [selectedEventId, setSelectedEventId] = useState(null);
-  const [selectedTaskId, setSelectedTaskId] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterCategory, setFilterCategory] = useState('All');
-  const [messageInput, setMessageInput] = useState('');
-  const [selectedConversation, setSelectedConversation] = useState(0);
-  const [activeEventTab, setActiveEventTab] = useState('overview');
-  const [taskView, setTaskView] = useState('list');
-
-  // Modal toggles
-  const [showAddBudgetModal, setShowAddBudgetModal] = useState(false);
-  const [showAddGuestModal, setShowAddGuestModal] = useState(false);
-  const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
-  const [showAddClientModal, setShowAddClientModal] = useState(false);
-
-  // Venue discovery
-  const [discoverCity, setDiscoverCity] = useState('');
-  const [discoverCategory, setDiscoverCategory] = useState('event space');
-  const [discoverResults, setDiscoverResults] = useState([]);
-  const [isDiscovering, setIsDiscovering] = useState(false);
-  const [discoverError, setDiscoverError] = useState('');
-  const [showClientDetailModal, setShowClientDetailModal] = useState(false);
-  const [selectedClient, setSelectedClient] = useState(null);
-
-  const [showAddTaskModal, setShowAddTaskModal] = useState(false);
-  const [showAIOutput, setShowAIOutput] = useState(false);
-  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
-  const [showAddVendorToEvent, setShowAddVendorToEvent] = useState(false);
-  const [showNewConversation, setShowNewConversation] = useState(false);
-  const [showEditEvent, setShowEditEvent] = useState(false);
-  const [newEventForm, setNewEventForm] = useState({
-  name: '',
-  date: '',
-  type: 'Corporate',
-  location: '',
-  description: '',
-  budget: '',
-  guests: ''
-});
-
-    /* -------------------- Enhanced Create Event Modal with AI Prompt -------------------- */
-
-const CreateEventModal = ({ onClose }) => {
+const CreateEventModal = ({ onClose, events, setEvents, plan, classes }) => {
   // Add AI-related state
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showAIOutput, setShowAIOutput] = useState(false);
+  const [newEventForm, setNewEventForm] = useState({
+    name: '', date: '', type: 'Corporate', location: '', description: '', budget: '', guests: ''
+  });
 
   const handleCreate = () => {
     if (!newEventForm.name || !newEventForm.date) {
@@ -613,6 +561,223 @@ const CreateEventModal = ({ onClose }) => {
     </div>
   );
 };
+
+/* Task Detail Modal (module scope so re-renders never remount it) */
+const TaskDetailModal = ({ task, onClose, setTasks, classes }) => {
+    const [comment, setComment] = useState('');
+    const [newSubtask, setNewSubtask] = useState('');
+    if (!task) return null;
+    const update = (patch) => setTasks(prev => prev.map(t => t.id === task.id ? { ...t, ...patch } : t));
+    const addSubtask = () => {
+      const title = newSubtask.trim();
+      if (!title) return;
+      update({ subtasks: [...task.subtasks, { id: Math.max(0, ...task.subtasks.map(s => s.id)) + 1, title, completed: false }] });
+      setNewSubtask('');
+    };
+    const addComment = () => {
+      const text = comment.trim();
+      if (!text) return;
+      update({ comments: [...task.comments, { user: 'You', text, time: 'just now' }] });
+      setComment('');
+    };
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-end md:items-center justify-center"
+        style={{ backgroundColor: 'rgba(0,0,0,0.8)' /* 80% dark overlay */, backdropFilter: 'blur(8px)' }}
+      >
+        <div
+          className={`w-full md:max-w-4xl md:max-h-[90vh] overflow-y-auto ${classes.panelBg} ${classes.border} rounded-2xl`}
+          style={{
+            boxShadow: neonBoxShadow,
+            borderColor: 'rgba(255,255,255,0.08)'
+          }}
+        >
+          <div className="sticky top-0 p-4 flex justify-between items-start border-b-2" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+            <div className="flex-1">
+              <input
+                type="text"
+                defaultValue={task.title}
+                onBlur={e => { const v = e.target.value.trim(); if (v && v !== task.title) update({ title: v }); }}
+                className="w-full bg-transparent text-xl font-bold focus:outline-none"
+                style={{ color: classes.strongText === 'text-slate-100' ? '#fff' : '#111' }}
+              />
+              <div className="flex items-center gap-3 mt-2">
+                <span className={`text-xs px-2 py-1 font-semibold ${task.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : task.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 'bg-gray-200 text-gray-700'}`}>
+                  {task.status}
+                </span>
+                <span className={`text-xs px-2 py-1 font-semibold ${task.priority === 'high' ? 'bg-red-100 text-red-800' : task.priority === 'medium' ? 'bg-amber-100 text-amber-800' : 'bg-gray-200 text-gray-700'}`}>
+                  {task.priority}
+                </span>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-slate-300 hover:text-white p-2">
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-2 space-y-6">
+              <div>
+                <label className="text-sm font-semibold text-slate-300 mb-2 block">Description</label>
+                <textarea rows="3" defaultValue={task.description} onBlur={e => { const v = e.target.value; if (v !== task.description) update({ description: v }); }} className="dark-input w-full p-3 rounded-md" />
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <label className="text-sm font-semibold text-slate-300">Subtasks</label>
+                  <span className="text-xs text-slate-400">{task.subtasks.filter(s => s.completed).length}/{task.subtasks.length} completed</span>
+                </div>
+                <div className="space-y-2">
+                  {task.subtasks.map(s => (
+                    <div key={s.id} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-md cursor-pointer" onClick={() => {
+                      setTasks(prev => prev.map(t => t.id === task.id
+                        ? { ...t, subtasks: t.subtasks.map(sub => sub.id === s.id ? { ...sub, completed: !sub.completed } : sub) }
+                        : t
+                      ));
+                    }}>
+                      <input type="checkbox" checked={s.completed} onChange={() => {}} className="w-4 h-4 cursor-pointer" style={{ accentColor: 'var(--accent)' }} />
+                      <span className={`text-sm ${s.completed ? 'line-through text-slate-400' : 'text-slate-200'}`}>{s.title}</span>
+                    </div>
+                  ))}
+                  <div className="flex gap-2 mt-2">
+                    <input type="text" value={newSubtask} onChange={e => setNewSubtask(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') addSubtask(); }}
+                      placeholder="New subtask..." className="dark-input flex-1 p-2 rounded-md text-sm" />
+                    <button onClick={addSubtask} className="text-sm font-semibold flex items-center gap-1 text-purple-300 px-2">
+                      <Plus size={14} /> Add
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-slate-300 mb-3 block">Comments</label>
+                <div className="space-y-3">
+                  {task.comments.map((c, idx) => (
+                    <div key={idx} className="flex gap-3">
+                      <div className="w-8 h-8 bg-purple-700 text-white flex items-center justify-center rounded">{c.user.split(' ').map(n => n[0]).join('')}</div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold">{c.user}</span>
+                          <span className="text-xs text-slate-400">{c.time}</span>
+                        </div>
+                        <p className="text-sm text-slate-200 mt-1">{c.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex gap-3 mt-4">
+                    <div className="w-8 h-8 bg-slate-600 flex items-center justify-center rounded text-slate-200">You</div>
+                    <input type="text" value={comment} onChange={e => setComment(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') addComment(); }}
+                      placeholder="Add a comment... (Enter to post)" className="dark-input flex-1 p-2 rounded-md" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-400 mb-2 block">ASSIGNED TO</label>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 bg-purple-700 text-white flex items-center justify-center rounded text-xs">{task.assignedTo.split(' ').map(n => n[0]).join('')}</div>
+                  <span className="text-sm font-semibold">{task.assignedTo}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-400 mb-2 block">DUE DATE</label>
+                <div className="flex items-center gap-2 text-sm text-slate-300">
+                  <Calendar size={14} />
+                  {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-400 mb-2 block">EVENT</label>
+                <div className="text-sm text-slate-200">{task.event}</div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-400 mb-2 block">TAGS</label>
+                <div className="flex flex-wrap gap-2">
+                  {task.tags.map(tag => <span key={tag} className="text-xs px-2 py-1 rounded-md bg-white/5 text-slate-200">{tag}</span>)}
+                </div>
+              </div>
+
+              {task.attachments.length > 0 && (
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 mb-2 block">ATTACHMENTS</label>
+                  <div className="space-y-2">
+                    {task.attachments.map((f, i) => (
+                      <div key={i} className="flex items-center gap-2 p-2 rounded-md hover:bg-white/5 cursor-pointer">
+                        <Paperclip size={14} /> <span className="truncate">{f}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+
+export default function App() {
+  const [theme, setTheme] = useState('dark');
+  const classes = useThemeClasses(theme);
+
+  // Plan state — stored in localStorage; 'free' | 'pro'
+  // Pilot builds default to 'pro' so seeded demo data never blocks real entry.
+  const [plan, setPlan] = useLocalStorage('ef_plan', 'pro');
+  const [showPricing, setShowPricing] = useState(false);
+
+  // First-run: offer demo data vs a clean workspace; 'ef_workspace' also
+  // drives the DEMO badge visibility.
+  const [showFirstRun, setShowFirstRun] = useState(() =>
+    typeof window !== 'undefined' && !localStorage.getItem('ef_workspace'));
+  const demoWorkspace = typeof window === 'undefined' || localStorage.getItem('ef_workspace') !== 'clean';
+
+  // UI state
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [showVendorModal, setShowVendorModal] = useState(false);
+  const [showEventDetail, setShowEventDetail] = useState(false);
+  const [showTaskDetail, setShowTaskDetail] = useState(false);
+  const [selectedVendor, setSelectedVendor] = useState(null);
+  const [selectedEventId, setSelectedEventId] = useState(null);
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCategory, setFilterCategory] = useState('All');
+  const [messageInput, setMessageInput] = useState('');
+  const [selectedConversation, setSelectedConversation] = useState(0);
+  const [activeEventTab, setActiveEventTab] = useState('overview');
+  const [taskView, setTaskView] = useState('list');
+
+  // Modal toggles
+  const [showAddBudgetModal, setShowAddBudgetModal] = useState(false);
+  const [showAddGuestModal, setShowAddGuestModal] = useState(false);
+  const [showAddScheduleModal, setShowAddScheduleModal] = useState(false);
+  const [showAddClientModal, setShowAddClientModal] = useState(false);
+
+  // Venue discovery
+  const [discoverCity, setDiscoverCity] = useState('');
+  const [discoverCategory, setDiscoverCategory] = useState('event space');
+  const [discoverResults, setDiscoverResults] = useState([]);
+  const [isDiscovering, setIsDiscovering] = useState(false);
+  const [discoverError, setDiscoverError] = useState('');
+  const [showClientDetailModal, setShowClientDetailModal] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
+
+  const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [showAddVendorToEvent, setShowAddVendorToEvent] = useState(false);
+  const [showNewConversation, setShowNewConversation] = useState(false);
+  const [showEditEvent, setShowEditEvent] = useState(false);
+
   /* ── Persisted data ── */
   const [events, setEvents] = useLocalStorage('ef_events', [
     {
@@ -794,7 +959,7 @@ const CreateEventModal = ({ onClose }) => {
   async function handleDiscover() {
     const scraperUrl = import.meta.env.VITE_SCRAPER_URL;
     if (!scraperUrl) {
-      setDiscoverError('Set VITE_SCRAPER_URL in .env.local to enable live discovery.');
+      setDiscoverError('Live venue discovery is not enabled in this deployment yet — you can still add venues manually.');
       return;
     }
     if (!discoverCity.trim()) return;
@@ -849,146 +1014,6 @@ const CreateEventModal = ({ onClose }) => {
 
   /* -------------------- Nested UI components (kept inline to remain single file) -------------------- */
 
-  /* Task Detail Modal (inline) */
-  const TaskDetailModal = ({ task, onClose }) => {
-    if (!task) return null;
-    return (
-      <div
-        className="fixed inset-0 z-50 flex items-end md:items-center justify-center"
-        style={{ backgroundColor: 'rgba(0,0,0,0.8)' /* 80% dark overlay */, backdropFilter: 'blur(8px)' }}
-      >
-        <div
-          className={`w-full md:max-w-4xl md:max-h-[90vh] overflow-y-auto ${classes.panelBg} ${classes.border} rounded-2xl`}
-          style={{
-            boxShadow: neonBoxShadow,
-            borderColor: 'rgba(255,255,255,0.08)'
-          }}
-        >
-          <div className="sticky top-0 p-4 flex justify-between items-start border-b-2" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-            <div className="flex-1">
-              <input
-                type="text"
-                defaultValue={task.title}
-                className="w-full bg-transparent text-xl font-bold focus:outline-none"
-                style={{ color: classes.strongText === 'text-slate-100' ? '#fff' : '#111' }}
-              />
-              <div className="flex items-center gap-3 mt-2">
-                <span className={`text-xs px-2 py-1 font-semibold ${task.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : task.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 'bg-gray-200 text-gray-700'}`}>
-                  {task.status}
-                </span>
-                <span className={`text-xs px-2 py-1 font-semibold ${task.priority === 'high' ? 'bg-red-100 text-red-800' : task.priority === 'medium' ? 'bg-amber-100 text-amber-800' : 'bg-gray-200 text-gray-700'}`}>
-                  {task.priority}
-                </span>
-              </div>
-            </div>
-            <button onClick={onClose} className="text-slate-300 hover:text-white p-2">
-              <X size={20} />
-            </button>
-          </div>
-
-          <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 space-y-6">
-              <div>
-                <label className="text-sm font-semibold text-slate-300 mb-2 block">Description</label>
-                <textarea rows="3" defaultValue={task.description} className="dark-input w-full p-3 rounded-md" />
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <label className="text-sm font-semibold text-slate-300">Subtasks</label>
-                  <span className="text-xs text-slate-400">{task.subtasks.filter(s => s.completed).length}/{task.subtasks.length} completed</span>
-                </div>
-                <div className="space-y-2">
-                  {task.subtasks.map(s => (
-                    <div key={s.id} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-md cursor-pointer" onClick={() => {
-                      setTasks(prev => prev.map(t => t.id === task.id
-                        ? { ...t, subtasks: t.subtasks.map(sub => sub.id === s.id ? { ...sub, completed: !sub.completed } : sub) }
-                        : t
-                      ));
-                    }}>
-                      <input type="checkbox" checked={s.completed} onChange={() => {}} className="w-4 h-4 cursor-pointer" style={{ accentColor: 'var(--accent)' }} />
-                      <span className={`text-sm ${s.completed ? 'line-through text-slate-400' : 'text-slate-200'}`}>{s.title}</span>
-                    </div>
-                  ))}
-                  <button className="text-sm font-semibold mt-2 flex items-center gap-2 text-purple-300">
-                    <Plus size={14} /> Add subtask
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-semibold text-slate-300 mb-3 block">Comments</label>
-                <div className="space-y-3">
-                  {task.comments.map((c, idx) => (
-                    <div key={idx} className="flex gap-3">
-                      <div className="w-8 h-8 bg-purple-700 text-white flex items-center justify-center rounded">{c.user.split(' ').map(n => n[0]).join('')}</div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold">{c.user}</span>
-                          <span className="text-xs text-slate-400">{c.time}</span>
-                        </div>
-                        <p className="text-sm text-slate-200 mt-1">{c.text}</p>
-                      </div>
-                    </div>
-                  ))}
-                  <div className="flex gap-3 mt-4">
-                    <div className="w-8 h-8 bg-slate-600 flex items-center justify-center rounded text-slate-200">You</div>
-                    <input type="text" placeholder="Add a comment..." className="dark-input flex-1 p-2 rounded-md" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-semibold text-slate-400 mb-2 block">ASSIGNED TO</label>
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-purple-700 text-white flex items-center justify-center rounded text-xs">{task.assignedTo.split(' ').map(n => n[0]).join('')}</div>
-                  <span className="text-sm font-semibold">{task.assignedTo}</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-400 mb-2 block">DUE DATE</label>
-                <div className="flex items-center gap-2 text-sm text-slate-300">
-                  <Calendar size={14} />
-                  {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-400 mb-2 block">EVENT</label>
-                <div className="text-sm text-slate-200">{task.event}</div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-400 mb-2 block">TAGS</label>
-                <div className="flex flex-wrap gap-2">
-                  {task.tags.map(tag => <span key={tag} className="text-xs px-2 py-1 rounded-md bg-white/5 text-slate-200">{tag}</span>)}
-                </div>
-              </div>
-
-              {task.attachments.length > 0 && (
-                <div>
-                  <label className="text-xs font-semibold text-slate-400 mb-2 block">ATTACHMENTS</label>
-                  <div className="space-y-2">
-                    {task.attachments.map((f, i) => (
-                      <div key={i} className="flex items-center gap-2 p-2 rounded-md hover:bg-white/5 cursor-pointer">
-                        <Paperclip size={14} /> <span className="truncate">{f}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <button className="w-full py-2 rounded-md font-semibold bg-white/5 hover:bg-white/10">Add Attachment</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   /* Event Detail Overlay (inline) */
   const EventDetailView = ({ event, onClose }) => {
     if (!event) return null;
@@ -1010,11 +1035,33 @@ const CreateEventModal = ({ onClose }) => {
                   <button onClick={() => setShowEditEvent(true)} className="bg-white/5 hover:bg-white/10 text-white px-4 py-2 text-sm font-semibold rounded-md flex items-center gap-2">
                     <Edit size={14} /> Edit
                   </button>
+                  <button
+                    onClick={() => {
+                      if (!window.confirm(`Delete "${event.name}" and all its tasks, guests and budget items? This cannot be undone.`)) return;
+                      setTasks(prev => prev.filter(t => t.event !== event.name));
+                      setGuests(prev => prev.filter(g => g.event !== event.name));
+                      setBudgetItems(prev => prev.filter(b => b.event !== event.name));
+                      setEvents(prev => prev.filter(ev => ev.id !== event.id));
+                      onClose();
+                    }}
+                    className="bg-white/5 hover:bg-red-900/40 text-red-300 px-4 py-2 text-sm font-semibold rounded-md flex items-center gap-2"
+                  >
+                    <X size={14} /> Delete
+                  </button>
                 </div>
               </div>
 
               {showEditEvent && (
-                <EditEventInline event={event} onSave={(updated) => { setEvents(prev => prev.map(ev => ev.id === updated.id ? { ...ev, ...updated } : ev)); setShowEditEvent(false); }} onClose={() => setShowEditEvent(false)} />
+                <EditEventInline event={event} onSave={(updated) => {
+                  const oldName = event.name;
+                  setEvents(prev => prev.map(ev => ev.id === updated.id ? { ...ev, ...updated } : ev));
+                  if (updated.name && updated.name !== oldName) {
+                    setTasks(prev => prev.map(t => t.event === oldName ? { ...t, event: updated.name } : t));
+                    setGuests(prev => prev.map(g => g.event === oldName ? { ...g, event: updated.name } : g));
+                    setBudgetItems(prev => prev.map(b => b.event === oldName ? { ...b, event: updated.name } : b));
+                  }
+                  setShowEditEvent(false);
+                }} onClose={() => setShowEditEvent(false)} />
               )}
 
               <h1 className="text-2xl font-bold text-white mb-2">{event.name}</h1>
@@ -1068,8 +1115,8 @@ const CreateEventModal = ({ onClose }) => {
                   <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                     <h2 className="text-base font-semibold text-white mb-4">Quick Stats</h2>
                     <div className="space-y-3 text-sm text-slate-300">
-                      <div className="flex justify-between"><span>Budget</span><span className="font-semibold text-white">${event.budget.toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span>Spent</span><span className="font-semibold text-emerald-400">${event.spent.toLocaleString()}</span></div>
+                      <div className="flex justify-between"><span>Budget</span><span className="font-semibold text-white">€{event.budget.toLocaleString()}</span></div>
+                      <div className="flex justify-between"><span>Spent</span><span className="font-semibold text-emerald-400">€{event.spent.toLocaleString()}</span></div>
                       <div className="flex justify-between"><span>Guests</span><span className="font-semibold text-white">{event.guests}</span></div>
                       <div className="flex justify-between"><span>Confirmed</span><span className="font-semibold text-emerald-400">{event.confirmed}</span></div>
                     </div>
@@ -1228,15 +1275,15 @@ const CreateEventModal = ({ onClose }) => {
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
       <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
         <div className="text-sm text-slate-400 mb-1">Total Budget</div>
-        <div className="text-2xl font-bold text-white">${event.budget.toLocaleString()}</div>
+        <div className="text-2xl font-bold text-white">€{event.budget.toLocaleString()}</div>
       </div>
       <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
         <div className="text-sm text-slate-400 mb-1">Spent</div>
-        <div className="text-2xl font-bold text-emerald-400">${event.spent.toLocaleString()}</div>
+        <div className="text-2xl font-bold text-emerald-400">€{event.spent.toLocaleString()}</div>
       </div>
       <div className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
         <div className="text-sm text-slate-400 mb-1">Remaining</div>
-        <div className="text-2xl font-bold text-purple-400">${(event.budget - event.spent).toLocaleString()}</div>
+        <div className="text-2xl font-bold text-purple-400">€{(event.budget - event.spent).toLocaleString()}</div>
       </div>
     </div>
 
@@ -1996,10 +2043,37 @@ const CreateEventModal = ({ onClose }) => {
 
   return (
     <div data-theme={theme} className={`app-root min-h-screen ${classes.appBg} font-sans`}>
+      {/* First-run choice: explore demo data or start clean */}
+      {showFirstRun && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)' }}>
+          <div className="panel-glass glass-border rounded-2xl p-8 w-full max-w-md text-center" style={{ boxShadow: 'var(--glow-md)' }}>
+            <div className="w-12 h-12 rounded-xl mx-auto mb-4 flex items-center justify-center text-white font-bold" style={{ background: 'var(--accent)' }}>EF</div>
+            <h2 className="text-xl font-bold text-white mb-2">Welcome to EventFlow</h2>
+            <p className="text-sm mb-6" style={{ color: 'var(--text-2)' }}>How do you want to start?</p>
+            <div className="space-y-3">
+              <button
+                onClick={() => { localStorage.setItem('ef_workspace', 'clean'); ['ef_events','ef_vendors','ef_venues','ef_convos','ef_tasks','ef_budget','ef_guests','ef_clients'].forEach(k => localStorage.setItem(k, '[]')); window.location.reload(); }}
+                className="w-full py-3 rounded-md font-semibold text-white bg-purple-700 hover:bg-purple-600">
+                Start clean — plan my real event
+              </button>
+              <button
+                onClick={() => { localStorage.setItem('ef_workspace', 'demo'); setShowFirstRun(false); }}
+                className="w-full py-3 rounded-md font-semibold" style={{ background: 'var(--surface-3)', color: 'var(--text-1)' }}>
+                Explore with demo data
+              </button>
+            </div>
+            <p className="text-xs mt-4" style={{ color: 'var(--text-3)' }}>You can switch anytime in Settings → Data.</p>
+          </div>
+        </div>
+      )}
+
       {/* Top mobile header */}
       <div className="md:hidden app-bg border-b-2" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
         <div className="p-4 flex justify-between items-center">
-          <div className="text-lg font-bold text-white">EventFlow</div>
+          <div className="text-lg font-bold text-white flex items-center gap-2">
+            EventFlow
+            {demoWorkspace && <span className="text-xs px-1.5 py-0.5 rounded font-bold" style={{ background: 'rgba(245,166,35,0.15)', color: 'var(--color-amber)', fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.06em' }}>DEMO</span>}
+          </div>
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2">
             <Menu size={20} className="text-slate-200" />
           </button>
@@ -2020,7 +2094,7 @@ const CreateEventModal = ({ onClose }) => {
               <h1 className="text-base font-bold" style={{ color: 'var(--text-1)', fontFamily: 'var(--font-sans)' }}>EventFlow</h1>
               <p className="text-xs" style={{ color: 'var(--text-3)' }}>Event planning CRM</p>
             </div>
-            <span className="text-xs px-1.5 py-0.5 rounded font-bold" style={{ background: 'rgba(245,166,35,0.15)', color: 'var(--color-amber)', fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.06em' }}>DEMO</span>
+            {demoWorkspace && <span className="text-xs px-1.5 py-0.5 rounded font-bold" style={{ background: 'rgba(245,166,35,0.15)', color: 'var(--color-amber)', fontFamily: 'var(--font-mono)', fontSize: '0.5rem', letterSpacing: '0.06em' }}>DEMO</span>}
           </div>
 
           <div className="p-4 space-y-1">
@@ -2280,7 +2354,7 @@ const CreateEventModal = ({ onClose }) => {
                       <div className="space-y-2 mb-4 text-sm text-slate-300">
                         <div className="flex items-center gap-2"><Calendar size={14} />{new Date(event.date).toLocaleDateString()}</div>
                         <div className="flex items-center gap-2"><Users size={14} />{event.guests} guests</div>
-                        <div className="flex items-center gap-2"><DollarSign size={14} />${event.spent.toLocaleString()} / ${event.budget.toLocaleString()}</div>
+                        <div className="flex items-center gap-2"><Euro size={14} />€{event.spent.toLocaleString()} / €{event.budget.toLocaleString()}</div>
                       </div>
                       <div className="rounded p-3" style={{ borderColor: 'rgba(255,255,255,0.05)', background: 'var(--surface-2)', border: '2px solid var(--border)' }}>
                         <div className="flex justify-between text-xs mb-2"><span className="text-slate-300">Progress</span><span className="font-semibold text-white">{event.tasks ? Math.round((event.completed/event.tasks)*100) : 0}%</span></div>
@@ -2393,7 +2467,7 @@ const CreateEventModal = ({ onClose }) => {
                             <p className="text-xs text-purple-300 mb-2 capitalize">{v.category}</p>
                             <div className="space-y-1 text-xs text-slate-400 mb-3">
                               {v.phone && <div className="flex items-center gap-1">📞 {v.phone}</div>}
-                              {v.website && (
+                              {v.website && /^https?:\/\//i.test(v.website) && (
                                 <a href={v.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-purple-300 hover:text-purple-200 truncate">
                                   🌐 {v.website.replace(/^https?:\/\//, '')}
                                 </a>
@@ -2694,6 +2768,7 @@ const CreateEventModal = ({ onClose }) => {
                     <button
                       onClick={() => {
                         if (window.confirm('Clear the demo data and start with an empty workspace?')) {
+                          localStorage.setItem('ef_workspace', 'clean');
                           ['ef_events','ef_vendors','ef_venues','ef_convos','ef_tasks','ef_budget','ef_guests','ef_clients'].forEach(k => localStorage.setItem(k, '[]'));
                           window.location.reload();
                         }
@@ -2726,8 +2801,8 @@ const CreateEventModal = ({ onClose }) => {
       </div>
 
       {/* Modals rendered at root so they overlay everything */}
-      {showCreateEvent && <CreateEventModal onClose={() => setShowCreateEvent(false)} />}
-      {showTaskDetail && <TaskDetailModal task={selectedTask} onClose={() => setShowTaskDetail(false)} />}
+      {showCreateEvent && <CreateEventModal onClose={() => setShowCreateEvent(false)} events={events} setEvents={setEvents} plan={plan} classes={classes} />}
+      {showTaskDetail && <TaskDetailModal task={selectedTask} onClose={() => setShowTaskDetail(false)} setTasks={setTasks} classes={classes} />}
       {showEventDetail && <EventDetailView event={selectedEvent} onClose={() => setShowEventDetail(false)} />}
 
       {/* Vendor modal */}
