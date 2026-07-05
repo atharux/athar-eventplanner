@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { VENUES, SERVICES, KIND_LABELS, lineTotal, priceLabel, effectivePerGuest, venueCapacityFor } from './data/catalog';
+import { buildRunOfShow } from './data/runOfShow';
+import PlanChat from './planChat';
 import './rtTheme.css';
 
 /* RT Network — client quote builder (#plan).
@@ -49,6 +51,7 @@ async function submitQuote(payload) {
 }
 
 export default function PlanEvent() {
+  const [mode, setMode] = useState('chat');          // chat | steps
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({ type: 'wedding', date: '', guests: 80, budget: '' });
   const [venueId, setVenueId] = useState(null);
@@ -99,6 +102,42 @@ export default function PlanEvent() {
   const budget = Number(form.budget) || 0;
   const overBudget = budget > 0 && total > budget;
 
+  /* Deterministic run of show from the current package — no AI. */
+  const runOfShow = useMemo(() => {
+    if (!venue && lines.length === 0) return [];
+    return buildRunOfShow({
+      eventType: form.type, hours, guests, staffCount,
+      selections: selected, venueName: venue?.name || 'the venue',
+    });
+  }, [form.type, hours, guests, staffCount, selected, venue, lines.length]);
+
+  /* Concierge chat → same state as the stepper. */
+  const chatSlots = {
+    event_type: form.type, event_date: form.date || null, guests, budget: budget || null,
+    venue_id: venueId, selections: selected, hours, staff_count: staffCount,
+  };
+  function applySlots(s) {
+    if (!s || typeof s !== 'object') return;
+    setForm(f => ({
+      ...f,
+      ...(s.event_type && ['wedding', 'corporate', 'party'].includes(s.event_type) ? { type: s.event_type } : {}),
+      ...(s.event_date ? { date: s.event_date } : {}),
+      ...(Number.isFinite(s.guests) && s.guests > 0 ? { guests: Math.min(s.guests, 600) } : {}),
+      ...(Number.isFinite(s.budget) && s.budget > 0 ? { budget: s.budget } : {}),
+    }));
+    if (s.venue_id && VENUES.some(v => v.id === s.venue_id)) setVenueId(s.venue_id);
+    if (s.selections && typeof s.selections === 'object') {
+      const valid = {};
+      for (const [kind, id] of Object.entries(s.selections)) {
+        if (id === null) valid[kind] = null;
+        else if (SERVICES.some(x => x.id === id && x.kind === kind)) valid[kind] = id;
+      }
+      if (Object.keys(valid).length) setSelected(sel => ({ ...sel, ...valid }));
+    }
+    if (Number.isFinite(s.hours) && s.hours >= 1 && s.hours <= 24) setHours(s.hours);
+    if (Number.isFinite(s.staff_count) && s.staff_count >= 1 && s.staff_count <= 20) setStaffCount(s.staff_count);
+  }
+
   const canNext = [
     form.type && guests > 0,                                   // basics
     !!venue,                                                   // venue
@@ -120,7 +159,7 @@ export default function PlanEvent() {
         client_email: contact.email.trim(),
         client_phone: contact.phone.trim() || null,
         items: lines.map(l => ({ provider_id: l.id, label: l.label, amount_eur: l.amount })),
-        payload: { hours, staffCount, notes: contact.notes.trim() || null },
+        payload: { hours, staffCount, notes: contact.notes.trim() || null, run_of_show: runOfShow },
       };
       setResult(await submitQuote(payload));
     } catch (e) {
@@ -152,6 +191,17 @@ export default function PlanEvent() {
             ))}
             <div className="rt-line" style={{ fontWeight: 700 }}><span>Total</span><span>€{total.toLocaleString()}</span></div>
           </div>
+          {runOfShow.length > 0 && (
+            <div className="rt-card" style={{ textAlign: 'left', marginTop: 14 }}>
+              <div className="rt-kicker" style={{ marginBottom: 8 }}>Draft run of show</div>
+              {runOfShow.map((r, i) => (
+                <div className="rt-line" key={i} style={{ padding: '6px 0' }}>
+                  <span><span className="rt-mono" style={{ marginRight: 10 }}>{r.time}</span>{r.title}</span>
+                  <span className="rt-note" style={{ whiteSpace: 'nowrap' }}>{r.owner}</span>
+                </div>
+              ))}
+            </div>
+          )}
           <p className="rt-note" style={{ marginTop: 24 }}>
             Questions? <a href="mailto:hello@risingtide.store" style={{ color: 'var(--rt-teal)' }}>hello@risingtide.store</a>
           </p>
@@ -169,7 +219,17 @@ export default function PlanEvent() {
         </div>
 
         <div className="rt-kicker">Plan your event</div>
-        <h1 className="rt-h1">{STEPS[step]}</h1>
+        <h1 className="rt-h1">{mode === 'chat' ? 'Tell us about it' : STEPS[step]}</h1>
+
+        {mode === 'chat' ? (
+          <PlanChat
+            slots={chatSlots}
+            applySlots={applySlots}
+            onComplete={() => { setMode('steps'); setStep(venueId ? 3 : 1); }}
+            onSwitchToSteps={() => setMode('steps')}
+          />
+        ) : (
+        <>
         <div className="rt-steps">
           {STEPS.map((s, i) => <div key={s} className={`rt-step-dot ${i <= step ? 'done' : ''}`} />)}
         </div>
@@ -329,6 +389,18 @@ export default function PlanEvent() {
             <p className="rt-note" style={{ marginTop: 12 }}>
               Submitting sends this package to each provider for confirmation. Nothing is booked or charged until everyone confirms.
             </p>
+            {runOfShow.length > 0 && (
+              <div className="rt-card" style={{ marginTop: 16 }}>
+                <div className="rt-kicker" style={{ marginBottom: 8 }}>Your draft run of show</div>
+                {runOfShow.map((r, i) => (
+                  <div className="rt-line" key={i} style={{ padding: '6px 0' }}>
+                    <span><span className="rt-mono" style={{ marginRight: 10 }}>{r.time}</span>{r.title}</span>
+                    <span className="rt-note" style={{ whiteSpace: 'nowrap' }}>{r.owner}</span>
+                  </div>
+                ))}
+                <p className="rt-note" style={{ marginTop: 8 }}>Auto-generated from your package — your organizer refines it with you.</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -341,6 +413,8 @@ export default function PlanEvent() {
             {error && <p className="rt-error">{error}</p>}
           </div>
         )}
+        </>
+        )}
       </div>
 
       <div className="rt-total-bar">
@@ -350,9 +424,12 @@ export default function PlanEvent() {
             <div className="rt-display" style={{ fontSize: 20 }}>€{total.toLocaleString()}</div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            {step > 0 && <button className="rt-btn out" onClick={() => setStep(s => s - 1)}>Back</button>}
-            {step < STEPS.length - 1 && <button className="rt-btn" disabled={!canNext} onClick={() => setStep(s => s + 1)}>Next</button>}
-            {step === STEPS.length - 1 && (
+            {mode === 'chat' && lines.length > 0 && (
+              <button className="rt-btn" onClick={() => { setMode('steps'); setStep(3); }}>Review quote</button>
+            )}
+            {mode === 'steps' && step > 0 && <button className="rt-btn out" onClick={() => setStep(s => s - 1)}>Back</button>}
+            {mode === 'steps' && step < STEPS.length - 1 && <button className="rt-btn" disabled={!canNext} onClick={() => setStep(s => s + 1)}>Next</button>}
+            {mode === 'steps' && step === STEPS.length - 1 && (
               <button className="rt-btn teal" disabled={!canNext || sending} onClick={handleSubmit}>
                 {sending ? 'Sending…' : 'Submit for confirmation'}
               </button>

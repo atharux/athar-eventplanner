@@ -157,6 +157,26 @@ export default function QuotesPanel({ classes, onConvert }) {
                 ))}
               </div>
 
+              {(() => {
+                try {
+                  const ros = JSON.parse(q.payload_json)?.payload?.run_of_show;
+                  if (!Array.isArray(ros) || ros.length === 0) return null;
+                  return (
+                    <details className="mb-4">
+                      <summary className="text-xs font-semibold text-purple-300 cursor-pointer">Run of show ({ros.length} items)</summary>
+                      <div className="mt-2 space-y-1">
+                        {ros.map((r, i) => (
+                          <div key={i} className="flex justify-between text-xs text-slate-300">
+                            <span><span className="font-mono text-slate-400 mr-2">{r.time}</span>{r.title}</span>
+                            <span className="text-slate-500">{r.owner}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  );
+                } catch { return null; }
+              })()}
+
               <div className="flex flex-wrap gap-2">
                 <button onClick={() => exportEngineJson(q)}
                   className="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 text-xs font-semibold rounded flex items-center gap-2">
