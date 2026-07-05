@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { VENUES, SERVICES, lineTotal, priceLabel, venueCapacityFor } from './data/catalog';
+import { VENUES, SERVICES, KIND_LABELS, lineTotal, priceLabel, effectivePerGuest, venueCapacityFor } from './data/catalog';
 import './rtTheme.css';
 
 /* RT Network — client quote builder (#plan).
@@ -52,7 +52,8 @@ export default function PlanEvent() {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({ type: 'wedding', date: '', guests: 80, budget: '' });
   const [venueId, setVenueId] = useState(null);
-  const [picked, setPicked] = useState({});          // service id -> true
+  const [selected, setSelected] = useState({});      // kind -> provider id (one per category)
+  const [caps, setCaps] = useState({});              // kind -> max €/guest cap (unset = no cap)
   const [hours, setHours] = useState(5);
   const [staffCount, setStaffCount] = useState(2);
   const [contact, setContact] = useState({ name: '', email: '', phone: '', notes: '' });
@@ -67,7 +68,7 @@ export default function PlanEvent() {
     const out = [];
     if (venue) out.push({ id: venue.id, label: `${venue.name} — venue`, amount: lineTotal(venue, { guests, hours }) });
     for (const s of SERVICES) {
-      if (!picked[s.id]) continue;
+      if (selected[s.kind] !== s.id) continue;
       const opts = { guests, hours, headcount: s.kind === 'staff' ? staffCount : 1 };
       const detail = s.pricing.model === 'per_person' ? ` — ${guests} × €${s.pricing.amount}`
         : s.pricing.model === 'per_hour' ? (s.kind === 'staff' ? ` — ${staffCount} × ${hours}h × €${s.pricing.amount}` : ` — ${hours}h × €${s.pricing.amount}`)
@@ -75,7 +76,24 @@ export default function PlanEvent() {
       out.push({ id: s.id, label: `${s.name}${detail}`, amount: lineTotal(s, opts) });
     }
     return out;
-  }, [venue, picked, guests, hours, staffCount]);
+  }, [venue, selected, guests, hours, staffCount]);
+
+  /* Service groups + per-guest slider bounds, recomputed as guests/hours change. */
+  const serviceGroups = useMemo(() => {
+    const kinds = [...new Set(SERVICES.map(s => s.kind))];
+    return kinds.map(kind => {
+      const options = SERVICES.filter(s => s.kind === kind);
+      const opts = { guests: Math.max(guests, 1), hours, headcount: kind === 'staff' ? staffCount : 1 };
+      const perGuest = Object.fromEntries(options.map(o => [o.id, effectivePerGuest(o, opts)]));
+      const values = Object.values(perGuest);
+      return {
+        kind, options, perGuest,
+        sliderMin: Math.floor(Math.min(...values)),
+        sliderMax: Math.ceil(Math.max(...values)),
+        hasSlider: options.length > 1,
+      };
+    });
+  }, [guests, hours, staffCount]);
 
   const total = lines.reduce((s, l) => s + l.amount, 0);
   const budget = Number(form.budget) || 0;
@@ -212,24 +230,79 @@ export default function PlanEvent() {
         )}
 
         {step === 2 && (
-          <div style={{ display: 'grid', gap: 14 }}>
-            {SERVICES.map(s => (
-              <div key={s.id} className={`rt-card selectable ${picked[s.id] ? 'selected' : ''}`}
-                onClick={() => setPicked(p => ({ ...p, [s.id]: !p[s.id] }))}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-                  <strong className="rt-display" style={{ fontSize: 17 }}>{s.name}</strong>
-                  <span className="rt-mono" style={{ fontSize: 13 }}>{priceLabel(s)}</span>
+          <div style={{ display: 'grid', gap: 26 }}>
+            {serviceGroups.map(group => {
+              const cap = Math.min(caps[group.kind] ?? group.sliderMax, group.sliderMax);
+              return (
+                <div key={group.kind}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                    <strong className="rt-display" style={{ fontSize: 19 }}>{KIND_LABELS[group.kind]}</strong>
+                    {selected[group.kind] && <span className="rt-note">tap again to remove</span>}
+                  </div>
+
+                  {group.hasSlider && (
+                    <div style={{ marginBottom: 12 }}>
+                      <label>Budget per guest — up to €{cap}</label>
+                      <input
+                        type="range"
+                        min={group.sliderMin}
+                        max={group.sliderMax}
+                        step="1"
+                        value={cap}
+                        onChange={e => {
+                          const v = Number(e.target.value);
+                          setCaps(c => ({ ...c, [group.kind]: v }));
+                          // Deselect a provider the new cap prices out.
+                          const sel = group.options.find(o => o.id === selected[group.kind]);
+                          if (sel && group.perGuest[sel.id] > v) {
+                            setSelected(s => ({ ...s, [group.kind]: null }));
+                          }
+                        }}
+                      />
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }} className="rt-note">
+                        <span>€{group.sliderMin}/guest</span>
+                        <span>€{group.sliderMax}/guest</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'grid', gap: 10 }}>
+                    {group.options.map(s => {
+                      const perGuest = group.perGuest[s.id];
+                      const priced_out = group.hasSlider && perGuest > cap;
+                      const isSelected = selected[s.kind] === s.id;
+                      const total = lineTotal(s, { guests, hours, headcount: s.kind === 'staff' ? staffCount : 1 });
+                      return (
+                        <div key={s.id}
+                          className={`rt-card selectable ${isSelected ? 'selected' : ''} ${priced_out ? 'disabled' : ''}`}
+                          onClick={() => !priced_out && setSelected(sel => ({ ...sel, [s.kind]: isSelected ? null : s.id }))}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+                            <strong className="rt-display" style={{ fontSize: 16 }}>{s.name}</strong>
+                            <span className="rt-mono" style={{ fontSize: 13 }}>{priceLabel(s)}</span>
+                          </div>
+                          <p className="rt-note" style={{ margin: '6px 0 8px' }}>{s.blurb}</p>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <span className={`rt-pill ${priced_out ? 'amber' : 'teal'}`}>
+                              ≈ €{Math.round(perGuest * 100) / 100}/guest
+                            </span>
+                            <span className="rt-note">€{total.toLocaleString()} for {guests} guests</span>
+                            {priced_out && <span className="rt-pill amber">above your per-guest budget</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <p className="rt-note" style={{ margin: '6px 0 0' }}>{s.blurb}</p>
-              </div>
-            ))}
-            {(picked['dj-av'] || picked['staff']) && (
+              );
+            })}
+
+            {(selected['dj_av'] || selected['staff']) && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label>Event hours</label>
                   <input type="number" min="1" max="24" value={hours} onChange={e => setHours(Number(e.target.value) || 1)} />
                 </div>
-                {picked['staff'] && (
+                {selected['staff'] && (
                   <div>
                     <label>Crew size</label>
                     <input type="number" min="1" max="20" value={staffCount} onChange={e => setStaffCount(Number(e.target.value) || 1)} />
