@@ -20,3 +20,9 @@ __pycache__/
 ai-ops-env/
 venv/
 .venv/
+
+# Local secrets for wrangler pages dev
+.dev.vars
+
+# wrangler local state
+.wrangler/

@@ -1,11 +1,11 @@
-# EventFlow Pilot Runbook
+# RT Network Pilot Runbook
 
 **Event:** Global AI Berlin — Corporate Party · **Date:** 18 July 2026
 **Operators:** Athar (registration + audio) · Cherry (registration desk)
 
 ## Getting started
 
-1. Open the EventFlow URL you were given (works on phone and laptop — phone is fine for event day).
+1. Open the RT Network URL you were given (works on phone and laptop — phone is fine for event day).
 2. On first launch, choose **"Start clean — plan my real event"**. (The demo option shows a fictional example workspace; you can switch anytime in Settings → Data.)
 3. Everything you enter is stored **in your browser only** — use the same browser/device throughout the pilot, and don't clear browser data.
 

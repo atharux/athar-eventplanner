@@ -1,5 +1,5 @@
 {
-  "name": "eventflow",
+  "name": "rt-network",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -22,7 +22,7 @@
     "vite": "^5.1.0"
   },
   "type": "module",
-  "description": "Gamified event operations CRM with a deterministic constraint engine (budget hard-stops, staffing coverage, AV dependency pre-flight checks)",
+  "description": "RT Network \u2014 Rising Tide Collective booking layer: client quote builder, provider backstage, deterministic pre-flight constraint engine",
   "author": "atharux",
   "repository": {
     "type": "git",

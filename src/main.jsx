@@ -1,7 +1,12 @@
-import React from "react";
+import React, { Suspense } from "react";
 import ReactDOM from "react-dom/client";
-import App from './App';
 import "./index.css"; // Tailwind CSS file
+
+/* All three views are lazy so the dark CRM's theme.css never loads into the
+   RT-light client/provider chunks (and vice versa). */
+const App = React.lazy(() => import('./App'));
+const PlanEvent = React.lazy(() => import('./planEvent'));
+const Backstage = React.lazy(() => import('./backstage'));
 
 /* Top-level error boundary — a render error shows a recoverable fallback
    instead of a white screen. */
@@ -26,7 +31,7 @@ class ErrorBoundary extends React.Component {
               onClick={() => window.location.reload()}
               style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: '#7e22ce', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
             >
-              Reload EventFlow
+              Reload RT Network
             </button>
           </div>
         </div>
@@ -36,10 +41,33 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+function useHashRoute() {
+  const [hash, setHash] = React.useState(() => window.location.hash);
+  React.useEffect(() => {
+    const onHash = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  return hash;
+}
+
+function Root() {
+  const hash = useHashRoute();
+  const backstage = hash.match(/^#backstage\/([A-Za-z0-9_-]{8,64})$/);
+  let view = <App />;
+  if (hash === '#plan' || hash.startsWith('#plan/')) view = <PlanEvent />;
+  else if (backstage) view = <Backstage token={backstage[1]} key={backstage[1]} />;
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#ffffff' }} />}>
+      {view}
+    </Suspense>
+  );
+}
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      <Root />
     </ErrorBoundary>
   </React.StrictMode>
 );
