@@ -148,6 +148,31 @@ export function buildTasksForQuote(quote, eventName) {
   return tasks;
 }
 
+/* One Budget-tab line per still-live provider, same amounts used everywhere
+   else (the engine export, the ledger, the task descriptions) — no formula,
+   just the real quoted figure. Due dates reuse the same per-category offset
+   as the matching confirm task, since final payment typically lands
+   alongside final confirmation. Declined items get no line — nothing owed. */
+const KIND_TO_BUDGET_CATEGORY = { venue: 'Venue', catering: 'Catering', dj_av: 'Entertainment', staff: 'Staffing', photo: 'Photography' };
+
+export function buildBudgetItemsForQuote(quote, eventName) {
+  const items = [];
+  for (const item of quote.items) {
+    if (item.status === 'declined') continue;
+    const tmpl = TASK_TEMPLATES[item.kind];
+    items.push({
+      category: KIND_TO_BUDGET_CATEGORY[item.kind] || 'Misc',
+      vendor: item.provider_name,
+      amount: item.amount_eur,
+      paid: 0,
+      status: 'pending',
+      event: eventName,
+      dueDate: dueDateFor(quote.event_date, tmpl ? tmpl.daysBefore : 7),
+    });
+  }
+  return items;
+}
+
 const STATUS_CHIP = {
   pending: 'bg-amber-900/40 text-amber-300',
   confirmed: 'bg-emerald-900/40 text-emerald-300',
