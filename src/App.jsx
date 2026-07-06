@@ -9,6 +9,7 @@ import { PricingModal } from './PricingModal';
 import QuestBoard, { computeQuests } from './questBoard';
 import PreflightPanel from './preflightPanel';
 import QuotesPanel, { buildTasksForQuote, buildScheduleForQuote, buildBudgetItemsForQuote } from './quotesPanel';
+import { TEAM } from './data/team';
 import './theme.css';
 
 const NEON_COLOR = 'var(--ef-brand)';
@@ -2340,7 +2341,7 @@ export default function App() {
                   spent: 0,
                   guests: q.guests, confirmed: 0, status: 'planning',
                   vendors: q.items.length, tasks: newTasks.length, completed: 0,
-                  team: [], schedule,
+                  team: TEAM, schedule,
                 }]);
                 if (newTasks.length > 0) {
                   setTasks(prev => {
@@ -2354,7 +2355,7 @@ export default function App() {
                     return [...prev, ...newBudgetItems.map((b, i) => ({ ...b, id: base + i + 1 }))];
                   });
                 }
-                alert(`Quote ${q.ref} converted — ${newTasks.length} task(s), a ${schedule.length}-item run sheet, and ${newBudgetItems.length} budget line(s) added. See the Events tab.`);
+                alert(`Quote ${q.ref} converted — ${newTasks.length} task(s) assigned across your team, a ${schedule.length}-item run sheet, and ${newBudgetItems.length} budget line(s) added. See the Events tab.`);
               }} />
             )}
 
