@@ -8,7 +8,7 @@ import { ProGate } from './ProGate';
 import { PricingModal } from './PricingModal';
 import QuestBoard, { computeQuests } from './questBoard';
 import PreflightPanel from './preflightPanel';
-import QuotesPanel, { buildTasksForQuote, buildScheduleForQuote } from './quotesPanel';
+import QuotesPanel, { buildTasksForQuote, buildScheduleForQuote, buildBudgetItemsForQuote } from './quotesPanel';
 import './theme.css';
 
 const NEON_COLOR = 'var(--ef-brand)';
@@ -2328,6 +2328,7 @@ export default function App() {
                 const eventName = `${q.client_name} — ${q.event_type} (${q.ref})`;
                 const schedule = buildScheduleForQuote(q);
                 const newTasks = buildTasksForQuote(q, eventName);
+                const newBudgetItems = buildBudgetItemsForQuote(q, eventName);
                 setEvents(prev => [...prev, {
                   id: Math.max(0, ...prev.map(e => e.id)) + 1,
                   name: eventName,
@@ -2347,7 +2348,13 @@ export default function App() {
                     return [...prev, ...newTasks.map((t, i) => ({ ...t, id: base + i + 1 }))];
                   });
                 }
-                alert(`Quote ${q.ref} converted — ${newTasks.length} task(s) and a ${schedule.length}-item run sheet added. See the Events tab.`);
+                if (newBudgetItems.length > 0) {
+                  setBudgetItems(prev => {
+                    const base = Math.max(0, ...prev.map(b => b.id));
+                    return [...prev, ...newBudgetItems.map((b, i) => ({ ...b, id: base + i + 1 }))];
+                  });
+                }
+                alert(`Quote ${q.ref} converted — ${newTasks.length} task(s), a ${schedule.length}-item run sheet, and ${newBudgetItems.length} budget line(s) added. See the Events tab.`);
               }} />
             )}
 
