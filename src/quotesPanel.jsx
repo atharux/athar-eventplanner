@@ -53,6 +53,101 @@ export function quoteToEngineInput(quote) {
   };
 }
 
+/* ---- Auto-populate Schedule + Tasks from a quote — deterministic, no AI ---- */
+
+function to12Hour(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
+function minutesOf(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function categoryForTitle(title) {
+  const t = title.toLowerCase();
+  if (t.includes('setup') || t.includes('crew call') || t.includes('sound & light check')) return 'Setup';
+  if (t.includes('doors') || t.includes('arrival') || t.includes('farewell')) return 'Reception';
+  if (t.includes('dinner') || t.includes('food') || t.includes('catering')) return 'Catering';
+  if (t.includes('dj') || t.includes('dance') || t.includes('music')) return 'Entertainment';
+  if (t.includes('photo')) return 'Photography';
+  if (t.includes('breakdown') || t.includes('load-out') || t.includes('last call') || t.includes('ends')) return 'Wrap-up';
+  return 'Program';
+}
+
+/* Reads the run-of-show generated at submission time (src/data/runOfShow.js)
+   out of the quote's stored payload and reshapes it into the CRM's Schedule
+   tab format ({time, title, duration, assigned, category}). */
+export function buildScheduleForQuote(quote) {
+  let ros;
+  try {
+    ros = JSON.parse(quote.payload_json)?.payload?.run_of_show;
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(ros) || ros.length === 0) return [];
+
+  return ros.map((row, i) => {
+    const next = ros[i + 1];
+    const mins = next ? minutesOf(next.time) - minutesOf(row.time) : 60;
+    const wrapped = mins < 0 ? mins + 1440 : mins; // crosses midnight
+    const duration = wrapped < 60 ? `${wrapped} minutes`
+      : wrapped % 60 === 0 ? `${wrapped / 60} hour${wrapped === 60 ? '' : 's'}`
+      : `${(wrapped / 60).toFixed(1)} hours`;
+    return { time: to12Hour(row.time), title: row.title, duration, assigned: row.owner, category: categoryForTitle(row.title) };
+  });
+}
+
+/* One follow-up task per still-live provider (skips declined items — nothing
+   to confirm there) plus a billing task, so "convert" hands the operator a
+   real to-do list instead of a blank Tasks tab. */
+const TASK_TEMPLATES = {
+  venue: { title: p => `Confirm venue contract & final walkthrough — ${p}`, priority: 'high', daysBefore: 21 },
+  catering: { title: p => `Confirm final headcount & menu with ${p}`, priority: 'high', daysBefore: 7 },
+  dj_av: { title: p => `Confirm arrival time & tech rider with ${p}`, priority: 'medium', daysBefore: 5 },
+  staff: { title: p => `Confirm crew schedule & call times with ${p}`, priority: 'medium', daysBefore: 3 },
+  photo: { title: p => `Share shot list & timeline with ${p}`, priority: 'medium', daysBefore: 5 },
+};
+
+function dueDateFor(eventDateStr, daysBefore) {
+  const base = eventDateStr ? new Date(eventDateStr) : new Date(Date.now() + 14 * 86400000);
+  base.setDate(base.getDate() - daysBefore);
+  const today = new Date();
+  return (base < today ? today : base).toISOString().slice(0, 10);
+}
+
+export function buildTasksForQuote(quote, eventName) {
+  const tasks = [];
+  for (const item of quote.items) {
+    if (item.status === 'declined') continue;
+    const tmpl = TASK_TEMPLATES[item.kind];
+    if (!tmpl) continue;
+    tasks.push({
+      title: tmpl.title(item.provider_name), event: eventName,
+      dueDate: dueDateFor(quote.event_date, tmpl.daysBefore),
+      status: 'pending', priority: tmpl.priority,
+      assignedTo: 'Unassigned', createdBy: 'RT Network',
+      description: `Auto-generated from quote ${quote.ref} — ${item.label} (€${item.amount_eur.toLocaleString()}).`,
+      subtasks: [], tags: [item.kind, 'auto-generated'], comments: [], attachments: [],
+    });
+  }
+  const total = quote.items.reduce((s, i) => s + i.amount_eur, 0);
+  if (total > 0) {
+    tasks.push({
+      title: `Send deposit invoices for ${eventName}`, event: eventName,
+      dueDate: dueDateFor(quote.event_date, 30),
+      status: 'pending', priority: 'high',
+      assignedTo: 'Unassigned', createdBy: 'RT Network',
+      description: `Total package value €${total.toLocaleString()} across ${quote.items.length} provider(s).`,
+      subtasks: [], tags: ['billing', 'auto-generated'], comments: [], attachments: [],
+    });
+  }
+  return tasks;
+}
+
 const STATUS_CHIP = {
   pending: 'bg-amber-900/40 text-amber-300',
   confirmed: 'bg-emerald-900/40 text-emerald-300',
