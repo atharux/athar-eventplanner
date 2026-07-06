@@ -2810,6 +2810,7 @@ export default function App() {
                   <div className="text-xs space-y-1" style={{ color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>
                     <div>RT Network CRM — Rising Tide Collective</div>
                     <div>Data stored locally in browser</div>
+                    <div>Bookmark this page — the operator CRM lives at <span className="text-purple-300">#ops</span>, client requests go to the root URL</div>
                     <div>
                       <button onClick={() => { if (window.confirm('Reset all data? This cannot be undone.')) { localStorage.clear(); window.location.reload(); } }} className="text-red-400 hover:text-red-300 mt-2">
                         Reset all data

@@ -2,11 +2,15 @@ import React, { Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css"; // Tailwind CSS file
 
-/* All three views are lazy so the dark CRM's theme.css never loads into the
+/* All views are lazy so the dark CRM's theme.css never loads into the
    RT-light client/provider chunks (and vice versa). */
 const App = React.lazy(() => import('./App'));
 const PlanEvent = React.lazy(() => import('./planEvent'));
 const Backstage = React.lazy(() => import('./backstage'));
+const QuoteStatus = React.lazy(() => import('./quoteStatus'));
+const Impressum = React.lazy(() => import('./legalPages').then(m => ({ default: m.Impressum })));
+const Datenschutz = React.lazy(() => import('./legalPages').then(m => ({ default: m.Datenschutz })));
+const ClientTerms = React.lazy(() => import('./legalPages').then(m => ({ default: m.ClientTerms })));
 
 /* Top-level error boundary — a render error shows a recoverable fallback
    instead of a white screen. */
@@ -54,11 +58,22 @@ function useHashRoute() {
 function Root() {
   const hash = useHashRoute();
   const backstage = hash.match(/^#backstage\/([A-Za-z0-9_-]{8,64})$/);
-  let view = <App />;
-  if (hash === '#plan' || hash.startsWith('#plan/')) view = <PlanEvent />;
+  const quoteRef = hash.match(/^#quote\/(RT-[A-Za-z0-9-]{6,40})$/);
+
+  // Root is the client-facing landing (RT Network's public face); the
+  // operator CRM lives behind #ops so a bare share link never opens the
+  // dark ops tool with seed data.
+  let view = <PlanEvent />;
+  let bg = '#ffffff';
+  if (hash === '#ops' || hash.startsWith('#ops/')) { view = <App />; bg = '#0a0a0a'; }
   else if (backstage) view = <Backstage token={backstage[1]} key={backstage[1]} />;
+  else if (quoteRef) view = <QuoteStatus ref={quoteRef[1]} key={quoteRef[1]} />;
+  else if (hash === '#impressum') view = <Impressum />;
+  else if (hash === '#datenschutz') view = <Datenschutz />;
+  else if (hash === '#terms') view = <ClientTerms />;
+
   return (
-    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#ffffff' }} />}>
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: bg }} />}>
       {view}
     </Suspense>
   );

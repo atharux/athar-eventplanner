@@ -10,6 +10,8 @@ export default function Backstage({ token }) {
   const [state, setState] = useState('loading'); // loading | ok | invalid | error
   const [busy, setBusy] = useState(null);        // item id in flight
   const [flash, setFlash] = useState(null);
+  const [declining, setDeclining] = useState(null); // item awaiting a reason
+  const [reason, setReason] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -24,8 +26,9 @@ export default function Backstage({ token }) {
     return () => { cancelled = true; };
   }, [token]);
 
-  async function respond(item, action) {
+  async function respond(item, action, declineReason) {
     setBusy(item.id);
+    setDeclining(null);
     const prev = data;
     // optimistic
     setData(d => ({
@@ -38,7 +41,7 @@ export default function Backstage({ token }) {
       const res = await fetch(`/api/backstage/${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ item_id: item.id, action }),
+        body: JSON.stringify({ item_id: item.id, action, reason: declineReason }),
       });
       if (!res.ok) throw new Error();
       setFlash(action === 'confirm' ? `Confirmed — you're booked for ${item.quote_ref}` : 'Declined');
@@ -49,6 +52,7 @@ export default function Backstage({ token }) {
       setTimeout(() => setFlash(null), 3000);
     } finally {
       setBusy(null);
+      setReason('');
     }
   }
 
@@ -111,12 +115,23 @@ export default function Backstage({ token }) {
               <div className="rt-line" style={{ borderBottom: 'none', padding: '4px 0', fontWeight: 700 }}>
                 <span>You receive</span><span style={{ color: 'var(--rt-teal)' }}>€{item.payout_eur.toLocaleString()}</span>
               </div>
-              <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-                <button className="rt-btn teal" style={{ flex: 1 }} disabled={busy === item.id}
-                  onClick={() => respond(item, 'confirm')}>Confirm gig</button>
-                <button className="rt-btn out" style={{ flex: 1 }} disabled={busy === item.id}
-                  onClick={() => respond(item, 'decline')}>Decline</button>
-              </div>
+              {declining === item.id ? (
+                <div style={{ marginTop: 12 }}>
+                  <input value={reason} onChange={e => setReason(e.target.value)}
+                    placeholder="Optional — why? (helps us match better next time)" style={{ marginBottom: 8 }} />
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button className="rt-btn out" style={{ flex: 1 }} onClick={() => respond(item, 'decline', reason || null)}>Confirm decline</button>
+                    <button className="rt-btn out" style={{ flex: 1 }} onClick={() => { setDeclining(null); setReason(''); }}>Back</button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+                  <button className="rt-btn teal" style={{ flex: 1 }} disabled={busy === item.id}
+                    onClick={() => respond(item, 'confirm')}>Confirm gig</button>
+                  <button className="rt-btn out" style={{ flex: 1 }} disabled={busy === item.id}
+                    onClick={() => setDeclining(item.id)}>Decline</button>
+                </div>
+              )}
             </div>
           ))}
         </div>
