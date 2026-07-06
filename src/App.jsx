@@ -8,7 +8,7 @@ import { ProGate } from './ProGate';
 import { PricingModal } from './PricingModal';
 import QuestBoard, { computeQuests } from './questBoard';
 import PreflightPanel from './preflightPanel';
-import QuotesPanel from './quotesPanel';
+import QuotesPanel, { buildTasksForQuote, buildScheduleForQuote } from './quotesPanel';
 import './theme.css';
 
 const NEON_COLOR = 'var(--ef-brand)';
@@ -2325,9 +2325,12 @@ export default function App() {
               <QuotesPanel classes={classes} onConvert={(q) => {
                 const limit = checkLimit(plan, 'events', events.length);
                 if (!limit.allowed) { alert(limit.reason); return; }
+                const eventName = `${q.client_name} — ${q.event_type} (${q.ref})`;
+                const schedule = buildScheduleForQuote(q);
+                const newTasks = buildTasksForQuote(q, eventName);
                 setEvents(prev => [...prev, {
                   id: Math.max(0, ...prev.map(e => e.id)) + 1,
-                  name: `${q.client_name} — ${q.event_type} (${q.ref})`,
+                  name: eventName,
                   date: q.event_date || new Date().toISOString().slice(0, 10),
                   type: q.event_type === 'wedding' ? 'Wedding' : q.event_type === 'corporate' ? 'Corporate' : 'Other',
                   location: 'TBD',
@@ -2335,10 +2338,16 @@ export default function App() {
                   budget: q.budget || q.items.reduce((s, i) => s + i.amount_eur, 0),
                   spent: 0,
                   guests: q.guests, confirmed: 0, status: 'planning',
-                  vendors: q.items.length, tasks: 0, completed: 0,
-                  team: [], schedule: [],
+                  vendors: q.items.length, tasks: newTasks.length, completed: 0,
+                  team: [], schedule,
                 }]);
-                alert(`Quote ${q.ref} converted — see the Events tab.`);
+                if (newTasks.length > 0) {
+                  setTasks(prev => {
+                    const base = Math.max(0, ...prev.map(t => t.id));
+                    return [...prev, ...newTasks.map((t, i) => ({ ...t, id: base + i + 1 }))];
+                  });
+                }
+                alert(`Quote ${q.ref} converted — ${newTasks.length} task(s) and a ${schedule.length}-item run sheet added. See the Events tab.`);
               }} />
             )}
 
