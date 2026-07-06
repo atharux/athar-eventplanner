@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { VENUES, SERVICES, KIND_LABELS, lineTotal, priceLabel, effectivePerGuest, venueCapacityFor } from './data/catalog';
+import { VENUES as STATIC_VENUES, SERVICES as STATIC_SERVICES, KIND_LABELS, lineTotal, priceLabel, effectivePerGuest, venueCapacityFor } from './data/catalog';
 import { buildRunOfShow } from './data/runOfShow';
 import PlanChat from './planChat';
 import './rtTheme.css';
@@ -51,6 +51,30 @@ function useTurnstile(containerRef) {
   return { enabled: !!siteKey, token };
 }
 
+/* Live catalog from D1 (any provider onboarded via the operator's Providers
+   tab shows up here immediately, no deploy) — falls back to the static
+   bundled list on any failure (offline, local dev without wrangler, etc.),
+   so onboarding issues server-side never break the builder for a client. */
+function useCatalog() {
+  const [venues, setVenues] = useState(STATIC_VENUES);
+  const [services, setServices] = useState(STATIC_SERVICES);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/catalog')
+      .then(r => (r.ok ? r.json() : Promise.reject()))
+      .then(d => {
+        if (cancelled) return;
+        if (Array.isArray(d.venues) && d.venues.length) setVenues(d.venues);
+        if (Array.isArray(d.services) && d.services.length) setServices(d.services);
+      })
+      .catch(() => {}); // silent — static defaults already in state
+    return () => { cancelled = true; };
+  }, []);
+
+  return { venues, services };
+}
+
 async function submitQuote(payload, turnstileToken) {
   try {
     const ctrl = new AbortController();
@@ -97,6 +121,7 @@ export default function PlanEvent() {
   const [error, setError] = useState(null);
   const turnstileRef = useRef(null);
   const turnstile = useTurnstile(turnstileRef);
+  const { venues: VENUES, services: SERVICES } = useCatalog();
 
   const guests = Number(form.guests) || 0;
   const venue = VENUES.find(v => v.id === venueId) || null;
@@ -113,7 +138,7 @@ export default function PlanEvent() {
       out.push({ id: s.id, label: `${s.name}${detail}`, amount: lineTotal(s, opts) });
     }
     return out;
-  }, [venue, selected, guests, hours, staffCount]);
+  }, [venue, SERVICES, selected, guests, hours, staffCount]);
 
   /* Service groups + per-guest slider bounds, recomputed as guests/hours change. */
   const serviceGroups = useMemo(() => {
@@ -130,7 +155,7 @@ export default function PlanEvent() {
         hasSlider: options.length > 1,
       };
     });
-  }, [guests, hours, staffCount]);
+  }, [SERVICES, guests, hours, staffCount]);
 
   const total = lines.reduce((s, l) => s + l.amount, 0);
   const budget = Number(form.budget) || 0;
