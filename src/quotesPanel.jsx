@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { RefreshCw, Download, Copy, CalendarPlus, Euro } from 'lucide-react';
 import { VENUES, venueCapacityFor } from './data/catalog';
+import { memberFor } from './data/team';
 
 /* Operator Quotes tab — dark CRM styled. Reads client-submitted quotes from
    /api/quotes with the admin capability token (Settings → RT Admin API Token). */
@@ -105,11 +106,11 @@ export function buildScheduleForQuote(quote) {
    to confirm there) plus a billing task, so "convert" hands the operator a
    real to-do list instead of a blank Tasks tab. */
 const TASK_TEMPLATES = {
-  venue: { title: p => `Confirm venue contract & final walkthrough — ${p}`, priority: 'high', daysBefore: 21 },
-  catering: { title: p => `Confirm final headcount & menu with ${p}`, priority: 'high', daysBefore: 7 },
-  dj_av: { title: p => `Confirm arrival time & tech rider with ${p}`, priority: 'medium', daysBefore: 5 },
-  staff: { title: p => `Confirm crew schedule & call times with ${p}`, priority: 'medium', daysBefore: 3 },
-  photo: { title: p => `Share shot list & timeline with ${p}`, priority: 'medium', daysBefore: 5 },
+  venue: { title: p => `Confirm venue contract & final walkthrough — ${p}`, priority: 'high', daysBefore: 21, capacity: 'planning' },
+  catering: { title: p => `Confirm final headcount & menu with ${p}`, priority: 'high', daysBefore: 7, capacity: 'vendor' },
+  dj_av: { title: p => `Confirm arrival time & tech rider with ${p}`, priority: 'medium', daysBefore: 5, capacity: 'logistics' },
+  staff: { title: p => `Confirm crew schedule & call times with ${p}`, priority: 'medium', daysBefore: 3, capacity: 'ops' },
+  photo: { title: p => `Share shot list & timeline with ${p}`, priority: 'medium', daysBefore: 5, capacity: 'vendor' },
 };
 
 function dueDateFor(eventDateStr, daysBefore) {
@@ -129,7 +130,7 @@ export function buildTasksForQuote(quote, eventName) {
       title: tmpl.title(item.provider_name), event: eventName,
       dueDate: dueDateFor(quote.event_date, tmpl.daysBefore),
       status: 'pending', priority: tmpl.priority,
-      assignedTo: 'Unassigned', createdBy: 'RT Network',
+      assignedTo: memberFor(tmpl.capacity)?.name || 'Unassigned', createdBy: 'RT Network',
       description: `Auto-generated from quote ${quote.ref} — ${item.label} (€${item.amount_eur.toLocaleString()}).`,
       subtasks: [], tags: [item.kind, 'auto-generated'], comments: [], attachments: [],
     });
@@ -140,7 +141,7 @@ export function buildTasksForQuote(quote, eventName) {
       title: `Send deposit invoices for ${eventName}`, event: eventName,
       dueDate: dueDateFor(quote.event_date, 30),
       status: 'pending', priority: 'high',
-      assignedTo: 'Unassigned', createdBy: 'RT Network',
+      assignedTo: memberFor('billing')?.name || 'Unassigned', createdBy: 'RT Network',
       description: `Total package value €${total.toLocaleString()} across ${quote.items.length} provider(s).`,
       subtasks: [], tags: ['billing', 'auto-generated'], comments: [], attachments: [],
     });
