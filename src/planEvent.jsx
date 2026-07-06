@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { VENUES, SERVICES, KIND_LABELS, lineTotal, priceLabel, effectivePerGuest, venueCapacityFor } from './data/catalog';
 import { buildRunOfShow } from './data/runOfShow';
 import PlanChat from './planChat';
@@ -20,14 +20,45 @@ function makeRef() {
   return `RT-${Date.now().toString(36).toUpperCase()}`;
 }
 
-async function submitQuote(payload) {
+/* Turnstile is entirely optional: without VITE_TURNSTILE_SITE_KEY set, this
+   hook never loads the widget and submission proceeds unverified (the
+   server applies the same rule — verifyTurnstile passes with no secret set). */
+function useTurnstile(containerRef) {
+  const [token, setToken] = useState(null);
+  const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+
+  useEffect(() => {
+    if (!siteKey || !containerRef.current) return;
+    const renderWidget = () => {
+      if (!window.turnstile || !containerRef.current) return;
+      window.turnstile.render(containerRef.current, {
+        sitekey: siteKey,
+        callback: (t) => setToken(t),
+        'expired-callback': () => setToken(null),
+      });
+    };
+    if (window.turnstile) {
+      renderWidget();
+    } else {
+      const script = document.createElement('script');
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+      script.async = true;
+      script.onload = renderWidget;
+      document.head.appendChild(script);
+    }
+  }, [siteKey]);
+
+  return { enabled: !!siteKey, token };
+}
+
+async function submitQuote(payload, turnstileToken) {
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 6000);
     const res = await fetch('/api/quotes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, turnstile_token: turnstileToken || undefined }),
       signal: ctrl.signal,
     });
     clearTimeout(t);
@@ -60,9 +91,12 @@ export default function PlanEvent() {
   const [hours, setHours] = useState(5);
   const [staffCount, setStaffCount] = useState(2);
   const [contact, setContact] = useState({ name: '', email: '', phone: '', notes: '' });
+  const [agreedTerms, setAgreedTerms] = useState(false);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);        // { via, ref }
   const [error, setError] = useState(null);
+  const turnstileRef = useRef(null);
+  const turnstile = useTurnstile(turnstileRef);
 
   const guests = Number(form.guests) || 0;
   const venue = VENUES.find(v => v.id === venueId) || null;
@@ -143,7 +177,8 @@ export default function PlanEvent() {
     !!venue,                                                   // venue
     true,                                                      // services (optional)
     lines.length > 0,                                          // summary
-    contact.name.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email), // contact
+    contact.name.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)
+      && agreedTerms && (!turnstile.enabled || !!turnstile.token),        // contact
   ][step];
 
   async function handleSubmit() {
@@ -161,7 +196,7 @@ export default function PlanEvent() {
         items: lines.map(l => ({ provider_id: l.id, label: l.label, amount_eur: l.amount })),
         payload: { hours, staffCount, notes: contact.notes.trim() || null, run_of_show: runOfShow },
       };
-      setResult(await submitQuote(payload));
+      setResult(await submitQuote(payload, turnstile.token));
     } catch (e) {
       setError(e.message);
     } finally {
@@ -204,6 +239,10 @@ export default function PlanEvent() {
           )}
           <p className="rt-note" style={{ marginTop: 24 }}>
             Questions? <a href="mailto:hello@risingtide.store" style={{ color: 'var(--rt-teal)' }}>hello@risingtide.store</a>
+          </p>
+          <p className="rt-note" style={{ marginTop: 12 }}>
+            <a href="#impressum" style={{ color: 'var(--rt-muted)', marginRight: 14 }}>Impressum</a>
+            <a href="#datenschutz" style={{ color: 'var(--rt-muted)' }}>Datenschutz</a>
           </p>
         </div>
       </div>
@@ -410,11 +449,28 @@ export default function PlanEvent() {
             <div><label>Email</label><input type="email" value={contact.email} onChange={e => setContact(c => ({ ...c, email: e.target.value }))} /></div>
             <div><label>Phone / WhatsApp (optional)</label><input value={contact.phone} onChange={e => setContact(c => ({ ...c, phone: e.target.value }))} /></div>
             <div><label>Anything we should know?</label><textarea rows="3" value={contact.notes} onChange={e => setContact(c => ({ ...c, notes: e.target.value }))} /></div>
+
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, textTransform: 'none', letterSpacing: 0, fontSize: 13 }}>
+              <input type="checkbox" checked={agreedTerms} onChange={e => setAgreedTerms(e.target.checked)}
+                style={{ width: 18, height: 18, minHeight: 'unset', flexShrink: 0, marginTop: 2 }} />
+              <span>
+                I agree this sends my request to the providers I've selected for confirmation (not a booking yet), per the{' '}
+                <a href="#terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--rt-teal)' }}>terms</a>.
+              </span>
+            </label>
+
+            {turnstile.enabled && <div ref={turnstileRef} />}
+
             {error && <p className="rt-error">{error}</p>}
           </div>
         )}
         </>
         )}
+
+        <p className="rt-note" style={{ marginTop: 30, paddingBottom: 90 }}>
+          <a href="#impressum" style={{ color: 'var(--rt-muted)', marginRight: 14 }}>Impressum</a>
+          <a href="#datenschutz" style={{ color: 'var(--rt-muted)' }}>Datenschutz</a>
+        </p>
       </div>
 
       <div className="rt-total-bar">

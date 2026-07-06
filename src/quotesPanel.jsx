@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { RefreshCw, Download, Copy, CalendarPlus } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { RefreshCw, Download, Copy, CalendarPlus, Euro } from 'lucide-react';
 import { VENUES, venueCapacityFor } from './data/catalog';
 
 /* Operator Quotes tab — dark CRM styled. Reads client-submitted quotes from
@@ -59,6 +59,8 @@ const STATUS_CHIP = {
   declined: 'bg-red-900/40 text-red-300',
 };
 
+const QUOTE_STATUSES = ['submitted', 'confirmed', 'completed', 'cancelled'];
+
 export default function QuotesPanel({ classes, onConvert }) {
   const [quotes, setQuotes] = useState(null);
   const [error, setError] = useState(null);
@@ -82,6 +84,34 @@ export default function QuotesPanel({ classes, onConvert }) {
   }
 
   useEffect(() => { load(); }, []);
+
+  const ledger = useMemo(() => {
+    if (!quotes) return null;
+    const byProvider = {};
+    let totalCommission = 0;
+    for (const q of quotes) {
+      for (const i of q.items) {
+        if (i.status !== 'confirmed' || !i.commission_eur) continue;
+        byProvider[i.provider_name] = (byProvider[i.provider_name] || 0) + i.commission_eur;
+        totalCommission += i.commission_eur;
+      }
+    }
+    return { byProvider, totalCommission };
+  }, [quotes]);
+
+  async function setQuoteStatus(quote, status) {
+    try {
+      const res = await fetch('/api/quotes', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+        body: JSON.stringify({ id: quote.id, status }),
+      });
+      if (!res.ok) throw new Error();
+      setQuotes(qs => qs.map(q => q.id === quote.id ? { ...q, status } : q));
+    } catch {
+      alert('Could not update status — try refreshing.');
+    }
+  }
 
   function exportEngineJson(quote) {
     const blob = new Blob([JSON.stringify(quoteToEngineInput(quote), null, 2)], { type: 'application/json' });
@@ -116,6 +146,26 @@ export default function QuotesPanel({ classes, onConvert }) {
       </div>
 
       {error && <div className="panel-glass glass-border rounded-md p-4 text-sm text-red-300">{error}</div>}
+
+      {ledger && ledger.totalCommission > 0 && (
+        <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+          <div className="flex items-center gap-2 mb-3">
+            <Euro size={14} className="text-purple-300" />
+            <h2 className="text-sm font-bold text-white">Commission ledger — confirmed bookings</h2>
+          </div>
+          <div className="space-y-1 mb-2">
+            {Object.entries(ledger.byProvider).map(([name, amt]) => (
+              <div key={name} className="flex justify-between text-sm text-slate-300">
+                <span>{name}</span><span>€{amt.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between text-sm font-bold text-white pt-2 border-t border-white/10">
+            <span>Total commission owed to RT Network</span><span>€{ledger.totalCommission.toFixed(2)}</span>
+          </div>
+        </div>
+      )}
+
       {quotes && quotes.length === 0 && (
         <div className="panel-glass glass-border rounded-md p-8 text-center text-sm" style={{ color: 'var(--text-2)' }}>
           No quotes yet. Share the builder: <span className="font-mono text-purple-300">{window.location.origin}/#plan</span>
@@ -142,17 +192,26 @@ export default function QuotesPanel({ classes, onConvert }) {
                 <div className="text-right">
                   <div className="text-lg font-bold text-white">€{total.toLocaleString()}</div>
                   <div className="text-xs text-slate-400">{confirmed}/{q.items.length} confirmed</div>
+                  <select value={q.status} onChange={e => setQuoteStatus(q, e.target.value)}
+                    className="mt-1 text-xs dark-input rounded px-2 py-1">
+                    {QUOTE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
                 </div>
               </div>
 
               <div className="space-y-1 mb-4">
                 {q.items.map(i => (
-                  <div key={i.id} className="flex justify-between items-center text-sm">
-                    <span className="text-slate-300">{i.provider_name} — {i.label}</span>
-                    <span className="flex items-center gap-3">
-                      <span className="text-white">€{i.amount_eur.toLocaleString()}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded font-semibold ${STATUS_CHIP[i.status]}`}>{i.status}</span>
-                    </span>
+                  <div key={i.id} className="text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-300">{i.provider_name} — {i.label}</span>
+                      <span className="flex items-center gap-3">
+                        <span className="text-white">€{i.amount_eur.toLocaleString()}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded font-semibold ${STATUS_CHIP[i.status]}`}>{i.status}</span>
+                      </span>
+                    </div>
+                    {i.status === 'declined' && i.declined_reason && (
+                      <div className="text-xs text-slate-500 mt-0.5">Reason: {i.declined_reason}</div>
+                    )}
                   </div>
                 ))}
               </div>
