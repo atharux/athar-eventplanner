@@ -79,6 +79,7 @@ export default function Backstage({ token }) {
   const pending = data.items.filter(i => i.status === 'pending');
   const past = data.items.filter(i => i.status !== 'pending');
   const ratePct = Math.round(data.provider.commission_rate * 1000) / 10;
+  const neverHadAGig = data.items.length === 0;
 
   return (
     <div className="rt-light">
@@ -89,7 +90,7 @@ export default function Backstage({ token }) {
         </div>
 
         <div className="rt-kicker">Gig requests</div>
-        <h1 className="rt-h1">{data.provider.name}</h1>
+        <h1 className="rt-h1">{neverHadAGig ? `Welcome, ${data.provider.name} 👋` : data.provider.name}</h1>
         <p className="rt-lead" style={{ marginBottom: 8 }}>
           {data.provider.founding && <span className="rt-pill teal" style={{ marginRight: 8 }}>Founding member</span>}
           <span className="rt-note">Commission: {ratePct}%{data.provider.founding ? ' founding rate' : ''}</span>
@@ -97,8 +98,23 @@ export default function Backstage({ token }) {
 
         {flash && <p className="rt-note" style={{ color: 'var(--rt-teal)', margin: '10px 0' }}>{flash}</p>}
 
-        <h2 className="rt-display" style={{ fontSize: 20, margin: '22px 0 12px' }}>Pending ({pending.length})</h2>
-        {pending.length === 0 && <p className="rt-note">No pending requests — you're all caught up.</p>}
+        {neverHadAGig ? (
+          <div className="rt-card" style={{ marginTop: 18 }}>
+            <p style={{ fontWeight: 700, marginBottom: 10 }}>You're all set.</p>
+            <p className="rt-note" style={{ marginBottom: 14 }}>This link is yours — bookmark it. Here's what happens next:</p>
+            <ol style={{ margin: 0, paddingLeft: 20, fontSize: 14, lineHeight: 1.9 }}>
+              <li>A client requests you → you get an email</li>
+              <li>You see the gig and your exact payout, right here</li>
+              <li>Confirm or decline — ten seconds</li>
+            </ol>
+            <p className="rt-note" style={{ marginTop: 14 }}>Nothing to do yet — we'll email you the moment a request comes in.</p>
+          </div>
+        ) : (
+          <>
+            <h2 className="rt-display" style={{ fontSize: 20, margin: '22px 0 12px' }}>Pending ({pending.length})</h2>
+            {pending.length === 0 && <p className="rt-note">No pending requests — you're all caught up.</p>}
+          </>
+        )}
         <div style={{ display: 'grid', gap: 14 }}>
           {pending.map(item => (
             <div key={item.id} className="rt-card">

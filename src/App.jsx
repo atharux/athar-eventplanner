@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   Calendar, Users, MessageSquare, Search, Plus, X, Send, Euro, MapPin, Star,
-  Upload, Menu, Home, Settings, Building2, Edit, Paperclip, UserPlus, Zap, ShieldCheck, Inbox
+  Upload, Menu, Home, Settings, Building2, Edit, Paperclip, UserPlus, Zap, ShieldCheck, Inbox, Store
 } from 'lucide-react';
 import { useLocalStorage, checkLimit } from './useStorage';
 import { ProGate } from './ProGate';
@@ -9,6 +9,7 @@ import { PricingModal } from './PricingModal';
 import QuestBoard, { computeQuests } from './questBoard';
 import PreflightPanel from './preflightPanel';
 import QuotesPanel, { buildTasksForQuote, buildScheduleForQuote, buildBudgetItemsForQuote } from './quotesPanel';
+import ProvidersPanel from './providersPanel';
 import { TEAM } from './data/team';
 import './theme.css';
 
@@ -2105,6 +2106,7 @@ export default function App() {
             {[
               { id: 'dashboard', label: 'Dashboard', icon: Home },
               { id: 'quotes', label: 'Quotes', icon: Inbox },
+              { id: 'providers', label: 'Providers', icon: Store },
               { id: 'preflight', label: 'Pre-Flight', icon: ShieldCheck },
               { id: 'events', label: 'Events', icon: Calendar },
               { id: 'vendors', label: 'Vendors', icon: Building2 },
@@ -2358,6 +2360,9 @@ export default function App() {
                 alert(`Quote ${q.ref} converted — ${newTasks.length} task(s) assigned across your team, a ${schedule.length}-item run sheet, and ${newBudgetItems.length} budget line(s) added. See the Events tab.`);
               }} />
             )}
+
+            {/* Onboard / manage the live provider catalog */}
+            {activeTab === 'providers' && <ProvidersPanel classes={classes} />}
 
             {/* Pre-Flight constraint report */}
             {activeTab === 'preflight' && <PreflightPanel />}
