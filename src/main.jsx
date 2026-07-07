@@ -60,12 +60,21 @@ function Root() {
   const backstage = hash.match(/^#backstage\/([A-Za-z0-9_-]{8,64})$/);
   const quoteRef = hash.match(/^#quote\/(RT-[A-Za-z0-9-]{6,40})$/);
 
-  // Root is the client-facing landing (RT Network's public face); the
-  // operator CRM lives behind #ops so a bare share link never opens the
-  // dark ops tool with seed data.
+  // The operator CRM lives at the real path /ops (not a #hash) specifically
+  // so Cloudflare Access can gate it at the edge — hash fragments never
+  // reach the server, so a hash-based "#ops" could never be protected
+  // without also blocking every client/provider link on the same domain.
+  // Old #ops bookmarks are sent to the real, protected path instead.
+  if (hash === '#ops' || hash.startsWith('#ops/')) {
+    window.location.replace('/ops' + window.location.search);
+    return null;
+  }
+
+  const onOpsPath = window.location.pathname === '/ops' || window.location.pathname.startsWith('/ops/');
+
   let view = <PlanEvent />;
   let bg = '#ffffff';
-  if (hash === '#ops' || hash.startsWith('#ops/')) { view = <App />; bg = '#0a0a0a'; }
+  if (onOpsPath) { view = <App />; bg = '#0a0a0a'; }
   else if (backstage) view = <Backstage token={backstage[1]} key={backstage[1]} />;
   else if (quoteRef) view = <QuoteStatus ref={quoteRef[1]} key={quoteRef[1]} />;
   else if (hash === '#impressum') view = <Impressum />;
