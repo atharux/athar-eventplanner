@@ -14,18 +14,15 @@ The differentiator lives in `agents/event_ops/schemas/`:
 
 - **`engine.py`** — the generic constraint engine. Three domains: budget (total ceiling, per-category ceilings, absolute hard-stop line), staffing (per-shift minimum coverage from a volunteer roster with availability windows; unfilled `REPLACE` slots never count as people), and AV/equipment (per-instance dependency chains — a mic without its stand, cable, and backup battery is flagged — plus double-booking detection). Optional venue-capacity checks.
 - **One data file per event/venue** — `global_ai_berlin.py`, `lilium_berlin.py`. Adding a venue means adding a data file, nothing else.
-- Output is **idempotent and audited**: identical input hashes to identical reports.
+- **The app's Pre-Flight tab runs a faithful JS port of this engine live in the browser** (`src/data/preflightEngine.js`, verified byte-identical output against the Python original) — roster and committed spend are editable right on that screen and persist to localStorage; every edit recomputes violations instantly, so resolving a finding (e.g. filling a `REPLACE` roster slot) is a few clicks, not a Python re-run + redeploy.
 
 ```bash
-# Run a validation (no AI, no network):
+# Cross-check the app's live result against the offline reference implementation anytime:
 python3 agents/event_ops/schemas/global_ai_berlin.py
-
-# Publish the report the app renders in its Pre-Flight tab:
-python3 agents/event_ops/schemas/global_ai_berlin.py > public/gaib-preflight.json
-python3 agents/event_ops/schemas/lilium_berlin.py   > public/lilium-preflight.json
+python3 agents/event_ops/schemas/lilium_berlin.py
 ```
 
-Requires Python 3.10+ with `pydantic` (the engine builds on the reference implementation in `eventApp-research-etc/ai-ops-landing/deterministic.py`).
+Requires Python 3.10+ with `pydantic` (the engine builds on the reference implementation in `eventApp-research-etc/ai-ops-landing/deterministic.py`). Editing ceilings/coverage minimums (policy, not day-to-day data) still means editing `src/data/preflightEvents.js` — the app picks it up automatically.
 
 ## The app
 
