@@ -17,10 +17,16 @@ export const VENUES = [
     pricing: { model: 'flat', amount: 1200 },
   },
   {
-    id: 'fluxbau', name: 'Fluxbau', kind: 'venue', founding: true,
-    address: 'Pfuelstr. 5, 10997 Berlin (neighboring Lilium)',
-    blurb: 'Riverside venue next door to Lilium — co-rental available for combined events up to 600 guests.',
-    capacity: { standing: 300, seated: 150 }, // placeholder — confirm with Fluxbau
+    id: 'fluxbau', name: 'FluxBau', kind: 'venue', founding: true,
+    address: 'Pfuelstr. 5, 10997 Berlin — 2nd Hofeingang (courtyard entrance), directly on the Spree. U1 Schlesisches Tor.',
+    blurb: '550 m² over two floors (ground-floor dining hall + basement dance floor & stage) plus a 120 m² Spree-side terrace with Fernsehturm and Oberbaumbrücke views. Same address as Lilium — the two share a building.',
+    // Source: FluxBau's own booking PDF (fluxbau@fluxfm.de), read 2026-07-07.
+    // Only hard number it documents is a 90-guest SEATED wedding layout on
+    // the terrace — no standing/seated MAX is stated anywhere in it. Both
+    // keys are provisionally floored to that one confirmed figure rather
+    // than guessing higher; confirm real max capacity with FluxBau directly
+    // before quoting anything larger.
+    capacity: { standing: 90, seated: 90 },
     pricing: { model: 'flat', amount: 900 },
   },
 ];
