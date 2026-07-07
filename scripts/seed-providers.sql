@@ -5,7 +5,7 @@
 
 INSERT OR IGNORE INTO providers (id, name, kind, contact, token, founding, commission_rate) VALUES
  ('lilium',       'Lilium Berlin',      'venue',    'hello@risingtide.store', 'REPLACE_TOKEN_LILIUM',   1, 0.02),
- ('fluxbau',      'Fluxbau',            'venue',    'hello@risingtide.store', 'REPLACE_TOKEN_FLUXBAU',  1, 0.02),
+ ('fluxbau',      'FluxBau',            'venue',    'hello@risingtide.store', 'REPLACE_TOKEN_FLUXBAU',  1, 0.02),
  ('catering-std', 'Classic buffet',  'catering', NULL,                     'REPLACE_TOKEN_CATERING', 1, 0.02),
  ('catering-street','Street-food buffet','catering',NULL,'REPLACE_TOKEN_CATSTREET',1,0.02),
  ('catering-premium','Seated 3-course dinner','catering',NULL,'REPLACE_TOKEN_CATPREM',1,0.02),

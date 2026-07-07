@@ -125,6 +125,7 @@ export default function PlanEvent() {
 
   const guests = Number(form.guests) || 0;
   const venue = VENUES.find(v => v.id === venueId) || null;
+  const maxSingleVenueCap = VENUES.length ? Math.max(...VENUES.map(v => venueCapacityFor(v, form.type))) : 0;
 
   const lines = useMemo(() => {
     const out = [];
@@ -347,8 +348,8 @@ export default function PlanEvent() {
                 </div>
               );
             })}
-            {guests > 300 && guests <= 600 && (
-              <p className="rt-note">For {guests} guests: Lilium + Fluxbau are neighbors and co-rent for combined events up to 600 — <a href="mailto:hello@risingtide.store" style={{ color: 'var(--rt-teal)' }}>ask us</a>.</p>
+            {guests > maxSingleVenueCap && (
+              <p className="rt-note">For {guests} guests: Lilium and FluxBau share a building and may be able to co-rent for a combined event — <a href="mailto:hello@risingtide.store" style={{ color: 'var(--rt-teal)' }}>ask us</a> and we'll confirm capacity with both venues.</p>
             )}
           </div>
         )}

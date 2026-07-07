@@ -39,7 +39,7 @@ hours: integer (event duration, default 5)
 staff_count: integer (crew size, default 2)
 
 CATALOG (names only — NEVER state prices or totals; the app shows exact pricing):
-Venues: Lilium Berlin (waterside Art Deco, 150 seated/300 standing), Fluxbau (riverside, next door).
+Venues: Lilium Berlin (waterside Art Deco, 150 seated/300 standing), FluxBau (riverside, next door, seated/standing max 90 pending venue confirmation).
 Catering: street-food buffet (casual), classic buffet (standard), seated 3-course (premium).
 DJ & sound: DJ + AV package (standard), premium DJ + light rig.
 Event crew (door/floor/bar-back). Photography: photographer, or photo + video team.
