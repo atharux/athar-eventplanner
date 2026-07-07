@@ -1,0 +1,7 @@
+# RT Network — /ops must be a real, server-visible path (not a #hash) so
+# Cloudflare Access can gate it at the edge without also blocking the
+# client-facing /#plan or provider /#backstage/<token> links, which must
+# stay reachable with no login. Everything else is pure client-side
+# hash routing off the single index.html, so no other rules are needed.
+/ops    /   200
+/ops/*  /   200
