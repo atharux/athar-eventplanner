@@ -17,6 +17,30 @@ const NEON_COLOR = 'var(--ef-brand)';
 const NEON = 'linear-gradient(90deg, var(--ef-brand-deep), var(--ef-brand))';
 const neonBoxShadow = 'var(--glow-md)';
 
+/* Minimal CSV parser (handles quoted fields, embedded commas/quotes,
+   \r\n and \n) — matches exactly what the Guests "Export CSV" button
+   produces, so export -> edit in a spreadsheet -> re-import round-trips. */
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQuotes = false; }
+      else field += c;
+    } else if (c === '"') inQuotes = true;
+    else if (c === ',') { row.push(field); field = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(field); field = '';
+      if (row.length > 1 || row[0] !== '') rows.push(row);
+      row = [];
+    } else field += c;
+  }
+  if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
+  return rows;
+}
+
 // One-time data migration: clear stale seed data so new defaults load.
 // Runs once at module load, not inside render.
 if (typeof window !== 'undefined' && localStorage.getItem('ef_data_v') !== '3') {
@@ -185,7 +209,7 @@ function EditEventInline({ event, onSave, onClose }) {
   );
 }
 
-function AddMemberInline({ onAdd, onClose }) {
+function AddMemberInline({ onAdd, onClose, existingNames = [] }) {
   const [form, setForm] = React.useState({ name: '', role: '', email: '' });
   const handle = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const submit = (e) => {
@@ -193,9 +217,30 @@ function AddMemberInline({ onAdd, onClose }) {
     if (!form.name || !form.role) return;
     onAdd({ ...form, avatar: form.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) });
   };
+  const availableRoster = TEAM.filter(m => !existingNames.includes(m.name));
   return (
     <form onSubmit={submit} className="panel-glass glass-border rounded-lg p-4 space-y-3">
-      <p className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>New team member</p>
+      {availableRoster.length > 0 && (
+        <div>
+          <p className="text-sm font-semibold mb-2" style={{ color: 'var(--text-1)' }}>Quick add from your team</p>
+          <div className="flex flex-wrap gap-2">
+            {availableRoster.map(m => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => onAdd({ name: m.name, role: m.role, email: m.email, avatar: m.avatar })}
+                className="px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-2"
+                style={{ background: 'var(--surface-3)', color: 'var(--text-1)' }}
+                title={m.email}
+              >
+                <span className="w-5 h-5 rounded bg-purple-700 text-white flex items-center justify-center text-[10px]">{m.avatar}</span>
+                {m.name} — {m.role}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <p className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>Or add someone new</p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         {[['Name', 'name', 'text'], ['Role', 'role', 'text'], ['Email', 'email', 'email']].map(([label, key, type]) => (
           <div key={key}>
@@ -585,7 +630,7 @@ const TaskDetailModal = ({ task, onClose, setTasks, classes }) => {
     };
     return (
       <div
-        className="fixed inset-0 z-50 flex items-end md:items-center justify-center"
+        className="fixed inset-0 z-[60] flex items-end md:items-center justify-center"
         style={{ backgroundColor: 'rgba(0,0,0,0.8)' /* 80% dark overlay */, backdropFilter: 'blur(8px)' }}
       >
         <div
@@ -605,12 +650,18 @@ const TaskDetailModal = ({ task, onClose, setTasks, classes }) => {
                 style={{ color: classes.strongText === 'text-slate-100' ? '#fff' : '#111' }}
               />
               <div className="flex items-center gap-3 mt-2">
-                <span className={`text-xs px-2 py-1 font-semibold ${task.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : task.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 'bg-gray-200 text-gray-700'}`}>
-                  {task.status}
-                </span>
-                <span className={`text-xs px-2 py-1 font-semibold ${task.priority === 'high' ? 'bg-red-100 text-red-800' : task.priority === 'medium' ? 'bg-amber-100 text-amber-800' : 'bg-gray-200 text-gray-700'}`}>
-                  {task.priority}
-                </span>
+                <select value={task.status} onChange={e => update({ status: e.target.value })}
+                  className={`text-xs px-2 py-1 font-semibold rounded cursor-pointer border-0 ${task.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : task.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 'bg-gray-200 text-gray-700'}`}>
+                  <option value="pending">pending</option>
+                  <option value="in-progress">in-progress</option>
+                  <option value="completed">completed</option>
+                </select>
+                <select value={task.priority} onChange={e => update({ priority: e.target.value })}
+                  className={`text-xs px-2 py-1 font-semibold rounded cursor-pointer border-0 ${task.priority === 'high' ? 'bg-red-100 text-red-800' : task.priority === 'medium' ? 'bg-amber-100 text-amber-800' : 'bg-gray-200 text-gray-700'}`}>
+                  <option value="low">low</option>
+                  <option value="medium">medium</option>
+                  <option value="high">high</option>
+                </select>
               </div>
             </div>
             <button onClick={onClose} className="text-slate-300 hover:text-white p-2">
@@ -681,18 +732,17 @@ const TaskDetailModal = ({ task, onClose, setTasks, classes }) => {
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-semibold text-slate-400 mb-2 block">ASSIGNED TO</label>
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-purple-700 text-white flex items-center justify-center rounded text-xs">{task.assignedTo.split(' ').map(n => n[0]).join('')}</div>
-                  <span className="text-sm font-semibold">{task.assignedTo}</span>
-                </div>
+                <select value={task.assignedTo} onChange={e => update({ assignedTo: e.target.value })}
+                  className="dark-input w-full p-2 rounded-md text-sm">
+                  {!TEAM.some(m => m.name === task.assignedTo) && <option value={task.assignedTo}>{task.assignedTo}</option>}
+                  {TEAM.map(m => <option key={m.id} value={m.name}>{m.name} — {m.role}</option>)}
+                </select>
               </div>
 
               <div>
                 <label className="text-xs font-semibold text-slate-400 mb-2 block">DUE DATE</label>
-                <div className="flex items-center gap-2 text-sm text-slate-300">
-                  <Calendar size={14} />
-                  {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </div>
+                <input type="date" value={task.dueDate} onChange={e => update({ dueDate: e.target.value })}
+                  className="dark-input w-full p-2 rounded-md text-sm" />
               </div>
 
               <div>
@@ -1017,6 +1067,7 @@ export default function App() {
 
   /* Event Detail Overlay (inline) */
   const EventDetailView = ({ event, onClose }) => {
+    const csvInputRef = React.useRef(null);
     if (!event) return null;
     const eventBudgetItems = budgetItems.filter(i => i.event === event.name);
     const eventTasks = tasks.filter(t => t.event === event.name);
@@ -1155,6 +1206,7 @@ export default function App() {
                       setShowAddMemberModal(false);
                     }}
                     onClose={() => setShowAddMemberModal(false)}
+                    existingNames={event.team.map(m => m.name)}
                   />
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1483,6 +1535,57 @@ export default function App() {
                       className="bg-white/5 hover:bg-white/10 text-white px-3 py-2 rounded text-sm"
                     >
                       Export CSV
+                    </button>
+                    <input
+                      type="file"
+                      accept=".csv,text/csv"
+                      ref={csvInputRef}
+                      style={{ display: 'none' }}
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        e.target.value = ''; // allow re-selecting the same file later
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          const rows = parseCSV(ev.target.result);
+                          if (rows.length < 2) { alert('CSV appears empty or has no data rows.'); return; }
+                          const header = rows[0].map(h => h.trim().toLowerCase());
+                          const idx = {
+                            name: header.findIndex(h => h === 'name'),
+                            email: header.findIndex(h => h === 'email'),
+                            rsvp: header.findIndex(h => h === 'rsvp'),
+                            plusOne: header.findIndex(h => h === '+1' || h === 'plusone' || h === 'plus one'),
+                            table: header.findIndex(h => h === 'table'),
+                            dietary: header.findIndex(h => h === 'dietary' || h === 'dietary restrictions'),
+                          };
+                          if (idx.name === -1) { alert('CSV must have a "Name" column.'); return; }
+                          const base = Math.max(0, ...guests.map(g => g.id));
+                          const newGuests = [];
+                          rows.slice(1).forEach(r => {
+                            const name = (r[idx.name] || '').trim();
+                            if (!name) return;
+                            const rsvpRaw = (idx.rsvp > -1 ? r[idx.rsvp] : '').trim().toLowerCase();
+                            const plusRaw = (idx.plusOne > -1 ? r[idx.plusOne] : '').trim().toLowerCase();
+                            newGuests.push({
+                              id: base + newGuests.length + 1,
+                              name,
+                              email: idx.email > -1 ? (r[idx.email] || '').trim() : '',
+                              rsvp: ['confirmed', 'pending', 'declined'].includes(rsvpRaw) ? rsvpRaw : 'pending',
+                              plusOne: ['yes', 'true', '1'].includes(plusRaw),
+                              event: event.name,
+                              table: idx.table > -1 ? (r[idx.table] || '').trim() : '',
+                              dietaryRestrictions: idx.dietary > -1 ? (r[idx.dietary] || '').trim() : '',
+                            });
+                          });
+                          if (newGuests.length === 0) { alert('No valid rows found — each row needs at least a Name.'); return; }
+                          setGuests(prev => [...prev, ...newGuests]);
+                          alert(`Imported ${newGuests.length} guest(s).`);
+                        };
+                        reader.readAsText(file);
+                      }}
+                    />
+                    <button onClick={() => csvInputRef.current?.click()} className="bg-white/5 hover:bg-white/10 text-white px-3 py-2 rounded text-sm">
+                      Import CSV
                     </button>
                     <button onClick={() => setShowAddGuestModal(true)} className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm">
                       <UserPlus size={14} /> Add Guest
