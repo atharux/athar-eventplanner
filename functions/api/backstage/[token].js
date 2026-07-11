@@ -86,7 +86,21 @@ export async function onRequestPost({ params, request, env }) {
       `SELECT status FROM quote_items WHERE quote_id = ?`
     ).bind(existing.quote_id).all();
     if (siblings.length > 0 && siblings.every(s => s.status === 'confirmed')) {
-      await env.DB.prepare(`UPDATE quotes SET status = 'confirmed' WHERE id = ?`).bind(existing.quote_id).run();
+      // Lock the planner service fee on the confirmed total, mirroring how each
+      // provider's commission_eur locks per item. Uses the rate stored on the
+      // quote (defaults to 0.02) so historical fees don't shift if the rate changes.
+      const feeRow = await env.DB.prepare(
+        `SELECT q.client_fee_rate AS rate,
+                COALESCE(SUM(i.amount_eur), 0) AS confirmed_total
+         FROM quotes q
+         JOIN quote_items i ON i.quote_id = q.id AND i.status = 'confirmed'
+         WHERE q.id = ?`
+      ).bind(existing.quote_id).first();
+      const clientFee = Math.round(feeRow.confirmed_total * (feeRow.rate ?? 0.02) * 100) / 100;
+
+      await env.DB.prepare(
+        `UPDATE quotes SET status = 'confirmed', client_fee_eur = ? WHERE id = ?`
+      ).bind(clientFee, existing.quote_id).run();
       const quote = await env.DB.prepare(
         `SELECT ref, event_type, guests, client_email FROM quotes WHERE id = ?`
       ).bind(existing.quote_id).first();

@@ -9,6 +9,7 @@ const EVENT_TYPES = new Set(['wedding', 'corporate', 'party']);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_BODY = 32 * 1024;
 const QUOTE_STATUSES = new Set(['submitted', 'confirmed', 'completed', 'cancelled']);
+const CLIENT_SERVICE_FEE_RATE = 0.02; // planner-side service fee; mirrors quotes.client_fee_rate default
 
 export async function onRequestPost({ request, env }) {
   const raw = await request.text();
@@ -91,7 +92,11 @@ export async function onRequestPost({ request, env }) {
   ];
   await Promise.allSettled(notify);
 
-  return json({ ok: true, ref }, 201);
+  // Show the planner their 2% service fee up front (indicative; the binding
+  // amount is locked on quotes.client_fee_eur only when every item is confirmed).
+  const serviceFeeEur = Math.round(total * CLIENT_SERVICE_FEE_RATE * 100) / 100;
+
+  return json({ ok: true, ref, service_fee_eur: serviceFeeEur }, 201);
 }
 
 export async function onRequestGet({ request, env }) {
@@ -102,7 +107,7 @@ export async function onRequestGet({ request, env }) {
   const { results: rows } = await env.DB.prepare(
     `SELECT q.id AS quote_id, q.ref, q.event_type, q.event_date, q.guests, q.budget,
             q.client_name, q.client_email, q.client_phone, q.status AS quote_status,
-            q.created_at, q.payload_json,
+            q.created_at, q.payload_json, q.client_fee_eur,
             i.id AS item_id, i.provider_id, i.label, i.amount_eur, i.status AS item_status,
             i.responded_at, i.commission_eur, i.declined_reason,
             p.name AS provider_name, p.kind AS provider_kind
@@ -121,6 +126,7 @@ export async function onRequestGet({ request, env }) {
         guests: r.guests, budget: r.budget, client_name: r.client_name,
         client_email: r.client_email, client_phone: r.client_phone,
         status: r.quote_status, created_at: r.created_at, payload_json: r.payload_json,
+        client_fee_eur: r.client_fee_eur,
         items: [],
       });
     }
