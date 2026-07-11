@@ -28,12 +28,12 @@ RT Network is currently an **introducer with a commission ledger — not a payme
 
 ## 2. Target model: planner 2% + venue 2%
 
-**Decisions to lock first (product, not code):**
-1. **Who is "the planner"?** → the demand-side **client** who assembles and submits the package (the person planning the event). Their 2% is a **service fee**.
-2. **Which providers pay?** → the **venue** pays a 2% **booking fee**. Decide whether other providers (catering, DJ/AV, photo) still pay commission or drop to 0%. *Recommended:* venue 2% only for now; set others to 0% to keep the model simple and the pitch clean ("4% total, split two ways").
-3. **Staffing:** exclude `staff`/crew from the fee chain entirely (see §4) — RT takes no cut on labor, which also weakens any "profiting from labor placement" argument.
+**Locked model (decided 2026-07-11): flat 2% on every angle, staff exempt.**
+1. **Planner** (demand-side client who submits the package) pays a **2% service fee**.
+2. **Every fee-bearing provider** — venue, catering, DJ/AV, photo — pays **2%**. (The old 10% standard tier is retired; it's a flat 2% across the board.)
+3. **Staff/crew are exempt (0%)** on **both** sides — the provider fee *and* the planner's fee base exclude staff items — so RT never takes a cut tied to labor. This is the liability shield (see §4).
 
-**Total RT take = 2% (planner) + 2% (venue) = 4% of the venue booking**, split across both sides.
+**Total RT take on a booking = 2% (planner, ex-staff) + 2% × each fee-bearing provider.** Nothing is charged on the staff line.
 
 ---
 

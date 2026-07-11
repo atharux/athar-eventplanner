@@ -163,8 +163,12 @@ export default function PlanEvent() {
 
   // Planner-side RT service fee (2%), shown before submit. Indicative here; the
   // binding amount locks on quotes.client_fee_eur only when every item confirms.
+  // Staff/crew are excluded from the fee base — RT takes no cut tied to labor.
   const SERVICE_FEE_RATE = 0.02;
-  const serviceFee = Math.round(total * SERVICE_FEE_RATE * 100) / 100;
+  const staffService = SERVICES.find(s => s.kind === 'staff' && selected['staff'] === s.id);
+  const staffLineAmount = staffService ? lineTotal(staffService, { guests, hours, headcount: staffCount }) : 0;
+  const feeBase = Math.max(0, total - staffLineAmount);
+  const serviceFee = Math.round(feeBase * SERVICE_FEE_RATE * 100) / 100;
   const totalWithFee = Math.round((total + serviceFee) * 100) / 100;
 
   /* Deterministic run of show from the current package — no AI. */

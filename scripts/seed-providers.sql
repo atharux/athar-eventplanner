@@ -12,5 +12,5 @@ INSERT OR IGNORE INTO providers (id, name, kind, contact, token, founding, commi
  ('dj-live','Premium DJ + light rig','dj_av',NULL,'REPLACE_TOKEN_DJLIVE',1,0.02),
  ('photo-video','Photo + video team','photo',NULL,'REPLACE_TOKEN_PHOTOVIDEO',1,0.02),
  ('dj-av',        'DJ + AV package',    'dj_av',    NULL,                     'REPLACE_TOKEN_DJAV',     1, 0.02),
- ('staff',        'Event crew',         'staff',    NULL,                     'REPLACE_TOKEN_STAFF',    1, 0.02),
+ ('staff',        'Event crew',         'staff',    NULL,                     'REPLACE_TOKEN_STAFF',    1, 0.0),
  ('photo',        'Photographer',       'photo',    NULL,                     'REPLACE_TOKEN_PHOTO',    1, 0.02);

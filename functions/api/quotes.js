@@ -41,7 +41,7 @@ export async function onRequestPost({ request, env }) {
   const ids = [...new Set(items.map(i => i.provider_id))];
   const marks = ids.map(() => '?').join(',');
   const { results: known } = await env.DB.prepare(
-    `SELECT id, name, contact, token, commission_rate FROM providers WHERE id IN (${marks})`
+    `SELECT id, name, kind, contact, token, commission_rate FROM providers WHERE id IN (${marks})`
   ).bind(...ids).all();
   if (known.length !== ids.length) {
     const knownSet = new Set(known.map(r => r.id));
@@ -94,7 +94,11 @@ export async function onRequestPost({ request, env }) {
 
   // Show the planner their 2% service fee up front (indicative; the binding
   // amount is locked on quotes.client_fee_eur only when every item is confirmed).
-  const serviceFeeEur = Math.round(total * CLIENT_SERVICE_FEE_RATE * 100) / 100;
+  // Staff/crew are excluded from the fee base — RT takes no cut tied to labor.
+  const feeBase = items.reduce(
+    (s, i) => s + (providerById[i.provider_id]?.kind === 'staff' ? 0 : i.amount_eur), 0
+  );
+  const serviceFeeEur = Math.round(feeBase * CLIENT_SERVICE_FEE_RATE * 100) / 100;
 
   return json({ ok: true, ref, service_fee_eur: serviceFeeEur }, 201);
 }
