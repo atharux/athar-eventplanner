@@ -5,8 +5,8 @@
    Tier providers (street/premium/live/video) are bookable placeholders until
    real founding members sign — swap names/prices, keep the ids. */
 
-export const FOUNDING_COMMISSION = 0.02; // locked 2 years for founding members
-export const STANDARD_COMMISSION = 0.10;
+export const FOUNDING_COMMISSION = 0.02; // flat marketplace fee; founding = rate locked 2 years
+export const STANDARD_COMMISSION = 0.02; // flat 2% for all fee-bearing providers (staff/crew exempt = 0%)
 
 export const VENUES = [
   {

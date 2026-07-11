@@ -209,15 +209,17 @@ export default function QuotesPanel({ classes, onConvert }) {
   const ledger = useMemo(() => {
     if (!quotes) return null;
     const byProvider = {};
-    let totalCommission = 0;
+    let totalCommission = 0;   // venue/provider booking fees
+    let totalServiceFee = 0;   // planner service fees (2%)
     for (const q of quotes) {
+      if (q.client_fee_eur) totalServiceFee += q.client_fee_eur;
       for (const i of q.items) {
         if (i.status !== 'confirmed' || !i.commission_eur) continue;
         byProvider[i.provider_name] = (byProvider[i.provider_name] || 0) + i.commission_eur;
         totalCommission += i.commission_eur;
       }
     }
-    return { byProvider, totalCommission };
+    return { byProvider, totalCommission, totalServiceFee, totalTake: totalCommission + totalServiceFee };
   }, [quotes]);
 
   async function setQuoteStatus(quote, status) {
@@ -268,21 +270,26 @@ export default function QuotesPanel({ classes, onConvert }) {
 
       {error && <div className="panel-glass glass-border rounded-md p-4 text-sm text-red-300">{error}</div>}
 
-      {ledger && ledger.totalCommission > 0 && (
+      {ledger && ledger.totalTake > 0 && (
         <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
           <div className="flex items-center gap-2 mb-3">
             <Euro size={14} className="text-purple-300" />
-            <h2 className="text-sm font-bold text-white">Commission ledger — confirmed bookings</h2>
+            <h2 className="text-sm font-bold text-white">Fee ledger — confirmed bookings</h2>
           </div>
           <div className="space-y-1 mb-2">
             {Object.entries(ledger.byProvider).map(([name, amt]) => (
               <div key={name} className="flex justify-between text-sm text-slate-300">
-                <span>{name}</span><span>€{amt.toFixed(2)}</span>
+                <span>{name} <span className="text-slate-500">· booking fee</span></span><span>€{amt.toFixed(2)}</span>
               </div>
             ))}
+            {ledger.totalServiceFee > 0 && (
+              <div className="flex justify-between text-sm text-slate-300">
+                <span>Planner service fees <span className="text-slate-500">· 2%</span></span><span>€{ledger.totalServiceFee.toFixed(2)}</span>
+              </div>
+            )}
           </div>
           <div className="flex justify-between text-sm font-bold text-white pt-2 border-t border-white/10">
-            <span>Total commission owed to RT Network</span><span>€{ledger.totalCommission.toFixed(2)}</span>
+            <span>Total RT Network take</span><span>€{ledger.totalTake.toFixed(2)}</span>
           </div>
         </div>
       )}

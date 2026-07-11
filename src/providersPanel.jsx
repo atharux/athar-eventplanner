@@ -184,7 +184,7 @@ export default function ProvidersPanel({ classes }) {
             <div className="flex items-end gap-2 pb-1">
               <label className="flex items-center gap-2 text-sm text-slate-300">
                 <input type="checkbox" checked={form.founding} onChange={e => setForm(f => ({ ...f, founding: e.target.checked }))} className="w-4 h-4" />
-                Founding member — 2% commission, locked 24 months (unchecked = standard 10%)
+                Founding member — 2% rate locked 24 months (all providers 2%; crew/staff exempt)
               </label>
             </div>
           </div>
