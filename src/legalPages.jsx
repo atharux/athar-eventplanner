@@ -55,6 +55,9 @@ export function Impressum() {
   );
 }
 
+// NOTE: DRAFT copy pending German AGB/lawyer review. Discloses the planner 2%
+// service fee and frames RT as a neutral facilitator (not a party to the service
+// contract, not an employer/supplier of staff) — see docs/money-flow-and-liability.md.
 export function ClientTerms() {
   return (
     <Shell title="Terms for event requests">
@@ -68,8 +71,16 @@ export function ClientTerms() {
         are agreed directly between you and each confirmed provider unless stated otherwise.
       </p>
       <p>
-        RT Network (Rising Tide Collective) facilitates the introduction and confirmation process and may charge
-        providers a commission on confirmed bookings — this does not change the price shown to you.
+        RT Network (Rising Tide Collective) is a booking-facilitation platform — it introduces you to providers and
+        confirms availability, but is <strong>not a party to your contract</strong> with any provider. For this service,
+        RT Network charges you a <strong>2% service fee</strong> on the confirmed total, shown to you before you submit;
+        each venue separately pays RT Network a booking fee. Payment for the services themselves is made directly to each
+        provider.
+      </p>
+      <p>
+        All providers — including any crew or staffing — are <strong>independent businesses</strong>, solely responsible
+        for their own services, personnel and obligations. RT Network is not their employer or agent and neither
+        supervises nor supplies staff.
       </p>
       <p>
         You can check your request's status anytime at the link emailed to you, or by revisiting your quote

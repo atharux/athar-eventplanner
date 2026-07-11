@@ -161,6 +161,12 @@ export default function PlanEvent() {
   const budget = Number(form.budget) || 0;
   const overBudget = budget > 0 && total > budget;
 
+  // Planner-side RT service fee (2%), shown before submit. Indicative here; the
+  // binding amount locks on quotes.client_fee_eur only when every item confirms.
+  const SERVICE_FEE_RATE = 0.02;
+  const serviceFee = Math.round(total * SERVICE_FEE_RATE * 100) / 100;
+  const totalWithFee = Math.round((total + serviceFee) * 100) / 100;
+
   /* Deterministic run of show from the current package — no AI. */
   const runOfShow = useMemo(() => {
     if (!venue && lines.length === 0) return [];
@@ -249,7 +255,9 @@ export default function PlanEvent() {
             {lines.map(l => (
               <div className="rt-line" key={l.id}><span>{l.label}</span><span>€{l.amount.toLocaleString()}</span></div>
             ))}
-            <div className="rt-line" style={{ fontWeight: 700 }}><span>Total</span><span>€{total.toLocaleString()}</span></div>
+            <div className="rt-line"><span>Package subtotal</span><span>€{total.toLocaleString()}</span></div>
+            <div className="rt-line"><span>RT service fee (2%)</span><span>€{serviceFee.toLocaleString()}</span></div>
+            <div className="rt-line" style={{ fontWeight: 700 }}><span>Total incl. service fee</span><span>€{totalWithFee.toLocaleString()}</span></div>
           </div>
           {runOfShow.length > 0 && (
             <div className="rt-card" style={{ textAlign: 'left', marginTop: 14 }}>
@@ -443,7 +451,9 @@ export default function PlanEvent() {
               {lines.map(l => (
                 <div className="rt-line" key={l.id}><span>{l.label}</span><span>€{l.amount.toLocaleString()}</span></div>
               ))}
-              <div className="rt-line" style={{ fontWeight: 700, fontSize: 16 }}><span>Total</span><span>€{total.toLocaleString()}</span></div>
+              <div className="rt-line"><span>Package subtotal</span><span>€{total.toLocaleString()}</span></div>
+              <div className="rt-line"><span>RT service fee (2%)</span><span>€{serviceFee.toLocaleString()}</span></div>
+              <div className="rt-line" style={{ fontWeight: 700, fontSize: 16 }}><span>Total incl. service fee</span><span>€{totalWithFee.toLocaleString()}</span></div>
             </div>
             {overBudget && (
               <p className="rt-note" style={{ color: 'var(--rt-amber)', marginTop: 12 }}>
