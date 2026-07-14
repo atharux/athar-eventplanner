@@ -11,6 +11,11 @@
  * name already exists, so re-running after adding rows only inserts the new
  * ones (a raw POST would duplicate, since ids are slug+random).
  *
+ * It also skips vendors already owned by scripts/seed-providers.sql (the SQL
+ * seed, stable ids knalle / hokey-pokey / brammibals). Those are onboarded via
+ * SQL with fixed ids that match src/data/catalog.js; the loader must never
+ * re-add them under a second slug+random id. See SQL_SEEDED below.
+ *
  * Usage:
  *   ADMIN_TOKEN=… node scripts/onboard-vendors.mjs                 # localhost:8788
  *   ADMIN_TOKEN=… API_URL=https://<pages-domain> node scripts/onboard-vendors.mjs
@@ -30,6 +35,11 @@ if (!TOKEN) {
   process.exit(2);
 }
 
+// Vendors onboarded via scripts/seed-providers.sql (fixed ids that match
+// src/data/catalog.js). Skipped here so the loader never double-seeds them
+// under a second slug+random id, independent of what's in the live roster.
+const SQL_SEEDED = new Set(['Knalle', 'Hokey Pokey', "Brammibal's"]);
+
 const auth = { Authorization: `Bearer ${TOKEN}` };
 const vendors = JSON.parse(await readFile(manifestPath, 'utf8'));
 if (!Array.isArray(vendors)) {
@@ -48,6 +58,7 @@ const existing = new Set((await rosterRes.json()).providers.map((p) => p.name));
 let added = 0, skipped = 0, failed = 0;
 for (const v of vendors) {
   if (!v?.name) { console.error('SKIP (no name):', JSON.stringify(v)); failed++; continue; }
+  if (SQL_SEEDED.has(v.name)) { console.log('skip  ', v.name, '(seeded via scripts/seed-providers.sql)'); skipped++; continue; }
   if (existing.has(v.name)) { console.log('skip  ', v.name, '(already onboarded)'); skipped++; continue; }
 
   const res = await fetch(`${API}/api/providers`, {
