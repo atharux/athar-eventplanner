@@ -42,6 +42,25 @@ export const SERVICES = [
     blurb: 'Plated three-course menu with service staff — wedding-grade.',
     pricing: { model: 'per_person', amount: 45 },
   },
+  // ---- Berlin specialty catering (per guest) ----
+  {
+    id: 'knalle', name: 'Knalle', kind: 'catering', founding: true,
+    address: 'Raumerstr. 32, 10437 Berlin',
+    blurb: 'Gourmet popcorn Manufaktur — event popcorn bar & branded gifting stations.',
+    pricing: { model: 'per_person', amount: 5 },
+  },
+  {
+    id: 'hokey-pokey', name: 'Hokey Pokey', kind: 'catering', founding: true,
+    address: 'Stargarder Str. 72, 10437 Berlin',
+    blurb: 'Ice-cream patisserie — event ice-cream cart with rotating flavours.',
+    pricing: { model: 'per_person', amount: 6 },
+  },
+  {
+    id: 'brammibals', name: "Brammibal's", kind: 'catering', founding: true,
+    address: 'Maybachufer 8, 12047 Berlin',
+    blurb: 'Vegan donuts — donut catering, custom letter donuts & branded boxes.',
+    pricing: { model: 'per_person', amount: 5 },
+  },
   // ---- DJ & sound (per hour) ----
   {
     id: 'dj-av', name: 'DJ + AV package', kind: 'dj_av', founding: true,
