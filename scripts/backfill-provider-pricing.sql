@@ -44,3 +44,19 @@ UPDATE providers SET pricing_model='flat', pricing_amount=600,
 UPDATE providers SET pricing_model='flat', pricing_amount=1100,
   blurb='Two-person team — full gallery plus a 3-minute highlight film.'
   WHERE id='photo-video';
+
+-- Berlin specialty catering (placeholder per-guest estimates — confirm real event rates)
+UPDATE providers SET pricing_model='per_person', pricing_amount=5,
+  blurb='Gourmet popcorn Manufaktur — event popcorn bar & branded gifting stations.',
+  address='Raumerstr. 32, 10437 Berlin'
+  WHERE id='knalle';
+
+UPDATE providers SET pricing_model='per_person', pricing_amount=6,
+  blurb='Ice-cream patisserie — event ice-cream cart with rotating flavours.',
+  address='Stargarder Str. 72, 10437 Berlin'
+  WHERE id='hokey-pokey';
+
+UPDATE providers SET pricing_model='per_person', pricing_amount=5,
+  blurb='Vegan donuts — donut catering, custom letter donuts & branded boxes.',
+  address='Maybachufer 8, 12047 Berlin'
+  WHERE id='brammibals';
