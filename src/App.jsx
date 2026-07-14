@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Calendar, Users, MessageSquare, Search, Plus, X, Send, Euro, MapPin, Star,
   Upload, Menu, Home, Settings, Building2, Edit, Paperclip, UserPlus, Zap, ShieldCheck, Inbox, Store
@@ -865,7 +865,10 @@ export default function App() {
     { id: 2, name: 'Harmony DJ Services', category: 'Entertainment', rating: 4.8, price: '$$$', location: 'Citywide', reviews: 89, booked: true, lastContact: '1 week ago' },
     { id: 3, name: 'Bloom & Petal', category: 'Florals', rating: 5.0, price: '$$$', location: 'Westside', reviews: 156, booked: false, lastContact: 'Never' },
     { id: 4, name: 'Gourmet Delights', category: 'Catering', rating: 4.8, price: '$$$', location: 'Midtown', reviews: 112, booked: false, lastContact: '1 month ago' },
-    { id: 5, name: 'Live Band Collective', category: 'Entertainment', rating: 4.7, price: '$$$$', location: 'Downtown', reviews: 78, booked: false, lastContact: 'Never' }
+    { id: 5, name: 'Live Band Collective', category: 'Entertainment', rating: 4.7, price: '$$$$', location: 'Downtown', reviews: 78, booked: false, lastContact: 'Never' },
+    { id: 6, name: 'Knalle', category: 'Catering', rating: 4.7, price: '$$$', location: 'Prenzlauer Berg, Berlin', reviews: 64, booked: false, lastContact: 'Never' },
+    { id: 7, name: 'Hokey Pokey', category: 'Catering', rating: 4.8, price: '$$', location: 'Prenzlauer Berg, Berlin', reviews: 203, booked: false, lastContact: 'Never' },
+    { id: 8, name: "Brammibal's", category: 'Catering', rating: 4.6, price: '$$', location: 'Neukölln, Berlin', reviews: 178, booked: false, lastContact: 'Never' }
   ]);
 
   const [venues, setVenues] = useLocalStorage('ef_venues', [
@@ -966,6 +969,37 @@ export default function App() {
     { id: 2, company: 'The Thompson Family', contact: 'James Thompson', email: 'james@thompson.com', phone: '+49 30 9876543', status: 'active', events: 1, clientSince: '2025-01-05', notes: 'Wedding client', linkedEvents: [] },
     { id: 3, company: 'NextGen Tech', contact: 'Rita Gomez', email: 'rita@nextgen.com', phone: '+49 30 5551212', status: 'prospect', events: 0, clientSince: '2024-11-01', notes: 'Interested in conference packages', linkedEvents: [] }
   ]);
+
+  /* ── One-time data migrations for existing localStorage users ── */
+  useEffect(() => {
+    let applied;
+    try {
+      applied = JSON.parse(localStorage.getItem('ef_migrations') || '[]');
+    } catch {
+      applied = [];
+    }
+    if (applied.includes('berlin-vendors-2026-07')) return;
+
+    const berlinVendors = [
+      { name: 'Knalle',        category: 'Catering', rating: 4.7, price: '$$$', location: 'Prenzlauer Berg, Berlin', reviews: 64,  booked: false, lastContact: 'Never' },
+      { name: 'Hokey Pokey',   category: 'Catering', rating: 4.8, price: '$$',  location: 'Prenzlauer Berg, Berlin', reviews: 203, booked: false, lastContact: 'Never' },
+      { name: "Brammibal's",   category: 'Catering', rating: 4.6, price: '$$',  location: 'Neukölln, Berlin',        reviews: 178, booked: false, lastContact: 'Never' },
+    ];
+
+    setVendors(prev => {
+      const existing = new Set(prev.map(v => v.name));
+      const missing = berlinVendors.filter(v => !existing.has(v.name));
+      if (missing.length === 0) return prev;
+      const nextId = prev.reduce((max, v) => Math.max(max, v.id || 0), 0) + 1;
+      return [...prev, ...missing.map((v, i) => ({ id: nextId + i, ...v }))];
+    });
+
+    try {
+      localStorage.setItem('ef_migrations', JSON.stringify([...applied, 'berlin-vendors-2026-07']));
+    } catch {
+      // storage unavailable — migration will retry next load, still idempotent by name
+    }
+  }, []);
 
   /* -------------------- Venue discovery -------------------- */
   /* ── Live-computed events — always in sync with tasks/guests/budget ── */
