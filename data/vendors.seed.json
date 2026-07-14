@@ -1,0 +1,30 @@
+[
+  {
+    "name": "Knalle",
+    "kind": "catering",
+    "pricing_model": "per_person",
+    "pricing_amount": 6,
+    "blurb": "Gourmet popcorn stations & corporate gifting — Prenzlauer Berg manufaktur.",
+    "address": "Prenzlauer Berg, Berlin",
+    "contact": "hallo@knalle.berlin",
+    "founding": true
+  },
+  {
+    "name": "Hokey Pokey",
+    "kind": "catering",
+    "pricing_model": "per_person",
+    "pricing_amount": 5,
+    "blurb": "Ice cream patisserie — event carts & take-home cups.",
+    "address": "Prenzlauer Berg, Berlin",
+    "founding": true
+  },
+  {
+    "name": "Brammibal's",
+    "kind": "catering",
+    "pricing_model": "per_person",
+    "pricing_amount": 4.8,
+    "blurb": "Vegan donuts — catering & custom letter donuts.",
+    "address": "Neukölln, Berlin",
+    "founding": true
+  }
+]
