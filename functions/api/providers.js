@@ -69,7 +69,7 @@ export async function onRequestPost({ request, env }) {
     id, name.trim(), kind, contact || null, token, isFounding ? 1 : 0, rate,
     pricing_model, pricing_amount, blurb || null,
     kind === 'venue' ? capacity_standing : null, kind === 'venue' ? capacity_seated : null,
-    kind === 'venue' ? (address || null) : null
+    address || null
   ).run();
 
   const origin = new URL(request.url).origin;

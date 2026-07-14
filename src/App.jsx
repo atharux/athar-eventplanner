@@ -17,6 +17,33 @@ const NEON_COLOR = 'var(--ef-brand)';
 const NEON = 'linear-gradient(90deg, var(--ef-brand-deep), var(--ef-brand))';
 const neonBoxShadow = 'var(--glow-md)';
 
+/* Maps the D1 provider catalog (/api/catalog) into the operator vendor-card
+   shape. D1 is the source of truth for the roster; anything onboarded there —
+   including records POSTed by outside automation (e.g. the venue scraper via
+   /api/providers) — becomes a CRM vendor with no deploy. Venue kinds are
+   excluded here: they sync into the separate venues list, not the vendor tab. */
+const VENDOR_CATEGORY = { catering: 'Catering', dj_av: 'Entertainment', staff: 'Staff', photo: 'Photography' };
+
+function priceBand(pricing) {
+  if (!pricing || !Number.isFinite(pricing.amount)) return '$$$';
+  const { model, amount } = pricing;
+  if (model === 'per_person') return amount <= 20 ? '$$' : amount <= 35 ? '$$$' : '$$$$';
+  if (model === 'per_hour')   return amount <= 80 ? '$$' : amount <= 120 ? '$$$' : '$$$$';
+  return amount <= 1000 ? '$$$' : '$$$$'; // flat
+}
+
+function catalogToVendors(services) {
+  return (services || [])
+    .filter(s => VENDOR_CATEGORY[s.kind])
+    .map(s => ({
+      id: s.id,
+      name: s.name,
+      category: VENDOR_CATEGORY[s.kind],
+      price: priceBand(s.pricing),
+      location: s.address || 'Berlin',
+    }));
+}
+
 /* Minimal CSV parser (handles quoted fields, embedded commas/quotes,
    \r\n and \n) — matches exactly what the Guests "Export CSV" button
    produces, so export -> edit in a spreadsheet -> re-import round-trips. */
@@ -999,6 +1026,44 @@ export default function App() {
     } catch {
       // storage unavailable — migration will retry next load, still idempotent by name
     }
+  }, []);
+
+  /* ── Live vendor sync — the D1 provider catalog (/api/catalog) is the source
+     of truth for the roster. New providers, including anything POSTed by outside
+     automation (the venue scraper, an agent, a webhook) via /api/providers, flow
+     into the operator CRM on load — no deploy. Merges by name: server owns the
+     roster + descriptive fields (category/price/location); the operator keeps
+     interaction state (booked, lastContact, rating, reviews). Fails silently to
+     the local/static list, mirroring useCatalog() in planEvent.jsx. ── */
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/catalog')
+      .then(r => (r.ok ? r.json() : Promise.reject()))
+      .then(d => {
+        if (cancelled) return;
+        const incoming = catalogToVendors(d.services);
+        if (!incoming.length) return;
+        setVendors(prev => {
+          const byName = new Map(prev.map(v => [v.name, v]));
+          let changed = false;
+          for (const inc of incoming) {
+            const existing = byName.get(inc.name);
+            if (existing) {
+              // refresh server-owned fields only; preserve operator state
+              if (existing.category !== inc.category || existing.price !== inc.price || existing.location !== inc.location) {
+                byName.set(inc.name, { ...existing, category: inc.category, price: inc.price, location: inc.location });
+                changed = true;
+              }
+            } else {
+              byName.set(inc.name, { rating: '—', reviews: 0, booked: false, lastContact: 'Never', ...inc });
+              changed = true;
+            }
+          }
+          return changed ? Array.from(byName.values()) : prev;
+        });
+      })
+      .catch(() => {}); // silent — local/static list already in state
+    return () => { cancelled = true; };
   }, []);
 
   /* -------------------- Venue discovery -------------------- */

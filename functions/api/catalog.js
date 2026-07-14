@@ -19,10 +19,11 @@ export async function onRequestGet({ env }) {
   for (const r of results) {
     const base = {
       id: r.id, name: r.name, kind: r.kind, founding: !!r.founding,
-      blurb: r.blurb || '', pricing: { model: r.pricing_model, amount: r.pricing_amount },
+      blurb: r.blurb || '', address: r.address || '',
+      pricing: { model: r.pricing_model, amount: r.pricing_amount },
     };
     if (r.kind === 'venue') {
-      venues.push({ ...base, address: r.address || '', capacity: { standing: r.capacity_standing || 0, seated: r.capacity_seated || 0 } });
+      venues.push({ ...base, capacity: { standing: r.capacity_standing || 0, seated: r.capacity_seated || 0 } });
     } else {
       services.push(base);
     }
