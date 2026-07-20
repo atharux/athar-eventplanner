@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { RefreshCw, Plus, Copy, Check } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { RefreshCw, Plus, Copy, Check, Search, ArrowUpDown } from 'lucide-react';
 
 /* Operator Providers tab — onboard a new provider without touching code or
    running a deploy: the form writes straight to D1 via the admin-authenticated
@@ -23,7 +23,28 @@ export default function ProvidersPanel({ classes }) {
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState(null); // { id, backstage_url }
   const [copied, setCopied] = useState(false);
+  const [query, setQuery] = useState('');
+  const [kindFilter, setKindFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('name');
   const adminToken = typeof window !== 'undefined' ? localStorage.getItem('rt_admin_token') : null;
+
+  /* Client-side smart search + sort over the loaded catalog — no extra API. */
+  const visibleProviders = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let list = (providers || []).filter(p => {
+      const matchesQuery = !q || [p.name, p.contact, KIND_LABELS[p.kind] || p.kind, p.blurb]
+        .some(v => (v || '').toLowerCase().includes(q));
+      const matchesKind = kindFilter === 'all' || p.kind === kindFilter;
+      return matchesQuery && matchesKind;
+    });
+    const cmp = {
+      name: (a, b) => (a.name || '').localeCompare(b.name || ''),
+      kind: (a, b) => (KIND_LABELS[a.kind] || a.kind || '').localeCompare(KIND_LABELS[b.kind] || b.kind || '') || (a.name || '').localeCompare(b.name || ''),
+      commission: (a, b) => (a.commission_rate || 0) - (b.commission_rate || 0),
+      price: (a, b) => (a.pricing_amount || 0) - (b.pricing_amount || 0),
+    }[sortBy];
+    return cmp ? [...list].sort(cmp) : list;
+  }, [providers, query, kindFilter, sortBy]);
 
   async function load() {
     if (!adminToken) return;
@@ -204,8 +225,41 @@ export default function ProvidersPanel({ classes }) {
         </div>
       )}
 
+      {providers && providers.length > 0 && (
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search name, contact, category…"
+              className="dark-input w-full pl-9 pr-3 py-2 rounded-md text-sm"
+            />
+          </div>
+          <select value={kindFilter} onChange={e => setKindFilter(e.target.value)} className="dark-input py-2 px-3 rounded-md text-sm">
+            <option value="all">All categories</option>
+            {Object.entries(KIND_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+          </select>
+          <div className="relative">
+            <ArrowUpDown size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="dark-input py-2 pl-9 pr-3 rounded-md text-sm">
+              <option value="name">Name (A–Z)</option>
+              <option value="kind">Category</option>
+              <option value="commission">Commission (low→high)</option>
+              <option value="price">Amount (low→high)</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      {providers && providers.length > 0 && visibleProviders.length === 0 && (
+        <div className="panel-glass glass-border rounded-md p-6 text-center text-sm" style={{ color: 'var(--text-2)' }}>
+          No providers match “{query}”.
+        </div>
+      )}
+
       <div className="space-y-2">
-        {(providers || []).map(p => (
+        {visibleProviders.map(p => (
           <div key={p.id} className={`${classes.panelBg} ${classes.border} p-4 rounded-md flex flex-wrap justify-between items-center gap-3`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
             <div>
               <div className="flex items-center gap-2">

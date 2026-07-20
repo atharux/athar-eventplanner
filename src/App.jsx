@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   Calendar, Users, MessageSquare, Search, Plus, X, Send, Euro, MapPin, Star,
-  Upload, Menu, Home, Settings, Building2, Edit, Paperclip, UserPlus, Zap, ShieldCheck, Inbox, Store
+  Upload, Menu, Home, Settings, Building2, Edit, Paperclip, UserPlus, Zap, ShieldCheck, Inbox, Store,
+  Copy, Check, Printer
 } from 'lucide-react';
 import { useLocalStorage, checkLimit } from './useStorage';
 import { ProGate } from './ProGate';
@@ -87,11 +88,136 @@ function useThemeClasses(theme) {
   };
 }
 
+/* ── Run-sheet time helpers — the schedule stores mixed formats (12h "09:00 AM"
+   and 24h "20:00"; durations like "2 hours", "1.5 hours", "45 minutes"). These
+   normalize both into absolute minutes so the gantt can place bars on a real
+   clock axis. ── */
+function parseClock(str) {
+  const m = String(str ?? '').trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  const ap = m[3] ? m[3].toUpperCase() : null;
+  if (ap === 'PM' && h !== 12) h += 12;
+  if (ap === 'AM' && h === 12) h = 0;
+  return h * 60 + min; // 0..1439
+}
+function parseDuration(str) {
+  const s = String(str ?? '').toLowerCase();
+  const n = parseFloat(s);
+  if (!n || Number.isNaN(n)) return 60;
+  if (s.includes('min')) return Math.max(n, 5);
+  return Math.max(n * 60, 5); // "hour"/"hr"/bare number → hours
+}
+function fmtClock(mins) {
+  const m = ((mins % 1440) + 1440) % 1440;
+  let h = Math.floor(m / 60);
+  const ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 === 0 ? 12 : h % 12;
+  return `${h} ${ap}`;
+}
+/* Full "HH:MM AM/PM" label for writing back into schedule rows after a nudge. */
+function toClockLabel(mins) {
+  const m = ((mins % 1440) + 1440) % 1440;
+  let h = Math.floor(m / 60);
+  const ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 === 0 ? 12 : h % 12;
+  return `${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '0')} ${ap}`;
+}
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* Where a schedule row sits on the absolute timeline. An explicit `nextDay`
+   flag (set via the editor's "crosses midnight" toggle) wins; otherwise fall
+   back to the heuristic — on an evening sheet, treat a pre-6AM start as after
+   midnight. Keeps legacy rows (no flag) behaving as before. */
+function shiftStart(startRaw, nextDay, hasEvening) {
+  if (nextDay === true) return startRaw + 1440;
+  if (nextDay === false) return startRaw;
+  return hasEvening && startRaw < 6 * 60 ? startRaw + 1440 : startRaw;
+}
+
+/* Build owner-swimlane gantt geometry from schedule rows. Rows that cross
+   midnight get shifted +24h so bars stay in chronological order (explicit
+   toggle or heuristic — see shiftStart). Overlapping bars owned by the SAME
+   person are flagged. */
+function buildGantt(data) {
+  const parsed = data
+    .map((it, idx) => ({ ...it, idx, startRaw: parseClock(it.time), dur: parseDuration(it.duration) }))
+    .filter(p => p.startRaw != null);
+  if (parsed.length === 0) return null;
+
+  const hasEvening = parsed.some(p => p.startRaw >= 12 * 60);
+  const norm = parsed.map(p => ({ ...p, start: shiftStart(p.startRaw, p.nextDay, hasEvening) }));
+
+  const minStart = Math.min(...norm.map(p => p.start));
+  const maxEnd = Math.max(...norm.map(p => p.start + p.dur));
+  const axisStart = Math.floor(minStart / 60) * 60;
+  const axisEnd = Math.ceil(maxEnd / 60) * 60;
+  const span = Math.max(axisEnd - axisStart, 60);
+
+  const lanes = [];
+  norm.forEach(p => {
+    const owner = p.assigned || 'Unassigned';
+    let lane = lanes.find(l => l.owner === owner);
+    if (!lane) { lane = { owner, items: [] }; lanes.push(lane); }
+    lane.items.push(p);
+  });
+  // Flag same-owner overlaps (one person can't be in two places at once).
+  // Track the running max end across ALL prior items, not just the previous
+  // one, so a long block that spans a short one still flags a later overlap.
+  lanes.forEach(lane => {
+    const its = [...lane.items].sort((a, b) => a.start - b.start);
+    let maxEnd = its.length ? its[0].start + its[0].dur : 0;
+    for (let i = 1; i < its.length; i++) {
+      if (its[i].start < maxEnd) {
+        its[i].conflict = true;
+        for (let j = 0; j < i; j++) {
+          if (its[j].start + its[j].dur > its[i].start) its[j].conflict = true;
+        }
+      }
+      maxEnd = Math.max(maxEnd, its[i].start + its[i].dur);
+    }
+  });
+
+  const tickStep = span > 12 * 60 ? 180 : span > 6 * 60 ? 120 : 60;
+  const ticks = [];
+  for (let t = axisStart; t <= axisEnd; t += 60) ticks.push(t);
+
+  const now = new Date();
+  let nowMin = now.getHours() * 60 + now.getMinutes();
+  if (hasEvening && nowMin < 6 * 60) nowMin += 1440;
+  const nowPct = ((nowMin - axisStart) / span) * 100;
+
+  // Dead-gap detection on the merged master timeline: stretches of ≥30 min
+  // where nothing anywhere is happening (idle time worth surfacing).
+  const gaps = [];
+  const byStart = [...norm].sort((a, b) => a.start - b.start);
+  let coverEnd = null;
+  for (const p of byStart) {
+    if (coverEnd !== null && p.start - coverEnd >= 30) gaps.push({ start: coverEnd, end: p.start });
+    coverEnd = coverEnd === null ? p.start + p.dur : Math.max(coverEnd, p.start + p.dur);
+  }
+
+  const conflicts = norm.filter(p => p.conflict).length;
+  return { lanes, ticks, tickStep, axisStart, span, nowPct, showNow: nowPct >= 0 && nowPct <= 100, conflicts, gaps };
+}
+
+const OWNER_ROLES = ['Organizer', 'Caterer', 'DJ / AV', 'Event crew', 'Photography', 'Registration / door', 'Setup Crew'];
+const STATUS_ORDER = ['upcoming', 'active', 'done'];
+const STATUS_STYLE = {
+  upcoming: { label: 'Upcoming', bg: 'var(--surface-3)', color: 'var(--text-2)' },
+  active:   { label: 'Active',   bg: 'rgba(245,158,11,0.18)', color: '#fbbf24' },
+  done:     { label: 'Done',     bg: 'rgba(16,185,129,0.18)', color: '#34d399' },
+};
+
 /* ScheduleTab — extracted as proper component to satisfy Rules of Hooks */
 function ScheduleTab({ event, setEvents, onAddSchedule }) {
   const [localSchedule, setLocalSchedule] = React.useState(event?.schedule || []);
   const [showEditModal, setShowEditModal] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState(null);
+  const [copied, setCopied] = React.useState(false);
 
   React.useEffect(() => {
     setLocalSchedule(event?.schedule || []);
@@ -106,48 +232,183 @@ function ScheduleTab({ event, setEvents, onAddSchedule }) {
     { time: '12:00 AM', title: 'Event Wrap-up', duration: '1 hour', assigned: 'Full Team', category: 'Wrap-up' },
   ];
 
+  const gantt = React.useMemo(() => buildGantt(data), [data]);
+  const NOW_COLOR = '#f59e0b';
+
+  /* Persist any change to both the working copy and the saved event. Acting on
+     the sample seeds it as the real schedule on first edit. */
+  const commit = (next) => {
+    setLocalSchedule(next);
+    if (event) setEvents(prev => prev.map(ev => ev.id === event.id ? { ...ev, schedule: next } : ev));
+  };
+  const openEdit = (idx) => { setEditingItem({ ...data[idx], _idx: idx }); setShowEditModal(true); };
+  const cycleStatus = (idx) => {
+    const cur = data[idx].status || 'upcoming';
+    const nextStatus = STATUS_ORDER[(STATUS_ORDER.indexOf(cur) + 1) % STATUS_ORDER.length];
+    commit(data.map((it, i) => i === idx ? { ...it, status: nextStatus } : it));
+  };
+
+  /* Owner suggestions for the editor dropdown — team + role labels + whoever's
+     already on this sheet, de-duplicated. */
+  const ownerOptions = Array.from(new Set([...TEAM.map(m => m.name), ...OWNER_ROLES, ...data.map(d => d.assigned).filter(Boolean)]));
+
+  // Match the gantt's chronological order (same nextDay flag / heuristic), so a
+  // 12 AM wrap-up exports last, not first.
+  const exportHasEvening = data.some(it => (parseClock(it.time) ?? 0) >= 12 * 60);
+  const exportKey = (it) => shiftStart(parseClock(it.time) ?? 0, it.nextDay, exportHasEvening);
+  const exportRows = [...data]
+    .map(it => ({ ...it, _m: parseClock(it.time) }))
+    .sort((a, b) => exportKey(a) - exportKey(b));
+  const copySheet = () => {
+    const header = `Run Sheet${event ? ` — ${event.name}` : ''}`;
+    const lines = exportRows.map(it => `${(it.time || '—').padEnd(9)} ${it.title}  (${it.duration || '—'}) — ${it.assigned || '—'}${it.status === 'done' ? ' ✓' : ''}`);
+    navigator.clipboard?.writeText(`${header}\n\n${lines.join('\n')}`).then(() => {
+      setCopied(true); setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  const printSheet = () => {
+    const rows = exportRows.map(it => `<tr><td>${escapeHtml(it.time || '')}</td><td>${escapeHtml(it.title || '')}</td><td>${escapeHtml(it.duration || '')}</td><td>${escapeHtml(it.assigned || '')}</td></tr>`).join('');
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(`<!doctype html><html><head><title>Run Sheet${event ? ' — ' + escapeHtml(event.name) : ''}</title>
+      <style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;padding:32px;color:#111}
+      h1{font-size:20px;margin:0 0 4px}p{color:#666;margin:0 0 20px;font-size:13px}
+      table{width:100%;border-collapse:collapse;font-size:13px}
+      th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #ddd}
+      th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#888}
+      td:first-child{white-space:nowrap;font-weight:600}</style></head>
+      <body><h1>Run Sheet${event ? ' — ' + escapeHtml(event.name) : ''}</h1>
+      <p>${escapeHtml(event?.location || '')}${event?.date ? ' · ' + escapeHtml(new Date(event.date).toLocaleDateString()) : ''}</p>
+      <table><thead><tr><th>Time</th><th>Item</th><th>Duration</th><th>Owner</th></tr></thead><tbody>${rows}</tbody></table></body></html>`);
+    w.document.close(); w.focus(); w.print();
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold" style={{ color: 'var(--text-1)' }}>Run Sheet / Schedule</h2>
-        <button onClick={onAddSchedule} className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm">
-          <Plus size={14} /> Add Item
-        </button>
+      <div className="flex justify-between items-center flex-wrap gap-2">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h2 className="text-xl font-semibold" style={{ color: 'var(--text-1)' }}>Run Sheet / Schedule</h2>
+          {gantt && gantt.conflicts > 0 && (
+            <span className="text-xs font-semibold px-2 py-0.5 rounded" style={{ background: 'rgba(239,68,68,0.18)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.5)' }}>
+              {gantt.conflicts} owner overlap{gantt.conflicts > 1 ? 's' : ''}
+            </span>
+          )}
+          {gantt && gantt.gaps.length > 0 && (
+            <span className="text-xs font-semibold px-2 py-0.5 rounded" style={{ background: 'rgba(245,158,11,0.15)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.4)' }}>
+              {gantt.gaps.length} idle gap{gantt.gaps.length > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={copySheet} className="bg-white/5 hover:bg-white/10 text-white px-3 py-2 rounded flex items-center gap-2 text-sm" title="Copy run sheet as text">
+            {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied' : 'Copy'}
+          </button>
+          <button onClick={printSheet} className="bg-white/5 hover:bg-white/10 text-white px-3 py-2 rounded flex items-center gap-2 text-sm" title="Print call sheet">
+            <Printer size={14} /> Print
+          </button>
+          <button onClick={onAddSchedule} className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center gap-2 text-sm">
+            <Plus size={14} /> Add Item
+          </button>
+        </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="w-full md:w-1/3 space-y-2">
-          {data.map((it, idx) => (
+      {/* Owner-swimlane gantt on a real clock axis — one lane per owner so
+          concurrency, same-owner conflicts and idle gaps are visible at a glance.
+          Tap a bar to cycle its day-of status; edit detail from the list below. */}
+      {gantt ? (
+        <div className="rounded-lg p-4 overflow-x-auto" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+          <div style={{ minWidth: 680 }}>
+            {/* hour axis */}
+            <div className="relative h-5 mb-1" style={{ marginLeft: 120 }}>
+              {gantt.ticks.filter(t => (t - gantt.axisStart) % gantt.tickStep === 0).map(t => (
+                <span key={t} className="absolute text-[10px] whitespace-nowrap" style={{ left: `${((t - gantt.axisStart) / gantt.span) * 100}%`, transform: 'translateX(-50%)', color: 'var(--text-2)' }}>{fmtClock(t)}</span>
+              ))}
+            </div>
+            {/* idle-gap band row */}
+            {gantt.gaps.length > 0 && (
+              <div className="flex items-center mb-1" style={{ height: 18 }}>
+                <div className="text-[10px] pr-2 truncate" style={{ width: 120, color: '#fbbf24' }}>Idle gaps</div>
+                <div className="relative flex-1" style={{ height: 10 }}>
+                  {gantt.gaps.map((g, i) => (
+                    <div key={i} title={`${toClockLabel(g.start)}–${toClockLabel(g.end)} idle (${g.end - g.start} min)`}
+                      className="absolute top-0 bottom-0 rounded-sm"
+                      style={{ left: `${((g.start - gantt.axisStart) / gantt.span) * 100}%`, width: `${((g.end - g.start) / gantt.span) * 100}%`, background: 'repeating-linear-gradient(45deg,rgba(245,158,11,0.35),rgba(245,158,11,0.35) 4px,transparent 4px,transparent 8px)', border: '1px solid rgba(245,158,11,0.4)' }} />
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* lanes */}
+            {gantt.lanes.map(lane => (
+              <div key={lane.owner} className="flex items-center" style={{ height: 34 }}>
+                <div className="text-xs truncate pr-2" style={{ width: 120, color: 'var(--text-2)' }} title={lane.owner}>{lane.owner}</div>
+                <div className="relative flex-1" style={{ height: 26, background: 'var(--surface-1)', borderRadius: 4 }}>
+                  {gantt.ticks.map(t => (
+                    <div key={t} className="absolute top-0 bottom-0" style={{ left: `${((t - gantt.axisStart) / gantt.span) * 100}%`, width: 1, background: 'var(--border)', opacity: 0.4 }} />
+                  ))}
+                  {gantt.showNow && (
+                    <div className="absolute top-0 bottom-0 z-20" style={{ left: `${gantt.nowPct}%`, width: 2, background: NOW_COLOR }} title="Now" />
+                  )}
+                  {lane.items.map(p => {
+                    const st = p.status || 'upcoming';
+                    return (
+                      <button
+                        key={p.idx}
+                        onClick={() => cycleStatus(p.idx)}
+                        title={`${p.title} — ${p.time} · ${p.duration} · ${STATUS_STYLE[st].label}${p.conflict ? ' · ⚠ overlaps another block for this owner' : ''} (tap to change status)`}
+                        className="absolute flex items-center gap-1 overflow-hidden text-[10px] font-semibold px-1.5"
+                        style={{
+                          top: 3, height: 20, borderRadius: 3, whiteSpace: 'nowrap', cursor: 'pointer',
+                          left: `${((p.start - gantt.axisStart) / gantt.span) * 100}%`,
+                          width: `${Math.max((p.dur / gantt.span) * 100, 2.5)}%`,
+                          background: p.conflict ? 'rgba(239,68,68,0.28)' : (st === 'done' ? 'var(--surface-3)' : 'var(--accent-dim)'),
+                          border: `1px solid ${p.conflict ? 'rgba(239,68,68,0.65)' : (st === 'active' ? NOW_COLOR : 'var(--accent-border)')}`,
+                          boxShadow: st === 'active' ? `0 0 10px ${NOW_COLOR}` : 'none',
+                          opacity: st === 'done' ? 0.5 : 1,
+                          color: 'var(--text-1)',
+                        }}
+                      >
+                        {st === 'done' ? '✓ ' : st === 'active' ? '● ' : ''}{p.title}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            {gantt.showNow && (
+              <div className="text-[10px] mt-2" style={{ marginLeft: 120, color: NOW_COLOR }}>▎ now — {toClockLabel(new Date().getHours() * 60 + new Date().getMinutes())}</div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-lg p-6 text-sm text-center" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-2)' }}>
+          Add items with a valid start time to see the timeline.
+        </div>
+      )}
+
+      {/* Editable list — full detail, quick status pill + the small-screen fallback. */}
+      <div className="space-y-2">
+        {data.map((it, idx) => {
+          const st = it.status || 'upcoming';
+          return (
             <div key={idx} className="panel-glass glass-border p-3 rounded-md transition-all">
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between gap-2">
                 <div>
                   <div className="text-purple-300 font-bold text-sm">{it.time}</div>
                   <div className="font-semibold text-sm" style={{ color: 'var(--text-1)' }}>{it.title}</div>
                   <div className="text-xs" style={{ color: 'var(--text-2)' }}>{it.duration} · {it.assigned}</div>
                 </div>
-                <button onClick={() => { setEditingItem({ ...it, _orig: it.title }); setShowEditModal(true); }} className="p-1 hover:bg-white/5 rounded">
-                  <Edit size={14} style={{ color: 'var(--text-2)' }} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex-1 overflow-x-auto relative h-64 rounded-lg" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-          <div className="absolute top-0 left-0 w-full flex justify-between text-xs p-2" style={{ color: 'var(--text-2)' }}>
-            {['09 AM', '12 PM', '03 PM', '06 PM', '09 PM', '12 AM'].map(t => <span key={t}>{t}</span>)}
-          </div>
-          <div className="absolute inset-0 mt-6 space-y-3 p-4">
-            {data.map((it, idx) => (
-              <div key={idx} className="relative group" title={`${it.title} — ${it.duration}`}>
-                <div className="h-6 rounded-md cursor-pointer" style={{ width: `${Math.min((parseInt(it.duration) || 1) * 20, 95)}%`, background: 'var(--accent-dim)', border: '1px solid var(--accent-border)' }} />
-                <div className="absolute hidden group-hover:flex top-7 left-0 text-xs px-2 py-1 rounded z-10 whitespace-nowrap" style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', color: 'var(--text-1)' }}>
-                  <span className="font-semibold mr-2">{it.title}</span><span style={{ color: 'var(--text-2)' }}>{it.time} · {it.duration}</span>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => cycleStatus(idx)} className="text-[10px] font-semibold px-2 py-1 rounded" style={{ background: STATUS_STYLE[st].bg, color: STATUS_STYLE[st].color }} title="Click to change status">
+                    {STATUS_STYLE[st].label}
+                  </button>
+                  <button onClick={() => openEdit(idx)} className="p-1 hover:bg-white/5 rounded" title="Edit">
+                    <Edit size={14} style={{ color: 'var(--text-2)' }} />
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          );
+        })}
       </div>
 
       {showEditModal && editingItem && (
@@ -156,18 +417,55 @@ function ScheduleTab({ event, setEvents, onAddSchedule }) {
             <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-1)' }}>Edit Schedule Item</h3>
             <form onSubmit={(e) => {
               e.preventDefault();
-              const { _orig, ...edited } = editingItem;
-              const updated = localSchedule.map(s => s.title === _orig ? edited : s);
-              setLocalSchedule(updated);
-              if (event) setEvents(prev => prev.map(ev => ev.id === event.id ? { ...ev, schedule: updated } : ev));
+              const { _idx, ...edited } = editingItem;
+              commit(data.map((s, i) => i === _idx ? edited : s));
               setShowEditModal(false);
             }} className="space-y-3">
-              {[['Title','title'],['Assigned To','assigned'],['Start Time','time'],['Duration','duration']].map(([label, key]) => (
-                <div key={key}>
-                  <label className="block text-sm mb-1" style={{ color: 'var(--text-2)' }}>{label}</label>
-                  <input type="text" value={editingItem[key] || ''} onChange={e => setEditingItem(p => ({ ...p, [key]: e.target.value }))} className="w-full dark-input rounded px-3 py-2" />
+              <div>
+                <label className="block text-sm mb-1" style={{ color: 'var(--text-2)' }}>Title</label>
+                <input type="text" value={editingItem.title || ''} onChange={e => setEditingItem(p => ({ ...p, title: e.target.value }))} className="w-full dark-input rounded px-3 py-2" />
+              </div>
+              <div>
+                <label className="block text-sm mb-1" style={{ color: 'var(--text-2)' }}>Owner</label>
+                <input type="text" list="ros-owner-list" value={editingItem.assigned || ''} onChange={e => setEditingItem(p => ({ ...p, assigned: e.target.value }))} className="w-full dark-input rounded px-3 py-2" placeholder="Pick or type…" />
+                <datalist id="ros-owner-list">
+                  {ownerOptions.map(o => <option key={o} value={o} />)}
+                </datalist>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm mb-1" style={{ color: 'var(--text-2)' }}>Start Time</label>
+                  <div className="flex items-center gap-1">
+                    <input type="text" value={editingItem.time || ''} onChange={e => setEditingItem(p => ({ ...p, time: e.target.value }))} className="w-full dark-input rounded px-3 py-2" />
+                  </div>
+                  <div className="flex gap-1 mt-1">
+                    <button type="button" onClick={() => { const c = parseClock(editingItem.time); if (c != null) setEditingItem(p => ({ ...p, time: toClockLabel(c - 15) })); }} className="flex-1 text-xs py-1 rounded" style={{ background: 'var(--surface-3)', color: 'var(--text-1)' }}>−15m</button>
+                    <button type="button" onClick={() => { const c = parseClock(editingItem.time); if (c != null) setEditingItem(p => ({ ...p, time: toClockLabel(c + 15) })); }} className="flex-1 text-xs py-1 rounded" style={{ background: 'var(--surface-3)', color: 'var(--text-1)' }}>+15m</button>
+                  </div>
                 </div>
-              ))}
+                <div>
+                  <label className="block text-sm mb-1" style={{ color: 'var(--text-2)' }}>Duration</label>
+                  <input type="text" value={editingItem.duration || ''} onChange={e => setEditingItem(p => ({ ...p, duration: e.target.value }))} className="w-full dark-input rounded px-3 py-2" placeholder="1 hour" />
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--text-2)' }}>
+                <input type="checkbox" checked={!!editingItem.nextDay} onChange={e => setEditingItem(p => ({ ...p, nextDay: e.target.checked }))} className="w-4 h-4" />
+                Crosses midnight (next day) — e.g. a 2 AM load-out, or keep off for an early-morning setup
+              </label>
+              <div>
+                <label className="block text-sm mb-1" style={{ color: 'var(--text-2)' }}>Status</label>
+                <div className="flex gap-2">
+                  {STATUS_ORDER.map(s => (
+                    <button key={s} type="button" onClick={() => setEditingItem(p => ({ ...p, status: s }))}
+                      className="flex-1 text-xs font-semibold py-1.5 rounded"
+                      style={(editingItem.status || 'upcoming') === s
+                        ? { background: STATUS_STYLE[s].bg, color: STATUS_STYLE[s].color, border: `1px solid ${STATUS_STYLE[s].color}` }
+                        : { background: 'var(--surface-3)', color: 'var(--text-2)', border: '1px solid transparent' }}>
+                      {STATUS_STYLE[s].label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setShowEditModal(false)} className="px-4 py-2 rounded text-sm" style={{ background: 'var(--surface-3)', color: 'var(--text-1)' }}>Cancel</button>
                 <button type="submit" className="px-4 py-2 rounded bg-purple-700 text-white text-sm">Save</button>
@@ -849,6 +1147,10 @@ export default function App() {
   const [discoverResults, setDiscoverResults] = useState([]);
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [discoverError, setDiscoverError] = useState('');
+  // Manual add-a-venue form (Venues tab)
+  const [showAddVenue, setShowAddVenue] = useState(false);
+  const BLANK_VENUE = { name: '', location: '', capacity: '', price: '$$$', amenities: '' };
+  const [venueForm, setVenueForm] = useState(BLANK_VENUE);
   const [showClientDetailModal, setShowClientDetailModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
 
@@ -902,7 +1204,9 @@ export default function App() {
     { id: 1, name: 'Grand Ballroom', location: 'Downtown', capacity: 300, price: '$$$$$', rating: 4.7, reviews: 203, booked: true, amenities: ['Kitchen', 'Parking', 'AV Equipment'] },
     { id: 2, name: 'Crystal Palace', location: 'Waterfront', capacity: 250, price: '$$$$', rating: 4.8, reviews: 189, booked: false, amenities: ['Waterfront', 'Indoor/Outdoor', 'Catering'] },
     { id: 3, name: 'Convention Center', location: 'Tech District', capacity: 1000, price: '$$$$$', rating: 4.6, reviews: 267, booked: false, amenities: ['Multiple Rooms', 'Tech Setup', 'Catering'] },
-    { id: 4, name: 'Garden Estate', location: 'Suburbs', capacity: 150, price: '$$$', rating: 4.9, reviews: 145, booked: false, amenities: ['Outdoor', 'Gardens', 'Tents Available'] }
+    { id: 4, name: 'Garden Estate', location: 'Suburbs', capacity: 150, price: '$$$', rating: 4.9, reviews: 145, booked: false, amenities: ['Outdoor', 'Gardens', 'Tents Available'] },
+    { id: 5, name: 'Lilium Berlin', location: 'Kreuzberg, Berlin', capacity: 250, price: '€1,200 flat', rating: 0, reviews: 0, booked: false, amenities: ['Waterside', 'Terrace', 'In-house bar', 'Grand piano'], address: 'Pfuelstr. 5, 10997 Berlin' },
+    { id: 6, name: 'Fluxbau', location: 'Kreuzberg, Berlin', capacity: 250, price: '€900 flat', rating: 0, reviews: 0, booked: false, amenities: ['Riverside', 'Two floors', 'Spree terrace', 'Co-rental with Lilium'], address: 'Pfuelstr. 5, 10997 Berlin' }
   ]);
 
   const [conversations, setConversations] = useLocalStorage('ef_convos', [
@@ -1023,6 +1327,38 @@ export default function App() {
 
     try {
       localStorage.setItem('ef_migrations', JSON.stringify([...applied, 'berlin-vendors-2026-07']));
+    } catch {
+      // storage unavailable — migration will retry next load, still idempotent by name
+    }
+  }, []);
+
+  /* Seed Lilium + Fluxbau into existing users' venue lists (the useLocalStorage
+     default only reaches brand-new users). Merge-by-name so a hand-added copy
+     isn't duplicated. */
+  useEffect(() => {
+    let applied;
+    try {
+      applied = JSON.parse(localStorage.getItem('ef_migrations') || '[]');
+    } catch {
+      applied = [];
+    }
+    if (applied.includes('berlin-venues-2026-07')) return;
+
+    const berlinVenues = [
+      { name: 'Lilium Berlin', location: 'Kreuzberg, Berlin', capacity: 250, price: '€1,200 flat', rating: 0, reviews: 0, booked: false, amenities: ['Waterside', 'Terrace', 'In-house bar', 'Grand piano'], address: 'Pfuelstr. 5, 10997 Berlin' },
+      { name: 'Fluxbau',       location: 'Kreuzberg, Berlin', capacity: 250, price: '€900 flat',   rating: 0, reviews: 0, booked: false, amenities: ['Riverside', 'Two floors', 'Spree terrace', 'Co-rental with Lilium'], address: 'Pfuelstr. 5, 10997 Berlin' },
+    ];
+
+    setVenues(prev => {
+      const existing = new Set(prev.map(v => v.name));
+      const missing = berlinVenues.filter(v => !existing.has(v.name));
+      if (missing.length === 0) return prev;
+      const nextId = prev.reduce((max, v) => Math.max(max, v.id || 0), 0) + 1;
+      return [...prev, ...missing.map((v, i) => ({ id: nextId + i, ...v }))];
+    });
+
+    try {
+      localStorage.setItem('ef_migrations', JSON.stringify([...applied, 'berlin-venues-2026-07']));
     } catch {
       // storage unavailable — migration will retry next load, still idempotent by name
     }
@@ -1151,6 +1487,25 @@ export default function App() {
     };
     setVenues(prev => [...prev, next]);
     setDiscoverResults(prev => prev.filter(r => r.osm_id !== v.osm_id));
+  }
+
+  function handleAddVenue(e) {
+    e.preventDefault();
+    if (!venueForm.name.trim()) return;
+    const next = {
+      id: Date.now(),
+      name: venueForm.name.trim(),
+      location: venueForm.location.trim(),
+      capacity: Number(venueForm.capacity) || 0,
+      price: venueForm.price || '$$$',
+      rating: 0,
+      reviews: 0,
+      booked: false,
+      amenities: venueForm.amenities.split(',').map(a => a.trim()).filter(Boolean),
+    };
+    setVenues(prev => [...prev, next]);
+    setVenueForm(BLANK_VENUE);
+    setShowAddVenue(false);
   }
 
   /* -------------------- Filtering helpers -------------------- */
@@ -2736,10 +3091,47 @@ export default function App() {
 
                 {/* Saved / hardcoded venues */}
                 <div className={`${classes.panelBg} ${classes.border} p-5 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-                  <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
                     <h2 className="text-base font-semibold text-white">Saved Venues</h2>
-                    <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="dark-input p-2 rounded-md text-sm" />
+                    <div className="flex items-center gap-2">
+                      <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="dark-input p-2 rounded-md text-sm" />
+                      <button onClick={() => setShowAddVenue(s => !s)} className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-2 rounded-md flex items-center gap-2 text-sm font-semibold whitespace-nowrap">
+                        <Plus size={14} /> Add Venue
+                      </button>
+                    </div>
                   </div>
+
+                  {showAddVenue && (
+                    <form onSubmit={handleAddVenue} className="bg-slate-900 border-2 rounded-md p-4 mb-5 space-y-3" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-300 mb-1 block">Name</label>
+                          <input required value={venueForm.name} onChange={e => setVenueForm(f => ({ ...f, name: e.target.value }))} className="dark-input w-full p-2 rounded-md text-sm" placeholder="e.g. Watergate" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-300 mb-1 block">Location</label>
+                          <input value={venueForm.location} onChange={e => setVenueForm(f => ({ ...f, location: e.target.value }))} className="dark-input w-full p-2 rounded-md text-sm" placeholder="e.g. Kreuzberg, Berlin" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-300 mb-1 block">Capacity</label>
+                          <input type="number" min="0" value={venueForm.capacity} onChange={e => setVenueForm(f => ({ ...f, capacity: e.target.value }))} className="dark-input w-full p-2 rounded-md text-sm" placeholder="300" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-300 mb-1 block">Price</label>
+                          <input value={venueForm.price} onChange={e => setVenueForm(f => ({ ...f, price: e.target.value }))} className="dark-input w-full p-2 rounded-md text-sm" placeholder="$$$ or €900 flat" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-300 mb-1 block">Amenities (comma-separated)</label>
+                        <input value={venueForm.amenities} onChange={e => setVenueForm(f => ({ ...f, amenities: e.target.value }))} className="dark-input w-full p-2 rounded-md text-sm" placeholder="Waterside, Terrace, In-house bar" />
+                      </div>
+                      <div className="flex gap-2">
+                        <button type="submit" className="px-4 py-2 rounded-md text-sm font-semibold text-white bg-purple-700 hover:bg-purple-600">Save Venue</button>
+                        <button type="button" onClick={() => { setShowAddVenue(false); setVenueForm(BLANK_VENUE); }} className="px-4 py-2 rounded-md text-sm" style={{ background: 'var(--surface-3)', color: 'var(--text-1)' }}>Cancel</button>
+                      </div>
+                    </form>
+                  )}
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredVenues.map(venue => (
                       <div key={venue.id} className={`${classes.panelBg} ${classes.border} p-4 rounded-md`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>

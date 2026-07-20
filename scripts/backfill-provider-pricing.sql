@@ -4,13 +4,13 @@
 -- No secrets in this file — safe to commit and re-run (idempotent UPDATEs).
 
 UPDATE providers SET pricing_model='flat', pricing_amount=1200,
-  blurb='Waterside Art Deco space at the Oberbaum Bridge — 500 m² indoor, 250 m² terrace, in-house bar, grand piano.',
-  capacity_standing=300, capacity_seated=150, address='Pfuelstr. 5, 10997 Berlin'
+  blurb='Waterside Art Deco loft at the Oberbaum Bridge — 500 m² indoor + terrace on the Spree, in-house bar, grand piano.',
+  capacity_standing=250, capacity_seated=150, address='Pfuelstr. 5, 10997 Berlin'
   WHERE id='lilium';
 
 UPDATE providers SET pricing_model='flat', pricing_amount=900,
-  blurb='Riverside venue next door to Lilium — co-rental available for combined events up to 600 guests.',
-  capacity_standing=300, capacity_seated=150, address='Pfuelstr. 5, 10997 Berlin (neighboring Lilium)'
+  blurb='Riverside venue on the Spree next to Lilium — 550 m² over two floors + terrace; co-rental with Lilium for combined events up to 600 guests.',
+  capacity_standing=250, capacity_seated=150, address='Pfuelstr. 5, 10997 Berlin (neighboring Lilium)'
   WHERE id='fluxbau';
 
 UPDATE providers SET pricing_model='per_person', pricing_amount=18,
