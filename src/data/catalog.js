@@ -12,15 +12,15 @@ export const VENUES = [
   {
     id: 'lilium', name: 'Lilium Berlin', kind: 'venue', founding: true,
     address: 'Pfuelstr. 5, 10997 Berlin',
-    blurb: 'Waterside Art Deco space at the Oberbaum Bridge — 500 m² indoor, 250 m² terrace, in-house bar, grand piano.',
-    capacity: { standing: 300, seated: 150 },
+    blurb: 'Waterside Art Deco loft at the Oberbaum Bridge — 500 m² indoor + terrace on the Spree, in-house bar, grand piano.',
+    capacity: { standing: 250, seated: 150 }, // confirmed via berlin-cuisine.com listing
     pricing: { model: 'flat', amount: 1200 },
   },
   {
     id: 'fluxbau', name: 'Fluxbau', kind: 'venue', founding: true,
     address: 'Pfuelstr. 5, 10997 Berlin (neighboring Lilium)',
-    blurb: 'Riverside venue next door to Lilium — co-rental available for combined events up to 600 guests.',
-    capacity: { standing: 300, seated: 150 }, // placeholder — confirm with Fluxbau
+    blurb: 'Riverside venue on the Spree next to Lilium — 550 m² over two floors + terrace; co-rental with Lilium for combined events up to 600 guests.',
+    capacity: { standing: 250, seated: 150 }, // confirmed via berlin-cuisine.com listing
     pricing: { model: 'flat', amount: 900 },
   },
 ];
