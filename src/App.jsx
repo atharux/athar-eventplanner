@@ -154,10 +154,19 @@ function buildGantt(data) {
     lane.items.push(p);
   });
   // Flag same-owner overlaps (one person can't be in two places at once).
+  // Track the running max end across ALL prior items, not just the previous
+  // one, so a long block that spans a short one still flags a later overlap.
   lanes.forEach(lane => {
     const its = [...lane.items].sort((a, b) => a.start - b.start);
+    let maxEnd = its.length ? its[0].start + its[0].dur : 0;
     for (let i = 1; i < its.length; i++) {
-      if (its[i].start < its[i - 1].start + its[i - 1].dur) { its[i].conflict = true; its[i - 1].conflict = true; }
+      if (its[i].start < maxEnd) {
+        its[i].conflict = true;
+        for (let j = 0; j < i; j++) {
+          if (its[j].start + its[j].dur > its[i].start) its[j].conflict = true;
+        }
+      }
+      maxEnd = Math.max(maxEnd, its[i].start + its[i].dur);
     }
   });
 
@@ -227,19 +236,18 @@ function ScheduleTab({ event, setEvents, onAddSchedule }) {
     const nextStatus = STATUS_ORDER[(STATUS_ORDER.indexOf(cur) + 1) % STATUS_ORDER.length];
     commit(data.map((it, i) => i === idx ? { ...it, status: nextStatus } : it));
   };
-  const nudge = (idx, delta) => {
-    const cur = parseClock(data[idx].time);
-    if (cur == null) return;
-    commit(data.map((it, i) => i === idx ? { ...it, time: toClockLabel(cur + delta) } : it));
-  };
 
   /* Owner suggestions for the editor dropdown — team + role labels + whoever's
      already on this sheet, de-duplicated. */
   const ownerOptions = Array.from(new Set([...TEAM.map(m => m.name), ...OWNER_ROLES, ...data.map(d => d.assigned).filter(Boolean)]));
 
+  // Match the gantt's chronological order: fold pre-6AM rows past midnight when
+  // the sheet has evening items, so a 12 AM wrap-up exports last, not first.
+  const exportHasEvening = data.some(it => (parseClock(it.time) ?? 0) >= 12 * 60);
+  const exportKey = (t) => (t == null ? 0 : (exportHasEvening && t < 6 * 60 ? t + 1440 : t));
   const exportRows = [...data]
     .map(it => ({ ...it, _m: parseClock(it.time) }))
-    .sort((a, b) => (a._m ?? 0) - (b._m ?? 0));
+    .sort((a, b) => exportKey(a._m) - exportKey(b._m));
   const copySheet = () => {
     const header = `Run Sheet${event ? ` — ${event.name}` : ''}`;
     const lines = exportRows.map(it => `${(it.time || '—').padEnd(9)} ${it.title}  (${it.duration || '—'}) — ${it.assigned || '—'}${it.status === 'done' ? ' ✓' : ''}`);
@@ -311,7 +319,7 @@ function ScheduleTab({ event, setEvents, onAddSchedule }) {
                 <div className="text-[10px] pr-2 truncate" style={{ width: 120, color: '#fbbf24' }}>Idle gaps</div>
                 <div className="relative flex-1" style={{ height: 10 }}>
                   {gantt.gaps.map((g, i) => (
-                    <div key={i} title={`${fmtClock(g.start)}–${fmtClock(g.end)} idle (${g.end - g.start} min)`}
+                    <div key={i} title={`${toClockLabel(g.start)}–${toClockLabel(g.end)} idle (${g.end - g.start} min)`}
                       className="absolute top-0 bottom-0 rounded-sm"
                       style={{ left: `${((g.start - gantt.axisStart) / gantt.span) * 100}%`, width: `${((g.end - g.start) / gantt.span) * 100}%`, background: 'repeating-linear-gradient(45deg,rgba(245,158,11,0.35),rgba(245,158,11,0.35) 4px,transparent 4px,transparent 8px)', border: '1px solid rgba(245,158,11,0.4)' }} />
                   ))}
@@ -356,7 +364,7 @@ function ScheduleTab({ event, setEvents, onAddSchedule }) {
               </div>
             ))}
             {gantt.showNow && (
-              <div className="text-[10px] mt-2" style={{ marginLeft: 120, color: NOW_COLOR }}>▎ now — {fmtClock(new Date().getHours() * 60 + new Date().getMinutes())}</div>
+              <div className="text-[10px] mt-2" style={{ marginLeft: 120, color: NOW_COLOR }}>▎ now — {toClockLabel(new Date().getHours() * 60 + new Date().getMinutes())}</div>
             )}
           </div>
         </div>
@@ -1304,6 +1312,38 @@ export default function App() {
 
     try {
       localStorage.setItem('ef_migrations', JSON.stringify([...applied, 'berlin-vendors-2026-07']));
+    } catch {
+      // storage unavailable — migration will retry next load, still idempotent by name
+    }
+  }, []);
+
+  /* Seed Lilium + Fluxbau into existing users' venue lists (the useLocalStorage
+     default only reaches brand-new users). Merge-by-name so a hand-added copy
+     isn't duplicated. */
+  useEffect(() => {
+    let applied;
+    try {
+      applied = JSON.parse(localStorage.getItem('ef_migrations') || '[]');
+    } catch {
+      applied = [];
+    }
+    if (applied.includes('berlin-venues-2026-07')) return;
+
+    const berlinVenues = [
+      { name: 'Lilium Berlin', location: 'Kreuzberg, Berlin', capacity: 250, price: '€1,200 flat', rating: 0, reviews: 0, booked: false, amenities: ['Waterside', 'Terrace', 'In-house bar', 'Grand piano'], address: 'Pfuelstr. 5, 10997 Berlin' },
+      { name: 'Fluxbau',       location: 'Kreuzberg, Berlin', capacity: 250, price: '€900 flat',   rating: 0, reviews: 0, booked: false, amenities: ['Riverside', 'Two floors', 'Spree terrace', 'Co-rental with Lilium'], address: 'Pfuelstr. 5, 10997 Berlin' },
+    ];
+
+    setVenues(prev => {
+      const existing = new Set(prev.map(v => v.name));
+      const missing = berlinVenues.filter(v => !existing.has(v.name));
+      if (missing.length === 0) return prev;
+      const nextId = prev.reduce((max, v) => Math.max(max, v.id || 0), 0) + 1;
+      return [...prev, ...missing.map((v, i) => ({ id: nextId + i, ...v }))];
+    });
+
+    try {
+      localStorage.setItem('ef_migrations', JSON.stringify([...applied, 'berlin-venues-2026-07']));
     } catch {
       // storage unavailable — migration will retry next load, still idempotent by name
     }

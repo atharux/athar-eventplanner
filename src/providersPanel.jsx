@@ -246,7 +246,7 @@ export default function ProvidersPanel({ classes }) {
               <option value="name">Name (A–Z)</option>
               <option value="kind">Category</option>
               <option value="commission">Commission (low→high)</option>
-              <option value="price">Price (low→high)</option>
+              <option value="price">Amount (low→high)</option>
             </select>
           </div>
         </div>
