@@ -128,9 +128,20 @@ function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-/* Build owner-swimlane gantt geometry from schedule rows. Evening events that
-   cross midnight get their after-midnight rows shifted +24h so bars stay in
-   chronological order. Overlapping bars owned by the SAME person are flagged. */
+/* Where a schedule row sits on the absolute timeline. An explicit `nextDay`
+   flag (set via the editor's "crosses midnight" toggle) wins; otherwise fall
+   back to the heuristic — on an evening sheet, treat a pre-6AM start as after
+   midnight. Keeps legacy rows (no flag) behaving as before. */
+function shiftStart(startRaw, nextDay, hasEvening) {
+  if (nextDay === true) return startRaw + 1440;
+  if (nextDay === false) return startRaw;
+  return hasEvening && startRaw < 6 * 60 ? startRaw + 1440 : startRaw;
+}
+
+/* Build owner-swimlane gantt geometry from schedule rows. Rows that cross
+   midnight get shifted +24h so bars stay in chronological order (explicit
+   toggle or heuristic — see shiftStart). Overlapping bars owned by the SAME
+   person are flagged. */
 function buildGantt(data) {
   const parsed = data
     .map((it, idx) => ({ ...it, idx, startRaw: parseClock(it.time), dur: parseDuration(it.duration) }))
@@ -138,7 +149,7 @@ function buildGantt(data) {
   if (parsed.length === 0) return null;
 
   const hasEvening = parsed.some(p => p.startRaw >= 12 * 60);
-  const norm = parsed.map(p => ({ ...p, start: hasEvening && p.startRaw < 6 * 60 ? p.startRaw + 1440 : p.startRaw }));
+  const norm = parsed.map(p => ({ ...p, start: shiftStart(p.startRaw, p.nextDay, hasEvening) }));
 
   const minStart = Math.min(...norm.map(p => p.start));
   const maxEnd = Math.max(...norm.map(p => p.start + p.dur));
@@ -241,13 +252,13 @@ function ScheduleTab({ event, setEvents, onAddSchedule }) {
      already on this sheet, de-duplicated. */
   const ownerOptions = Array.from(new Set([...TEAM.map(m => m.name), ...OWNER_ROLES, ...data.map(d => d.assigned).filter(Boolean)]));
 
-  // Match the gantt's chronological order: fold pre-6AM rows past midnight when
-  // the sheet has evening items, so a 12 AM wrap-up exports last, not first.
+  // Match the gantt's chronological order (same nextDay flag / heuristic), so a
+  // 12 AM wrap-up exports last, not first.
   const exportHasEvening = data.some(it => (parseClock(it.time) ?? 0) >= 12 * 60);
-  const exportKey = (t) => (t == null ? 0 : (exportHasEvening && t < 6 * 60 ? t + 1440 : t));
+  const exportKey = (it) => shiftStart(parseClock(it.time) ?? 0, it.nextDay, exportHasEvening);
   const exportRows = [...data]
     .map(it => ({ ...it, _m: parseClock(it.time) }))
-    .sort((a, b) => exportKey(a._m) - exportKey(b._m));
+    .sort((a, b) => exportKey(a) - exportKey(b));
   const copySheet = () => {
     const header = `Run Sheet${event ? ` — ${event.name}` : ''}`;
     const lines = exportRows.map(it => `${(it.time || '—').padEnd(9)} ${it.title}  (${it.duration || '—'}) — ${it.assigned || '—'}${it.status === 'done' ? ' ✓' : ''}`);
@@ -437,6 +448,10 @@ function ScheduleTab({ event, setEvents, onAddSchedule }) {
                   <input type="text" value={editingItem.duration || ''} onChange={e => setEditingItem(p => ({ ...p, duration: e.target.value }))} className="w-full dark-input rounded px-3 py-2" placeholder="1 hour" />
                 </div>
               </div>
+              <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--text-2)' }}>
+                <input type="checkbox" checked={!!editingItem.nextDay} onChange={e => setEditingItem(p => ({ ...p, nextDay: e.target.checked }))} className="w-4 h-4" />
+                Crosses midnight (next day) — e.g. a 2 AM load-out, or keep off for an early-morning setup
+              </label>
               <div>
                 <label className="block text-sm mb-1" style={{ color: 'var(--text-2)' }}>Status</label>
                 <div className="flex gap-2">
