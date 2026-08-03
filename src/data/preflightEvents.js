@@ -55,7 +55,12 @@ export const LILIUM_BASE_DATA = {
     address: 'Pfuelstr. 5, 10997 Berlin', capacity_standing: 300, capacity_seated: 150,
     indoor_sqm: 500, outdoor_sqm: 250, ceiling_m: 3.10,
     in_house: ['full_service_bar', 'storage', 'fridges', 'wardrobe', 'restrooms', 'grand_piano', 'heating', 'high_current_power'],
-    partnerships: ['catering'], co_rental: 'Fluxbau (neighboring) — combined events up to 600 guests',
+    partnerships: ['catering'],
+    // FluxBau confirmed via its own booking PDF (2026-07-07): same address,
+    // separate 550sqm/2-floor venue + 120sqm terrace. That PDF's only hard
+    // number is a 90-guest seated wedding layout — no combined-event cap
+    // is confirmed with either venue.
+    co_rental: 'FluxBau — same address (Pfuelstr. 5), separate 550sqm venue + 120sqm Spree terrace; combined-event guest cap not yet confirmed',
   },
   budget: { committed_spend: { venue: 0, av_equipment: 0, catering: 0, misc: 0 } },
   staffing: {

@@ -14,7 +14,7 @@ You are not selling software. You are selling **booked gigs with the chaos remov
 
 ## The 30-second pitch — three audiences
 
-**To a venue (Lilium, Fluxbau):**
+**To a venue (Lilium, FluxBau):**
 > "Clients build their own event package on our site — your space, real capacity limits, live prices. Before you ever see a request, our engine has checked it: guest count fits your room, budget clears, nothing double-booked. You open a link, see the gig and your payout, and tap Confirm. We take 2% as a founding partner — locked for two years. No listing fees, ever."
 
 **To a vendor/crew member:**
@@ -60,5 +60,5 @@ You are not selling software. You are selling **booked gigs with the chaos remov
 - **Live product**, not a deck: real quote builder, real payouts, real confirmations — demo on any phone.
 - **Deterministic pre-flight**: capacity, budget hard-stops, staffing coverage, AV conflicts — checked before any provider is contacted. Nobody else in Berlin leads with this.
 - **EU data residency** (EEUR); client CRM data never leaves the browser.
-- **Real venue data already live**: Lilium's actual capacity drives the checks; Lilium + Fluxbau co-rental handles up to 600 guests.
+- **Real venue data already live**: Lilium's and FluxBau's actual capacity drive the checks; the two share a building, so a combined co-rental is possible for oversized guest counts — capacity for that isn't confirmed yet, so don't quote a number, just flag it as an option.
 - **Costs the network ~€0 to run** — the 2% isn't paying for our servers, it's building the network's flywheel.

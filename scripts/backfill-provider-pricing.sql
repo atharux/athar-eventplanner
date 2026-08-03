@@ -4,13 +4,13 @@
 -- No secrets in this file — safe to commit and re-run (idempotent UPDATEs).
 
 UPDATE providers SET pricing_model='flat', pricing_amount=1200,
-  blurb='Waterside Art Deco space at the Oberbaum Bridge — 500 m² indoor, 250 m² terrace, in-house bar, grand piano.',
-  capacity_standing=300, capacity_seated=150, address='Pfuelstr. 5, 10997 Berlin'
+  blurb='Waterside Art Deco loft at the Oberbaum Bridge — 500 m² indoor + terrace on the Spree, in-house bar, grand piano.',
+  capacity_standing=250, capacity_seated=150, address='Pfuelstr. 5, 10997 Berlin'
   WHERE id='lilium';
 
 UPDATE providers SET pricing_model='flat', pricing_amount=900,
-  blurb='Riverside venue next door to Lilium — co-rental available for combined events up to 600 guests.',
-  capacity_standing=300, capacity_seated=150, address='Pfuelstr. 5, 10997 Berlin (neighboring Lilium)'
+  blurb='Riverside venue on the Spree next to Lilium — 550 m² over two floors + terrace; co-rental with Lilium for combined events up to 600 guests.',
+  capacity_standing=250, capacity_seated=150, address='Pfuelstr. 5, 10997 Berlin (neighboring Lilium)'
   WHERE id='fluxbau';
 
 UPDATE providers SET pricing_model='per_person', pricing_amount=18,
@@ -44,3 +44,19 @@ UPDATE providers SET pricing_model='flat', pricing_amount=600,
 UPDATE providers SET pricing_model='flat', pricing_amount=1100,
   blurb='Two-person team — full gallery plus a 3-minute highlight film.'
   WHERE id='photo-video';
+
+-- Berlin specialty catering (placeholder per-guest estimates — confirm real event rates)
+UPDATE providers SET pricing_model='per_person', pricing_amount=5,
+  blurb='Gourmet popcorn Manufaktur — event popcorn bar & branded gifting stations.',
+  address='Raumerstr. 32, 10437 Berlin'
+  WHERE id='knalle';
+
+UPDATE providers SET pricing_model='per_person', pricing_amount=6,
+  blurb='Ice-cream patisserie — event ice-cream cart with rotating flavours.',
+  address='Stargarder Str. 72, 10437 Berlin'
+  WHERE id='hokey-pokey';
+
+UPDATE providers SET pricing_model='per_person', pricing_amount=5,
+  blurb='Vegan donuts — donut catering, custom letter donuts & branded boxes.',
+  address='Maybachufer 8, 12047 Berlin'
+  WHERE id='brammibals';
