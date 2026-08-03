@@ -7,8 +7,9 @@ import { json, bad, safeEqual } from './_utils.js';
 
 const KINDS = new Set(['venue', 'catering', 'dj_av', 'staff', 'photo']);
 const MODELS = new Set(['flat', 'per_person', 'per_hour']);
-const FOUNDING_RATE = 0.02;
-const STANDARD_RATE = 0.10;
+const FEE_RATE = 0.02;   // flat marketplace fee for fee-bearing providers
+// staff/crew are exempt (0%) — RT takes no cut tied to labor, which keeps it
+// clear of staffing/labor-placement liability. See docs/money-flow-and-liability.md.
 
 function slugify(name) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40);
@@ -58,8 +59,8 @@ export async function onRequestPost({ request, env }) {
 
   const id = `${slugify(name)}-${crypto.randomUUID().slice(0, 4)}`;
   const token = randomToken();
-  const isFounding = founding !== false; // default true — onboarding is founding-era for now
-  const rate = isFounding ? FOUNDING_RATE : STANDARD_RATE;
+  const isFounding = founding !== false; // default true — controls the 24-month lock, not the rate
+  const rate = kind === 'staff' ? 0 : FEE_RATE;
 
   await env.DB.prepare(
     `INSERT INTO providers (id, name, kind, contact, token, founding, commission_rate,
