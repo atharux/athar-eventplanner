@@ -9,8 +9,12 @@ Venue facts from lilium.berlin/info (fetched 2026-07-04):
   high-current power, storage/fridges/wardrobe/restrooms, grand piano,
   boat rental & docking, custom flora arrangements
 - Location: Pfuelstr. 5, 10997 Berlin (waterside, Oberbaum Bridge views)
-- Co-rental with neighboring Fluxbau available for events up to 600 guests
-  -> one relationship covers both pitch targets
+- FluxBau shares this exact address (2nd Hofeingang, same building) — a
+  separate 550 m2 venue over two floors + 120 m2 Spree terrace, confirmed
+  via FluxBau's own booking PDF (fluxbau@fluxfm.de, read 2026-07-07). That
+  PDF documents only a 90-guest seated wedding layout, no standing/seated
+  max — a combined-event guest cap is NOT confirmed with either venue, so
+  don't quote one until asked directly.
 
 STATUS: awaiting Lilium's confirmation. Budget ceilings mirror the standard
 pilot spec; roster names and the event date are REPLACE placeholders, so
@@ -50,7 +54,11 @@ LILIUM_BERLIN_INPUT = {
             "in_house": ["full_service_bar", "storage", "fridges", "wardrobe",
                          "restrooms", "grand_piano", "heating", "high_current_power"],
             "partnerships": ["catering"],
-            "co_rental": "Fluxbau (neighboring) — combined events up to 600 guests",
+            # FluxBau confirmed via its own booking PDF (2026-07-07): same
+            # address, separate 550sqm/2-floor venue + 120sqm terrace. That
+            # PDF's only hard number is a 90-guest seated wedding layout —
+            # no combined-event cap is confirmed with either venue.
+            "co_rental": "FluxBau — same address (Pfuelstr. 5), separate 550sqm venue + 120sqm Spree terrace; combined-event guest cap not yet confirmed",
         },
 
         # ---- BUDGET: committed spend so far, per category (EUR) ----
@@ -96,7 +104,8 @@ LILIUM_BERLIN_INPUT = {
     "constraints": {
         # ---- CAPACITY RULES (from lilium.berlin) ----
         # 300 standing / 150 seated — set max_attendees per event format.
-        # Co-rental with Fluxbau lifts the ceiling to 600 if needed.
+        # FluxBau co-rental exists (same address) but no combined-event
+        # guest cap is confirmed — don't raise this ceiling without asking.
         "capacity": {
             "max_attendees": 150,  # seated format assumed for the pilot
         },
