@@ -11,13 +11,14 @@ import { json, bad } from './_utils.js';
    Default chain verified live 2026-07-05 (OpenRouter free IDs churn —
    update ASSIST_MODELS without a deploy when they do). */
 
-const DEFAULT_CHAIN = [
-  'groq:llama-3.3-70b-versatile',
-  'groq:qwen/qwen3-32b',
-  'openrouter:qwen/qwen3-next-80b-a3b-instruct:free',
+// Stable (non-OpenRouter) chain entries. The OpenRouter portion is discovered
+// live at request time (see buildChain) so it never goes stale — the hardcoded
+// OpenRouter IDs below are only a fallback for when /models can't be reached.
+const GROQ_CHAIN = ['groq:llama-3.3-70b-versatile', 'groq:qwen/qwen3-32b'];
+const MISTRAL_CHAIN = ['mistral:mistral-small-latest'];
+const OPENROUTER_FALLBACK = [
   'openrouter:meta-llama/llama-3.3-70b-instruct:free',
-  'openrouter:cognitivecomputations/dolphin-mistral-24b-venice-edition:free',
-  'mistral:mistral-small-latest',
+  'openrouter:qwen/qwen3-next-80b-a3b-instruct:free',
 ];
 
 const PROVIDERS = {
@@ -25,6 +26,48 @@ const PROVIDERS = {
   openrouter: { url: 'https://openrouter.ai/api/v1/chat/completions', key: 'OPENROUTER_API_KEY' },
   mistral: { url: 'https://api.mistral.ai/v1/chat/completions', key: 'MISTRAL_API_KEY' },
 };
+
+// Live OpenRouter free-model discovery (cached ~10min in isolate memory).
+const OR_SKIP = /coder|math|code-|content-safety|guard|moderation|lyria|whisper|embed|rerank/i;
+const OR_DEPRIORITISE = /gemma/i;
+let OR_CACHE = { ids: [], at: 0 };
+
+async function discoverOpenRouterFreeModels(apiKey) {
+  if (OR_CACHE.ids.length && Date.now() - OR_CACHE.at < 10 * 60 * 1000) return OR_CACHE.ids;
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/models', { headers: { Authorization: `Bearer ${apiKey}` } });
+    if (!res.ok) throw new Error(`models ${res.status}`);
+    const { data } = await res.json();
+    const ids = (data || [])
+      .filter(m => {
+        const id = String(m.id || '');
+        const isFree = id.endsWith(':free') || (m.pricing?.prompt === '0' && m.pricing?.completion === '0');
+        return isFree && !OR_SKIP.test(id);
+      })
+      .sort((a, b) => (b.context_length ?? 0) - (a.context_length ?? 0))
+      .sort((a, b) => (OR_DEPRIORITISE.test(a.id) ? 1 : 0) - (OR_DEPRIORITISE.test(b.id) ? 1 : 0))
+      .map(m => m.id);
+    if (ids.length) OR_CACHE = { ids, at: Date.now() };
+    return ids;
+  } catch {
+    return OR_CACHE.ids;
+  }
+}
+
+// Compose the provider chain: explicit ASSIST_MODELS override wins; otherwise
+// groq → live-discovered OpenRouter free models (fallback to hardcoded) → mistral.
+async function buildChain(env) {
+  if (env.ASSIST_MODELS) return env.ASSIST_MODELS.split(',').map(s => s.trim()).filter(Boolean);
+  const chain = [];
+  if (env.GROQ_API_KEY) chain.push(...GROQ_CHAIN);
+  if (env.OPENROUTER_API_KEY) {
+    const live = await discoverOpenRouterFreeModels(env.OPENROUTER_API_KEY);
+    const orEntries = (live.length ? live.slice(0, 4).map(id => `openrouter:${id}`) : OPENROUTER_FALLBACK);
+    chain.push(...orEntries);
+  }
+  if (env.MISTRAL_API_KEY) chain.push(...MISTRAL_CHAIN);
+  return chain;
+}
 
 const SYSTEM_PROMPT = `You are the RT Network event concierge (Rising Tide Collective, Berlin). You help a client plan an event by collecting details conversationally — warm, brief, one question at a time, max 50 words per reply.
 
@@ -76,8 +119,7 @@ export async function onRequestPost({ request, env }) {
     if (!m || (m.role !== 'user' && m.role !== 'assistant') || typeof m.content !== 'string') return bad('Invalid message');
   }
 
-  const chain = (env.ASSIST_MODELS ? env.ASSIST_MODELS.split(',') : DEFAULT_CHAIN)
-    .map(s => s.trim()).filter(Boolean);
+  const chain = await buildChain(env);
 
   const convo = [
     { role: 'system', content: SYSTEM_PROMPT },
@@ -100,7 +142,7 @@ export async function onRequestPost({ request, env }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${env[provider.key]}`,
         },
-        body: JSON.stringify({ model, messages: convo, temperature: 0.2, max_tokens: 400 }),
+        body: JSON.stringify({ model, messages: convo, temperature: 0.2, max_tokens: 800 }),
         signal: ctrl.signal,
       });
       clearTimeout(t);
